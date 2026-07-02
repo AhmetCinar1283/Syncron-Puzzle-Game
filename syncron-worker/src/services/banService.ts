@@ -1,4 +1,9 @@
 
+/**
+ * DOSYA AMACI: Bu dosya, oyuncuların platform genelinde veya belirli özelliklerde (sosyal, tag vb.) 
+ * aktif yasaklama (ban) durumlarını kontrol eden ve yasak geçmişlerini sorgulayan veritabanı işlemlerini içerir.
+ */
+
 export interface BanRecord {
   id: string;
   uid: string;
@@ -24,6 +29,7 @@ export interface ActiveBan {
 /**
  * Checks if a user has an active ban of the specified type.
  */
+// Kullanıcının belirtilen türde (platform, tag, social vb.) aktif bir yasağının olup olmadığını sorgular.
 export async function checkActiveBan(
   db: D1Database,
   uid: string,
@@ -44,6 +50,7 @@ export async function checkActiveBan(
 /**
  * Gets all active bans for a user.
  */
+// Kullanıcının şu an aktif olan tüm yasaklama kayıtlarını getirir.
 export async function getActiveBans(
   db: D1Database,
   uid: string
@@ -64,6 +71,7 @@ export async function getActiveBans(
 /**
  * Gets the entire ban history for a user (active, expired, and lifted).
  */
+// Kullanıcının geçmiş ve şimdiki tüm yasaklama (aktif, süresi dolmuş veya kaldırılmış) geçmişini listeler.
 export async function getBanHistory(
   db: D1Database,
   uid: string

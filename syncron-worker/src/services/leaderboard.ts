@@ -1,3 +1,9 @@
+/**
+ * DOSYA AMACI: Bu dosya, liderlik tablosu skorlarının periyotlara göre güncellenmesini, 
+ * kullanıcı profil önbelleğinin (profile cache) denormalizasyonunu, dünya rekoru kırılmalarını 
+ * ve yaratıcı skorlarının D1 veritabanı üzerinde yönetilmesini koordine eder.
+ */
+
 import type { PeriodIds } from '../types';
 
 export interface LeaderboardUpdateParams {
@@ -9,11 +15,13 @@ export interface LeaderboardUpdateParams {
   oldBestHolderUid: string | null;
   createdBy: string | null;
   starsGained: number; // The stars won in this completion
+  xpDelta: number; // The XP earned in this completion
 }
 
 /**
  * Calculates current period IDs for daily, weekly, monthly and all_time based on UTC.
  */
+// UTC zamanına göre geçerli gün, hafta (ISO 8601), ay ve tüm zamanlar periyot kimliklerini (IDs) hesaplar.
 export function getCurrentPeriodIds(date: Date = new Date()): {
   daily: string;
   weekly: string;
@@ -44,6 +52,7 @@ export function getCurrentPeriodIds(date: Date = new Date()): {
 /**
  * Clean display name and tag to conform to database length and formatting restrictions.
  */
+// Profil isim ve tag verilerini temizler ve veritabanı boyut kısıtlamalarına uydurur.
 function cleanProfileData(displayName: string, tag: string | null): { cleanName: string; cleanTag: string | null } {
   let cleanName = displayName.trim();
   if (cleanName.length === 0) {
@@ -66,6 +75,7 @@ function cleanProfileData(displayName: string, tag: string | null): { cleanName:
 /**
  * Upsert period scores for daily, weekly, monthly and all_time periods.
  */
+// Kullanıcının periyot tabanlı (günlük, haftalık, aylık, tüm zamanlar) seviye tamamlama skorlarını günceller.
 export async function upsertPeriodScores(
   db: D1Database,
   uid: string,
@@ -102,17 +112,20 @@ export async function upsertPeriodScores(
 /**
  * Denormalize and upsert user profile into user_profiles cache table.
  */
+// Kullanıcı profili önbellek tablosundaki display_name, tag ve XP bilgilerini günceller (denormalizasyon).
 export async function upsertUserProfile(
   db: D1Database,
   uid: string,
   displayName: string,
   tag: string | null,
+  xpDelta?: number,
 ): Promise<void> {
   const { cleanName, cleanTag } = cleanProfileData(displayName, tag);
+  const xp = xpDelta !== undefined ? xpDelta : 0;
 
   const query = `
-    INSERT INTO user_profiles (uid, display_name, tag, updated_at)
-    VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    INSERT INTO user_profiles (uid, display_name, tag, xp, updated_at)
+    VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     ON CONFLICT(uid)
     DO UPDATE SET
       display_name = excluded.display_name,
@@ -121,15 +134,17 @@ export async function upsertUserProfile(
       -- Cloud Functions assigns their tag, causing the tag to be wiped in D1
       -- and the cleanup cron incorrectly targeting them.
       tag = COALESCE(excluded.tag, user_profiles.tag),
+      xp = user_profiles.xp + excluded.xp,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
   `;
 
-  await db.prepare(query).bind(uid, cleanName, cleanTag).run();
+  await db.prepare(query).bind(uid, cleanName, cleanTag, xp).run();
 }
 
 /**
  * Update user's profile with their showcase badges.
  */
+// Kullanıcı profil önbelleğindeki sergilenen rozetler (showcase badges) alanını günceller.
 export async function updateUserShowcaseBadges(
   db: D1Database,
   uid: string,
@@ -158,6 +173,7 @@ export async function updateUserShowcaseBadges(
  * Handle new world record breaks. Increments count for daily/weekly/all_time for the new holder
  * and decrements all_time count for the old holder (if any).
  */
+// Yeni dünya rekoru kırıldığında rekor sayılarını günceller (eski sahibinkini düşürür, yeni sahibinkini artırır).
 export async function upsertWorldRecords(
   db: D1Database,
   newHolderUid: string,
@@ -199,6 +215,7 @@ export async function upsertWorldRecords(
 /**
  * Update community level creator scores when a level gets completed.
  */
+// Topluluk seviyesi tamamlandığında, o seviyeyi tasarlayan kişinin (creator) plays ve stars skorlarını artırır.
 export async function upsertCreatorScores(
   db: D1Database,
   creatorUid: string,
@@ -226,6 +243,7 @@ export async function upsertCreatorScores(
  * Main wrapper execution to handle all leaderboard updates inside complete-level.
  * Designed to safely run asynchronously via waitUntil.
  */
+// Seviye bitirme sonrasında tüm liderlik tablosu ve profil güncellemelerini koordine eden ana fonksiyon.
 export async function updateLeaderboardData(
   db: D1Database,
   uid: string,
@@ -241,7 +259,7 @@ export async function updateLeaderboardData(
 
   // Faz 3: User Profile Cache
   tasks.push(
-    upsertUserProfile(db, uid, params.displayName, params.tag)
+    upsertUserProfile(db, uid, params.displayName, params.tag, params.xpDelta)
       .catch((err) => console.error('[Leaderboard] upsertUserProfile failed:', err))
   );
 

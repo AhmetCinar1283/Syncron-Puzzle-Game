@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, D1 veritabanındaki 90 günden eski denetim günlüklerini (audit logs) 
+ * NDJSON formatında Cloudflare R2 arşivine taşıyan ve ardından D1'den silen zamanlanmış retention görevini içerir.
+ */
+
+/**
  * Log Retention — Scheduled Cron Trigger
  *
  * Runs weekly (every Sunday at 03:00 UTC) via Cloudflare Cron Triggers.
@@ -24,6 +29,7 @@ import type { Env } from '../types';
 const RETENTION_DAYS = 90;
 const BATCH_SIZE = 500; // rows per R2 file + D1 delete batch
 
+// 90 günden eski logları parça parça (batch) okur, R2'ye yazar ve başarılı ise D1 veritabanından siler.
 export async function runLogRetention(env: Env): Promise<void> {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);

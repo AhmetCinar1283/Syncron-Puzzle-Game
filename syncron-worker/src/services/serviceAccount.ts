@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, Google Service Account (Hizmet Hesabı) bilgilerini kullanarak 
+ * Cloudflare Workers üzerinde Firebase/Firestore API erişimi için geçici erişim jetonları (access token) üretir.
+ */
+
+/**
  * Exchange a Google service account for a short-lived access token.
  * Uses Web Crypto API (available in Cloudflare Workers) — no Node.js required.
  */
@@ -8,12 +13,14 @@ interface ServiceAccount {
   private_key: string;
 }
 
+// Verilen byte dizisini JWT standartlarına uygun base64url formatında kodlar.
 function base64urlEncode(data: Uint8Array): string {
   let str = '';
   for (const b of data) str += String.fromCharCode(b);
   return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
+// PEM formatındaki RSA özel anahtarını Web Crypto API'sinin okuyabileceği Uint8Array byte dizisine dönüştürür.
 function pemToUint8Array(pem: string): Uint8Array<ArrayBuffer> {
   const base64 = pem
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
@@ -25,12 +32,14 @@ function pemToUint8Array(pem: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+// Verilen hizmet hesabı JSON metninin yapısal olarak geçerli olup olmadığını doğrular.
 export function isValidServiceAccount(serviceAccountJson: string | undefined): boolean {
   if (!serviceAccountJson) return false;
   const trimmed = serviceAccountJson.trim();
   return trimmed.startsWith('{') && trimmed.includes('private_key');
 }
 
+// Hizmet hesabı ile JWT imzalayarak Google OAuth2 servisinden geçici admin erişim jetonu (access token) alır.
 export async function getAdminAccessToken(serviceAccountJson: string): Promise<string> {
   let sa: ServiceAccount;
   try {

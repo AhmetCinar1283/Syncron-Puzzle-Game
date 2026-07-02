@@ -1,4 +1,10 @@
 /**
+ * DOSYA AMACI: Bu dosya, admin veya moderatörlerin kullanıcı profillerini incelemesi, 
+ * denetim günlüklerini (audit logs) sorgulaması, oynanan seviyeleri listelemesi ve 
+ * yasaklama (ban) işlemlerini (yasaklama, yasak kaldırma, sorgulama) yönetmesi için API uç noktalarını tanımlar.
+ */
+
+/**
  * GET /admin/users           — List users (search + filter + pagination)
  * GET /admin/users/:uid      — Single user profile
  * GET /admin/users/:uid/logs — User's audit logs (filter + pagination)
@@ -45,7 +51,7 @@ const logsQuerySchema = z.object({
 });
 
 // ─── GET /admin/users/:uid ────────────────────────────────────────────────────
-
+// Admin panelinde tek bir kullanıcının profil bilgilerini getirir.
 adminApiRouter.get('/admin/users/:uid', async (c) => {
   const uid = c.req.param('uid');
 
@@ -81,7 +87,7 @@ adminApiRouter.get('/admin/users/:uid', async (c) => {
 });
 
 // ─── GET /admin/users/:uid/logs ───────────────────────────────────────────────
-
+// Belirli bir kullanıcının denetim günlüklerini (audit logs) filtreleyip sayfalayarak getirir.
 adminApiRouter.get('/admin/users/:uid/logs', async (c) => {
   const uid = c.req.param('uid');
 
@@ -117,7 +123,7 @@ adminApiRouter.get('/admin/users/:uid/logs', async (c) => {
 });
 
 // ─── GET /admin/users/:uid/stats ──────────────────────────────────────────────
-
+// Kullanıcının log istatistiklerini ve son aktivite zamanını getirir.
 adminApiRouter.get('/admin/users/:uid/stats', async (c) => {
   const uid = c.req.param('uid');
 
@@ -136,7 +142,7 @@ adminApiRouter.get('/admin/users/:uid/stats', async (c) => {
 
 // ─── GET /admin/users/:uid/played-levels ──────────────────────────────────────
 // Reads from D1 played_levels table (canonical store — no longer Firestore).
-
+// Kullanıcının oynadığı seviyeleri D1 veritabanından getirir.
 adminApiRouter.get('/admin/users/:uid/played-levels', async (c) => {
   const uid = c.req.param('uid');
   const limitParam = Number(new URL(c.req.url).searchParams.get('limit') ?? '50');
@@ -190,6 +196,7 @@ const createBanSchema = z.object({
     }),
 });
 
+// Kullanıcıya yeni bir yasaklama (ban) tanımlar; tag yasağında tag'ini de siler.
 adminApiRouter.post('/admin/users/:uid/bans', async (c) => {
   if (c.get('role') !== 'admin') {
     return c.json({ success: false, error: 'Insufficient permissions' }, 403);
@@ -293,7 +300,7 @@ adminApiRouter.post('/admin/users/:uid/bans', async (c) => {
 });
 
 // ─── POST /admin/users/:uid/bans/:banId/lift ───────────────────────────────────
-
+// Kullanıcının aktif olan yasağını kaldırır.
 adminApiRouter.post('/admin/users/:uid/bans/:banId/lift', async (c) => {
   if (c.get('role') !== 'admin') {
     return c.json({ success: false, error: 'Insufficient permissions' }, 403);
@@ -360,7 +367,7 @@ adminApiRouter.post('/admin/users/:uid/bans/:banId/lift', async (c) => {
 });
 
 // ─── GET /admin/users/:uid/bans ───────────────────────────────────────────────
-
+// Kullanıcının geçmiş ve aktif yasaklama kayıtlarını getirir.
 adminApiRouter.get('/admin/users/:uid/bans', async (c) => {
   const uid = c.req.param('uid');
   const db = c.env.AUDIT_DB;
@@ -381,4 +388,24 @@ adminApiRouter.get('/admin/users/:uid/bans', async (c) => {
     return c.json({ success: false, error: 'Internal error' }, 500);
   }
 });
+
+// GET /admin/level-analytics
+// Admin panelinde tüm seviyelerin D1 üzerindeki toplu deneme ve geri bildirim istatistiklerini getirir.
+adminApiRouter.get('/admin/level-analytics', async (c) => {
+  const db = c.env.AUDIT_DB;
+
+  try {
+    const { getLevelAnalytics } = await import('../services/telemetry');
+    const analytics = await getLevelAnalytics(db);
+
+    return c.json({
+      success: true,
+      analytics,
+    });
+  } catch (err) {
+    console.error('[AdminAPI] Failed to fetch level analytics:', err);
+    return c.json({ success: false, error: 'Internal error' }, 500);
+  }
+});
+
 

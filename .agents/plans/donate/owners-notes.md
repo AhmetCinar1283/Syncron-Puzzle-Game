@@ -1,0 +1,3 @@
+- [ ] para birimleri ayarlanabilir ve güvenli olmalı.
+- [ ] lemonsqueezy'nin sayfasına yönlendirirken verdiği 404 hatası düzeltilmeli (https://polyvo.lemonsqueezy.com/checkout/buy/32831807-1e00-4a99-8870-8297f7e79327)
+- [ ] Ödemenein çalışıp çalışmadığı test edilmeli

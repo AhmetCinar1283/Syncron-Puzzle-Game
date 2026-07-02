@@ -13,6 +13,7 @@ const config: CapacitorConfig = {
       serverClientId: '1041986277726-9otkut2eqcl61rs3rokmgcqn184g42pu.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     },
+    AdMob: {},
   },
 };
 

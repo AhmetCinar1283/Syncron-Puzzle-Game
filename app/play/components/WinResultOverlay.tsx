@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useT } from '@/app/src/contexts/LanguageContext';
 import { useGamepad } from '@/app/src/hooks/useGamepad';
@@ -18,6 +18,8 @@ interface WorkerResult {
 interface WinResultOverlayProps {
     result: WorkerResult | null; // null = yükleniyor
     moveCount: number;
+    levelId?: string;
+    version?: number;
     onRestart: () => void;
     onNextLevel: (() => void) | undefined;
     onMenu: () => void;
@@ -76,10 +78,61 @@ function Star({ n, loading, stars }: { n: 1 | 2 | 3; loading: boolean; stars: nu
     );
 }
 
-export function WinResultOverlay({ result, moveCount, onRestart, onNextLevel, onMenu }: WinResultOverlayProps) {
+export function WinResultOverlay({ result, moveCount, levelId, version, onRestart, onNextLevel, onMenu }: WinResultOverlayProps) {
     const t = useT();
     const loading = result === null;
     const stars = result?.stars ?? 0;
+
+    const [selectedLike, setSelectedLike] = useState<boolean | null>(null);
+    const [selectedDiff, setSelectedDiff] = useState<'easy' | 'normal' | 'hard' | null>(null);
+    const [submitted, setSubmitted] = useState(false);
+    const [alreadyFeedback, setAlreadyFeedback] = useState(false);
+
+    // Check if user has already submitted feedback for this level version locally
+    useEffect(() => {
+        if (levelId && version) {
+            const hasFeedback = localStorage.getItem(`feedback_submitted_${levelId}_${version}`);
+            if (hasFeedback) {
+                setAlreadyFeedback(true);
+            }
+        }
+    }, [levelId, version]);
+
+    // Submit feedback when both thumbs and difficulty are chosen
+    useEffect(() => {
+        if (levelId && version && selectedLike !== null && selectedDiff !== null && !submitted) {
+            setSubmitted(true);
+            localStorage.setItem(`feedback_submitted_${levelId}_${version}`, 'true');
+            
+            const submit = async () => {
+                const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
+                if (!WORKER_URL) return;
+
+                try {
+                    const { auth: firebaseAuth } = await import('@/app/src/lib/firebase/config');
+                    const token = firebaseAuth.currentUser ? await firebaseAuth.currentUser.getIdToken() : null;
+                    if (!token) return;
+
+                    await fetch(`${WORKER_URL}/game/feedback`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            levelId,
+                            version,
+                            difficulty: selectedDiff,
+                            liked: selectedLike ? 1 : 0,
+                        }),
+                    });
+                } catch (err) {
+                    console.warn('[Feedback] Failed to submit feedback:', err);
+                }
+            };
+            submit();
+        }
+    }, [selectedLike, selectedDiff, levelId, version, submitted]);
 
     const handlePrimaryAction = () => {
         if (onNextLevel) {
@@ -281,6 +334,124 @@ export function WinResultOverlay({ result, moveCount, onRestart, onNextLevel, on
                             )}
                         </AnimatePresence>
                     </div>
+
+                    {/* Optional Feedback Widget */}
+                    {!alreadyFeedback && !submitted && levelId && version && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5, duration: 0.3 }}
+                            style={{
+                                width: '100%',
+                                background: 'rgba(30, 41, 59, 0.25)',
+                                border: '1px solid rgba(148, 163, 184, 0.1)',
+                                borderRadius: 12,
+                                padding: 12,
+                                boxSizing: 'border-box',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 10,
+                                margin: '8px 0',
+                            }}
+                        >
+                            <p style={{
+                                color: '#94a3b8',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                margin: 0,
+                                textAlign: 'center',
+                                letterSpacing: '0.04em'
+                            }}>
+                                {t('feedback.rate_title') ?? 'Seviyeyi Değerlendir (İsteğe Bağlı)'}
+                            </p>
+                            
+                            {/* Like / Dislike Row */}
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+                                <button
+                                    onClick={() => setSelectedLike(true)}
+                                    style={{
+                                        background: selectedLike === true ? 'rgba(0, 255, 136, 0.15)' : 'rgba(148, 163, 184, 0.05)',
+                                        border: selectedLike === true ? '1px solid rgba(0, 255, 136, 0.6)' : '1px solid rgba(148, 163, 184, 0.15)',
+                                        color: selectedLike === true ? '#00ff88' : '#94a3b8',
+                                        borderRadius: 8,
+                                        padding: '6px 16px',
+                                        fontSize: 14,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6
+                                    }}
+                                >
+                                    👍
+                                </button>
+                                <button
+                                    onClick={() => setSelectedLike(false)}
+                                    style={{
+                                        background: selectedLike === false ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.05)',
+                                        border: selectedLike === false ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(148, 163, 184, 0.15)',
+                                        color: selectedLike === false ? '#ef4444' : '#94a3b8',
+                                        borderRadius: 8,
+                                        padding: '6px 16px',
+                                        fontSize: 14,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6
+                                    }}
+                                >
+                                    👎
+                                </button>
+                            </div>
+
+                            {/* Difficulty Row */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                                {(['easy', 'normal', 'hard'] as const).map((diff) => (
+                                    <button
+                                        key={diff}
+                                        onClick={() => setSelectedDiff(diff)}
+                                        style={{
+                                            flex: 1,
+                                            background: selectedDiff === diff ? 'rgba(0, 196, 255, 0.15)' : 'rgba(148, 163, 184, 0.05)',
+                                            border: selectedDiff === diff ? '1px solid rgba(0, 196, 255, 0.6)' : '1px solid rgba(148, 163, 184, 0.15)',
+                                            color: selectedDiff === diff ? '#00c4ff' : '#64748b',
+                                            borderRadius: 6,
+                                            padding: '5px 0',
+                                            fontSize: 10,
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em'
+                                        }}
+                                    >
+                                        {diff === 'easy' ? (t('feedback.easy') ?? 'Kolay')
+                                            : diff === 'normal' ? (t('feedback.normal') ?? 'Normal')
+                                            : (t('feedback.hard') ?? 'Zor')}
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Thank you feedback notice */}
+                    {submitted && (
+                        <motion.p
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            style={{
+                                color: '#00ff88',
+                                fontSize: 10,
+                                fontWeight: 600,
+                                margin: '8px 0',
+                                textAlign: 'center',
+                                letterSpacing: '0.04em'
+                            }}
+                        >
+                            ✓ {t('feedback.thank_you') ?? 'Geri bildiriminiz için teşekkürler!'}
+                        </motion.p>
+                    )}
 
                     {/* Action buttons */}
                     <motion.div

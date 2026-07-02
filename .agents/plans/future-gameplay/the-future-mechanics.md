@@ -37,7 +37,7 @@ Mevcut CELL_BEHAVIORS registry sistemine eklenebilecek yeni hücre tipleri:
 - [ ] **🟡 Player Switch:** 
   - Playerlerin yerlerini değiştiren kareler. Bir player bir kareye gelince ya da iki player de o tip kareye gelince yer değiştirirler.
   - Sadece player değil orada ki herhangi iki nesne de ışınlanabilir de olabilir.
-- [ ] **🟡 Ghost:** 
+- [ ] **🟡 Ghost:**   
   - Hayalete dönüşme. Bir kareye gelen nesneler hayalete dönüşür ve obstacle gibi engellerden geçer ve tetikleyicileri aktif etmez (conveyor, trambolin gibi teleportler'lardan geçebilir mi karar verilecek)
 - [ ] **🟡 Buton / Plakalar:**
   - Üzerinde bir nesne varken bir şeyi tetikler.

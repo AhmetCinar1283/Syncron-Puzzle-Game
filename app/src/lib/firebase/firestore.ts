@@ -13,18 +13,18 @@ import {
   increment,
   Timestamp,
   type FieldValue,
+  type DocumentSnapshot,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from './config';
 import type { StoredLevel } from '../db';
 import type { LevelData } from '../../games/types';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types (Firestore Veri Tipleri) ─────────────────────────────────────────────
 
-/** A community level submission request from a non-anonymous user. */
+/** Topluluktan gelen bölüm oluşturma istek şeması. */
 export interface LevelRequest {
   id: string;
-  // Level data fields
   name: string;
   width: number;
   height: number;
@@ -39,7 +39,6 @@ export interface LevelRequest {
   rooms?: any[];
   controlMode?: 'all_rooms' | 'selected_room';
   initialControlledRooms?: string[];
-  // Submission metadata
   submittedBy: string;
   creatorName: string;
   creatorTag: string | null;
@@ -47,22 +46,28 @@ export interface LevelRequest {
   submittedAt: number;
   updatedAt: number;
   adminNote?: string;
+  gameNotes?: string;
+  creatorNotes?: string;
 }
 
+/** Firestore'daki users/{uid} dokümanı şeması. */
 export interface UserDoc {
   uid: string;
   authProvider: 'anonymous' | 'google' | 'email';
   createdAt: FieldValue;
   totalScore: number;
   completedCount: number;
+  xp?: number;
   role: 'user' | 'moderator' | 'admin';
   email?: string;
   displayName?: string;
   tag?: string;
   acceptedTermsAt?: FieldValue;
 }
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// ─── Helpers (Yardımcı Fonksiyonlar) ──────────────────────────────────────────
+
+/** Kullanıcının oturum açtığı kimlik sağlayıcıyı (provider) çözümler. */
 function resolveAuthProvider(user: User): 'anonymous' | 'google' | 'email' {
   if (user.isAnonymous) return 'anonymous';
   const providerIds = user.providerData.map((p) => p.providerId);
@@ -71,47 +76,60 @@ function resolveAuthProvider(user: User): 'anonymous' | 'google' | 'email' {
 }
 
 /**
- * Creates the users/{uid} document on first sign-in.
- * If the user has just linked a Google account, merges the new provider info
- * without overwriting existing fields (e.g. totalScore, createdAt).
+ * Kullanıcı ilk giriş yaptığında users/{uid} dokümanını oluşturur.
+ * Google hesabı bağlama gibi durumlarda mevcut alanları ezmeden birleştirir (merge).
  */
-export async function createOrUpdateUserDoc(user: User, acceptedTerms?: boolean): Promise<void> {
+export async function createOrUpdateUserDoc(
+  user: User,
+  acceptedTerms?: boolean,
+  existingSnap?: DocumentSnapshot,
+): Promise<DocumentSnapshot> {
   const ref = doc(db, 'users', user.uid);
-  const snap = await getDoc(ref);
+  let snap = existingSnap || (await getDoc(ref));
 
   if (!snap.exists()) {
-    const data: Omit<UserDoc, 'createdAt'> & { createdAt: FieldValue; acceptedTermsAt?: FieldValue } = {
+    // Yeni kullanıcı kaydı
+    const data: Omit<UserDoc, 'createdAt'> & { createdAt: FieldValue; acceptedTermsAt: FieldValue } = {
       uid: user.uid,
       authProvider: resolveAuthProvider(user),
       createdAt: serverTimestamp(),
       totalScore: 0,
       completedCount: 0,
       role: 'user',
+      acceptedTermsAt: serverTimestamp(), // Always set acceptedTermsAt on creation to satisfy rules
     };
     if (user.email) data.email = user.email;
     if (user.displayName) data.displayName = user.displayName;
-    if (acceptedTerms) {
-      data.acceptedTermsAt = serverTimestamp();
-    }
+
     await setDoc(ref, data);
+    snap = await getDoc(ref);
   } else if (!user.isAnonymous) {
-    // Anonymous → real account upgrade: patch only the identity fields
-    const patch: Partial<UserDoc> & { acceptedTermsAt?: FieldValue } = { 
-      authProvider: resolveAuthProvider(user) 
-    };
-    if (user.email) patch.email = user.email;
-    if (user.displayName) patch.displayName = user.displayName;
-    if (acceptedTerms) {
-      patch.acceptedTermsAt = serverTimestamp();
+    const data = snap.data() as UserDoc;
+    const currentProvider = resolveAuthProvider(user);
+
+    // Sadece gerçekten değişen alanları güncelle
+    const emailChanged = user.email && data.email !== user.email;
+    const nameChanged = user.displayName && data.displayName !== user.displayName;
+    const providerChanged = data.authProvider !== currentProvider;
+    const termsChanged = acceptedTerms && !data.acceptedTermsAt;
+
+    if (emailChanged || nameChanged || providerChanged || termsChanged) {
+      const patch: Partial<UserDoc> & { acceptedTermsAt?: FieldValue } = {};
+      if (providerChanged) patch.authProvider = currentProvider;
+      if (emailChanged) patch.email = user.email!;
+      if (nameChanged) patch.displayName = user.displayName!;
+      if (termsChanged) patch.acceptedTermsAt = serverTimestamp();
+
+      await setDoc(ref, patch, { merge: true });
+      snap = await getDoc(ref);
     }
-    await setDoc(ref, patch, { merge: true });
   }
+  return snap;
 }
 
-
 /**
- * Submits a community level request. Only callable by non-anonymous users.
- * Returns the new request document ID.
+ * Topluluk bölüm oluşturma/yayınlama isteğini Firestore'a kaydeder.
+ * Yeni oluşturulan isteğin doküman ID'sini döner.
  */
 export async function submitLevelRequest(
   uid: string,
@@ -130,7 +148,7 @@ export async function submitLevelRequest(
     width: levelData.width,
     height: levelData.height,
     edges: levelData.edges,
-    grid: JSON.stringify(levelData.grid), // Firestore doesn't support nested arrays
+    grid: JSON.stringify(levelData.grid), // Firestore iç içe dizileri doğrudan desteklemez
     initialObjects: levelData.initialObjects,
     targets: levelData.targets,
     trailCollision: levelData.trailCollision ?? false,
@@ -146,13 +164,14 @@ export async function submitLevelRequest(
     ...(rooms && { rooms }),
     ...(levelData.controlMode && { controlMode: levelData.controlMode }),
     ...(levelData.initialControlledRooms && { initialControlledRooms: levelData.initialControlledRooms }),
+    ...(levelData.gameNotes != undefined && { gameNotes: levelData.gameNotes }),
+    ...(levelData.creatorNotes != undefined && { creatorNotes: levelData.creatorNotes }),
   });
   return ref.id;
 }
 
 /**
- * Updates an existing pending level request's content and difficulty.
- * Only the submitter can do this (enforced by Firestore rules).
+ * Bekleyen bir bölüm isteğinin içeriğini ve zorluk derecesini günceller.
  */
 export async function updateLevelRequest(
   requestId: string,
@@ -180,12 +199,13 @@ export async function updateLevelRequest(
     rooms: rooms ?? null,
     controlMode: levelData.controlMode ?? null,
     initialControlledRooms: levelData.initialControlledRooms ?? null,
+    gameNotes: levelData.gameNotes ?? null,
+    creatorNotes: levelData.creatorNotes ?? null,
   });
 }
 
 /**
- * Returns level requests filtered by status, newest first.
- * Admin-only: Firestore rules enforce this on the server.
+ * Bölüm isteklerini durum filtresine göre yeniden eskiye doğru sıralı getirir (Yalnızca yöneticiler).
  */
 export async function getLevelRequests(
   status: 'pending' | 'approved' | 'rejected' = 'pending',
@@ -223,9 +243,12 @@ export async function getLevelRequests(
       submittedAt: toMs(data.submittedAt),
       updatedAt: toMs(data.updatedAt),
       adminNote: data.adminNote,
+      gameNotes: data.gameNotes ?? undefined,
+      creatorNotes: data.creatorNotes ?? undefined,
       rooms: data.rooms ?? undefined,
       controlMode: data.controlMode ?? undefined,
       initialControlledRooms: data.initialControlledRooms ?? undefined,
     } as LevelRequest;
   });
 }
+

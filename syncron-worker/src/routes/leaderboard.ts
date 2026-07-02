@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, oyuncuların yıldız sayısı, seviye sayısı, rekor sayısı 
+ * ve seviye tasarımcısı gibi kategorilerde günlük, haftalık, aylık ve tüm zamanlar liderlik tablolarını getiren API ucunu tanımlar.
+ */
+
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { optionalFirebaseAuth } from '../middleware/auth';
@@ -28,6 +33,7 @@ interface UserScoreRow {
   updated_at: string;
 }
 
+// İlgili kategori ve periyottaki liderlik tablosunu, giriş yapan kullanıcının sırası ve arkadaş filtreleriyle birlikte getirir.
 leaderboardRouter.get('/leaderboard/:category/:period', optionalFirebaseAuth, async (c) => {
   const category = c.req.param('category');
   const period = c.req.param('period');

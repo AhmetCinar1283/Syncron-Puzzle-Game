@@ -7,6 +7,7 @@ const SCHEMA_STATEMENTS = [
     uid          TEXT NOT NULL PRIMARY KEY CHECK (length(uid) BETWEEN 1 AND 128),
     display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
     tag          TEXT UNIQUE CHECK (tag IS NULL OR length(tag) BETWEEN 2 AND 20),
+    xp           INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
     updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_period_scores (

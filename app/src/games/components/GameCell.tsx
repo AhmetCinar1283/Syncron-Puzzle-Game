@@ -209,7 +209,16 @@ export default function GameCell({ cellType, cellSize, isPowered }: GameCellProp
   const isTeleporter = isTeleporterIn || isTeleporterOut;
   const conveyorDim = isConveyor && isPowered === false;
 
-  const baseStyle = CELL_STYLE[cellType];
+  let baseStyle = CELL_STYLE[cellType];
+  if (!baseStyle && cellType.startsWith('target_')) {
+    const idx = parseInt(cellType.substring('target_'.length), 10) - 1;
+    const { rgb } = getPlayerColor(isNaN(idx) ? 0 : idx);
+    baseStyle = {
+      background: `rgba(${rgb}, 0.07)`,
+      border: `2px solid rgba(${rgb}, 0.55)`,
+      boxShadow: `inset 0 0 16px rgba(${rgb}, 0.2)`,
+    };
+  }
   const style: React.CSSProperties = conveyorDim
     ? {
       ...baseStyle,

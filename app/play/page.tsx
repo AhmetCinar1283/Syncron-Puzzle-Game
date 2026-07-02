@@ -15,6 +15,8 @@ import type { Cell } from '@/app/src/game2/logic/cellTypes';
 import type { LevelEdges } from '@/app/src/game2/logic/engine/getNextTopologyPosition';
 import { signInAnonymously } from 'firebase/auth';
 import { auth } from '@/app/src/lib/firebase/config';
+import { useAppDispatch } from '@/app/src/store/hooks';
+import { addXpAndScore } from '@/app/src/store/userSlice';
 
 // ─── Worker tipi (docs/scoring.md) ──────────────────────────────────────────
 
@@ -22,6 +24,7 @@ interface WorkerResult {
     success: boolean;
     stars?: 1 | 2 | 3;
     scoreDelta?: number;
+    xpDelta?: number;
     isFirstCompletion?: boolean;
     isNewBestSolution?: boolean;
     isBestSolution?: boolean;
@@ -43,6 +46,7 @@ function PlayContent() {
 
     const searchParams = useSearchParams();
     const router = useRouter();
+    const dispatch = useAppDispatch();
 
     const idParam = searchParams.get('id');
     const source = searchParams.get('source');
@@ -60,11 +64,70 @@ function PlayContent() {
     const [trailCollision, setTrailCollision] = useState<boolean>(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [gameNotes, setGameNotes] = useState<string>('');
 
     // ── Oyun izleme ──────────────────────────────────────────
     const moveHistoryRef = useRef<string[]>([]); // 'u' | 'd' | 'l' | 'r'
     const startTimeRef = useRef(Date.now());
     const [restartKey, setRestartKey] = useState(0);
+
+    const [levelVersion, setLevelVersion] = useState<number>(1);
+
+    // ── Telemetry & Session Tracking ────────────────────────
+    const sessionRef = useRef<{
+        id: string;
+        startTime: number;
+        restarts: number;
+        deaths: number;
+        levelId: string | null;
+        version: number;
+    } | null>(null);
+
+    const generateUUID = () => {
+        if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+            return window.crypto.randomUUID();
+        }
+        return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    };
+
+    const submitTelemetry = useCallback(async (outcome: 'win' | 'restart' | 'quit') => {
+        if (!sessionRef.current || !sessionRef.current.levelId) return;
+        const currentSession = sessionRef.current;
+        const timeSpent = Math.round((Date.now() - currentSession.startTime) / 1000);
+        const movesCount = moveHistoryRef.current.length;
+
+        // Clear active session from localStorage
+        localStorage.removeItem('active_level_session');
+
+        const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
+        if (!WORKER_URL) return;
+
+        try {
+            const { auth: firebaseAuth } = await import('@/app/src/lib/firebase/config');
+            const token = firebaseAuth.currentUser ? await firebaseAuth.currentUser.getIdToken() : null;
+            if (!token) return;
+
+            await fetch(`${WORKER_URL}/game/telemetry`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    id: currentSession.id,
+                    levelId: currentSession.levelId,
+                    version: currentSession.version,
+                    outcome,
+                    timeSpent,
+                    restarts: currentSession.restarts,
+                    deaths: currentSession.deaths,
+                    movesCount,
+                }),
+            });
+        } catch (err) {
+            console.warn('[Telemetry] Failed to submit telemetry:', err);
+        }
+    }, []);
 
     // ── Win overlay ──────────────────────────────────────────
     const [showWin, setShowWin] = useState(false);
@@ -141,10 +204,36 @@ function PlayContent() {
                 if (cancelled) return;
                 setLevelName(stored.name ?? '');
                 setFirestoreId(stored.firestoreId);
+                setLevelVersion(stored.version ?? 1);
                 setTrailCollision(!!stored.trailCollision);
+                setGameNotes(stored.gameNotes ?? '');
                 setGame2State(convertToGame2State(stored));
                 setLevelEdges(stored.edges as LevelEdges | undefined);
                 setNextLevelId(nextId);
+
+                // Initialize telemetry session
+                if (stored.firestoreId) {
+                    const sessionId = generateUUID();
+                    sessionRef.current = {
+                        id: sessionId,
+                        startTime: Date.now(),
+                        restarts: 0,
+                        deaths: 0,
+                        levelId: stored.firestoreId,
+                        version: stored.version ?? 1,
+                    };
+                    localStorage.setItem('active_level_session', JSON.stringify({
+                        id: sessionId,
+                        levelId: stored.firestoreId,
+                        version: stored.version ?? 1,
+                        startTime: Date.now(),
+                        restarts: 0,
+                        deaths: 0,
+                        lastActiveTime: Date.now(),
+                    }));
+                } else {
+                    sessionRef.current = null;
+                }
             } catch (err) {
                 console.error('[Play] Level load error:', err);
                 if (!cancelled) setError(true);
@@ -164,6 +253,19 @@ function PlayContent() {
         } else {
             const map: Record<Direction, string> = { up: 'u', down: 'd', left: 'l', right: 'r' };
             moveHistoryRef.current.push(map[direction]);
+        }
+
+        // Update lastActiveTime in active session
+        if (sessionRef.current) {
+            localStorage.setItem('active_level_session', JSON.stringify({
+                id: sessionRef.current.id,
+                levelId: sessionRef.current.levelId,
+                version: sessionRef.current.version,
+                startTime: sessionRef.current.startTime,
+                restarts: sessionRef.current.restarts,
+                deaths: sessionRef.current.deaths,
+                lastActiveTime: Date.now(),
+            }));
         }
     }, []);
 
@@ -220,6 +322,16 @@ function PlayContent() {
                 const data: WorkerResult = await res.json();
                 setWorkerResult(data);
 
+                // Update Redux state with earned XP and score delta
+                if (data.success) {
+                    submitTelemetry('win');
+                    dispatch(addXpAndScore({
+                        scoreDelta: data.scoreDelta ?? 0,
+                        xpDelta: data.xpDelta ?? 0,
+                        completedCountDelta: data.isFirstCompletion ? 1 : 0,
+                    }));
+                }
+
                 // Dexie'ye de kaydet (anlık — sync beklemeden)
                 if (data.success && data.stars) {
                     try {
@@ -253,19 +365,37 @@ function PlayContent() {
     }, [firestoreId, levelId, isPreset]);
 
     // ── UI button handler ─────────────────────────────────────
-    const handleButtonPressed = useCallback((buttonType: UIButtonType) => {
+    const handleButtonPressed = useCallback((buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
         if (buttonType === 'next_level') {
             // Kazandı → worker çağır, win overlay göster
             setShowWin(true);
             callWorker();
         } else if (buttonType === 'restart') {
+            // Update session tracking
+            if (sessionRef.current) {
+                if (details?.isDeath) {
+                    sessionRef.current.deaths += 1;
+                } else {
+                    sessionRef.current.restarts += 1;
+                }
+                localStorage.setItem('active_level_session', JSON.stringify({
+                    id: sessionRef.current.id,
+                    levelId: sessionRef.current.levelId,
+                    version: sessionRef.current.version,
+                    startTime: sessionRef.current.startTime,
+                    restarts: sessionRef.current.restarts,
+                    deaths: sessionRef.current.deaths,
+                    lastActiveTime: Date.now(),
+                }));
+            }
             moveHistoryRef.current = [];
             startTimeRef.current = Date.now();
             setRestartKey(k => k + 1); // PlayScreen'i sıfırla
         } else if (buttonType === 'menu') {
+            submitTelemetry('quit');
             router.push('/levels');
         }
-    }, [callWorker, router]);
+    }, [callWorker, router, submitTelemetry]);
 
     // ── Next level navigasyon ─────────────────────────────────
     const handleNextLevel = useCallback(() => {
@@ -296,6 +426,7 @@ function PlayContent() {
             <PlayScreen
                 key={`${levelId}-${restartKey}`}
                 levelName={levelName}
+                gameNotes={gameNotes}
                 initialEntities={game2State.entities}
                 initialRooms={game2State.rooms}
                 controlMode={game2State.controlMode}
@@ -303,6 +434,9 @@ function PlayContent() {
                 levelEdges={levelEdges}
                 trailCollision={trailCollision}
                 onMoveExecuted={handleMoveExecuted}
+                onUndoExecuted={() => {
+                    moveHistoryRef.current.pop();
+                }}
                 onButtonPressed={handleButtonPressed}
             />
 
@@ -311,6 +445,8 @@ function PlayContent() {
                 <WinResultOverlay
                     result={workerResult}
                     moveCount={moveHistoryRef.current.length}
+                    levelId={firestoreId}
+                    version={levelVersion}
                     onRestart={() => handleButtonPressed('restart')}
                     onNextLevel={nextLevelId !== null ? handleNextLevel : undefined}
                     onMenu={() => router.push('/levels')}

@@ -1,3 +1,7 @@
+/**
+ * DOSYA AMACI: Bu dosya, AuthContext verilerine erişimi kolaylaştıran useAuth hook'unu dışa aktarır.
+ */
+
 'use client';
 
 /**

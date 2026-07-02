@@ -1,13 +1,12 @@
 'use client';
+/**
+ * DOSYA AMACI: Bu dosya, ekranın sağ alt köşesinde sabitlenmiş olan ve
+ * uygulamanın dilini değiştirmeyi sağlayan dil seçim (LanguageSwitcher) bileşenini barındırır.
+ */
 
 import { LANGS } from '../lib/i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 
-/**
- * Fixed bottom-right language toggle.
- * To add a new language: add its entry to app/src/lib/i18n/index.ts LANGS array
- * and create app/src/lib/i18n/<code>.ts — no other changes needed.
- */
 export default function LanguageSwitcher() {
   const { lang, setLang } = useLanguage();
 
@@ -52,3 +51,4 @@ export default function LanguageSwitcher() {
     </div>
   );
 }
+

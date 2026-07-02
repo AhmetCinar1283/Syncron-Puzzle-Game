@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, haftalık ve aylık liderlik tablolarında (yıldız kazanma, seviye bitirme, 
+ * rekor kırma vb.) ilk 3'e giren oyunculara otomatik olarak başarı rozeti (badge) dağıtan zamanlanmış görevi içerir.
+ */
+
 import { getCurrentPeriodIds } from '../services/leaderboard';
 import type { Env } from '../types';
 
@@ -14,6 +19,7 @@ import type { Env } from '../types';
  * Idempotence is guaranteed by D1 UNIQUE constraint on (uid, badge_type, period_id)
  * using INSERT OR IGNORE.
  */
+// Haftalık veya aylık periyodun ilk 3 oyuncusuna karşılık gelen rozetleri D1 veritabanına kaydeder.
 export async function runBadgeDistribution(
   env: Env,
   type: 'weekly' | 'monthly',

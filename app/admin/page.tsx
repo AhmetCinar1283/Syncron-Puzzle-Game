@@ -205,6 +205,13 @@ export default function AdminDashboard() {
       color: '#ec4899' // Pink
     },
     {
+      path: '/admin/level-analytics',
+      label: 'Analytics',
+      sub: 'Monitor level quality & telemetry',
+      icon: '📊', // Chart/Analytics unicode
+      color: '#10b981' // Emerald
+    },
+    {
       path: '/admin/users',
       label: 'Users',
       sub: 'Manage accounts & bans',

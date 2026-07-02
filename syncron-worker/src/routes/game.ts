@@ -1,6 +1,11 @@
+/**
+ * DOSYA AMACI: Bu dosya, oyuncuların bitirdiği seviyelerin hamle doğruluğunu kontrol eden, 
+ * yıldız/skor hesaplayan ve D1 ile Firestore verilerini güncelleyen oyun bitirme API ucunu tanımlar.
+ */
+
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
-import { completeLevelSchema } from '../schemas/game';
+import { completeLevelSchema, telemetrySchema, feedbackSchema } from '../schemas/game';
 import { firebaseAuth } from '../middleware/auth';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import { fsGet, fsCommit, parseLevelDoc, docPath, nowTimestamp, fromDoc } from '../services/firestore';
@@ -14,6 +19,7 @@ import type { CompleteLevelResponse } from '../types';
 
 export const gameRouter = new Hono<AppContext>();
 
+// Kullanıcının tamamladığı seviyenin çözümünü doğrular, yıldız ve skor hesaplayarak veritabanlarına kaydeder.
 gameRouter.post('/complete-level', firebaseAuth, async (c) => {
   const uid = c.get('uid');
 
@@ -128,6 +134,12 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
     return c.json({ success: false, error: 'Failed to save progress' }, 500);
   }
 
+  // Compute XP delta: 100 * difficulty for first completion, 20 for replaying
+  const difficulty = (levelData.difficulty && levelData.difficulty >= 1 && levelData.difficulty <= 4)
+    ? levelData.difficulty
+    : 1;
+  const xpDelta = d1IsFirstCompletion ? (100 * difficulty) : 20;
+
   // 8b. Update Firestore users/{uid} aggregate counters (totalScore, completedCount).
   //     The users/{uid} document still lives in Firestore for auth/profile purposes.
   const now = nowTimestamp();
@@ -146,13 +158,14 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
           totalScore:     { integerValue: '0' },
           completedCount: { integerValue: '0' },
           role:           { stringValue: 'user' },
+          xp:             { integerValue: '0' },
         },
       },
       currentDocument: { exists: false },
     });
   }
 
-  if (scoreDelta > 0 || d1IsFirstCompletion) {
+  if (scoreDelta > 0 || d1IsFirstCompletion || xpDelta > 0) {
     const fieldTransforms: unknown[] = [];
     if (scoreDelta > 0) {
       fieldTransforms.push({
@@ -164,6 +177,12 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
       fieldTransforms.push({
         fieldPath: 'completedCount',
         increment: { integerValue: '1' },
+      });
+    }
+    if (xpDelta > 0) {
+      fieldTransforms.push({
+        fieldPath: 'xp',
+        increment: { integerValue: String(xpDelta) },
       });
     }
     if (fieldTransforms.length > 0) {
@@ -221,6 +240,7 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
       oldBestHolderUid: bestHolderUid,
       createdBy,
       starsGained: bestStars,
+      xpDelta,
     }).catch((err) => console.error('[Leaderboard] leaderboard update failed:', err)),
   );
 
@@ -232,7 +252,83 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
     isGoodSolution,
     stars: bestStars as 1 | 2 | 3,
     scoreDelta,
+    xpDelta,
   };
 
   return c.json(response);
 });
+
+// Telemetry submission endpoint
+gameRouter.post('/game/telemetry', firebaseAuth, async (c) => {
+  const uid = c.get('uid');
+
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: 'Invalid JSON' }, 400);
+  }
+
+  const validation = telemetrySchema.safeParse(body);
+  if (!validation.success) {
+    const error = validation.error.errors[0]?.message || 'Invalid request';
+    return c.json({ success: false, error }, 400);
+  }
+
+  const { id, levelId, version, outcome, timeSpent, restarts, deaths, movesCount } = validation.data;
+
+  try {
+    const { insertTelemetry } = await import('../services/telemetry');
+    await insertTelemetry(c.env.AUDIT_DB, {
+      id,
+      uid,
+      levelId,
+      version,
+      outcome,
+      timeSpent,
+      restarts,
+      deaths,
+      movesCount,
+    });
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('[Telemetry] Failed to insert telemetry:', err);
+    return c.json({ success: false, error: 'Failed to save telemetry' }, 500);
+  }
+});
+
+// Feedback submission endpoint
+gameRouter.post('/game/feedback', firebaseAuth, async (c) => {
+  const uid = c.get('uid');
+
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: 'Invalid JSON' }, 400);
+  }
+
+  const validation = feedbackSchema.safeParse(body);
+  if (!validation.success) {
+    const error = validation.error.errors[0]?.message || 'Invalid request';
+    return c.json({ success: false, error }, 400);
+  }
+
+  const { levelId, version, difficulty, liked } = validation.data;
+
+  try {
+    const { upsertFeedback } = await import('../services/telemetry');
+    await upsertFeedback(c.env.AUDIT_DB, {
+      uid,
+      levelId,
+      version,
+      difficulty,
+      liked,
+    });
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('[Feedback] Failed to upsert feedback:', err);
+    return c.json({ success: false, error: 'Failed to save feedback' }, 500);
+  }
+});
+

@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import type { CellType, EdgeBehavior, LevelData, Position, ConveyorCellConfig, TrampolineCellConfig, DeflectorCellConfig } from '@/app/src/games/types';
 import type { EdgeConfig, ControlMode } from '@/app/src/game2/logic/types';
 import type { StoredLevel } from '@/app/src/lib/db';
+import { useT } from '@/app/src/contexts/LanguageContext';
 import type { FirestoreLevel, LevelPart } from '@/app/src/lib/firebase/admin';
 import { useAuth } from '@/app/src/hooks/useAuth';
 import { useSelector } from 'react-redux';
@@ -20,9 +21,12 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
   const { user, isAnonymous, isModerator } = useAuth();
   const userTag = useSelector((state: RootState) => state.user.tag);
   const creatorName = userTag ?? user?.displayName ?? user?.email ?? 'Unknown';
+  const t = useT();
 
   // Level data
   const [levelName, setLevelName] = useState('My Level');
+  const [gameNotes, setGameNotes] = useState('');
+  const [creatorNotes, setCreatorNotes] = useState('');
   const [width, setWidth] = useState(5);
   const [height, setHeight] = useState(5);
   const [pendingW, setPendingW] = useState(5);
@@ -122,6 +126,7 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
   const [testError, setTestError] = useState<string | null>(null);
   const [optimalSolution, setOptimalSolution] = useState<string[] | null>(null);
   const [optimalSolutionMoves, setOptimalSolutionMoves] = useState<number>(0);
+  const [showSolutionPath, setShowSolutionPath] = useState(true);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [savePosition, setSavePosition] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -130,6 +135,7 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
   const [submitStatus, setSubmitStatus] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [levelsDialogOpen, setLevelsDialogOpen] = useState(false);
 
   // Admin / Firestore
   const [parts, setParts] = useState<LevelPart[]>([]);
@@ -144,6 +150,12 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     setSavedLevels((await getOrderedLevels()) as (StoredLevel & { id: number })[]);
     setLevelsLoading(false);
   }, []);
+
+  const handleReorderLevels = useCallback(async (newOrder: number[]) => {
+    const { reorderLevels } = await import('@/app/src/lib/db');
+    await reorderLevels(newOrder);
+    await reloadLevels();
+  }, [reloadLevels]);
 
   useEffect(() => {
     if (!isModerator) return;
@@ -168,6 +180,8 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     const stored = await getDB().levels.get(id);
     if (!stored) return;
     setLevelName(stored.name);
+    setGameNotes(stored.gameNotes ?? '');
+    setCreatorNotes(stored.creatorNotes ?? '');
     setOptimalSolution(null);
     setOptimalSolutionMoves(0);
     setTrailCollision(!!stored.trailCollision);
@@ -272,7 +286,6 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     setActivePlacingBoxId(null);
 
     setSelection(null);
-    setGeneratedCandidates([]);
     setActiveCandidateIndex(null);
   }, []);
 
@@ -608,6 +621,8 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
         grid,
         difficulty,
         creatorName,
+        gameNotes,
+        creatorNotes,
         rooms: currentRooms.map((r) => ({
           id: r.id,
           name: r.name,
@@ -649,7 +664,7 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
       } as any,
       error: null,
     };
-  }, [editId, levelName, width, height, edges, grid, objects, trailCollision, boxes, conveyorPowerRequired, conveyorConfig, trampolineConfig, deflectorConfig, lockedCells, rooms, controlMode, activeRoomId, difficulty, creatorName, fogOfWar, fogVisibilityDistance, fogKeepRevealed]);
+  }, [editId, levelName, width, height, edges, grid, objects, trailCollision, boxes, conveyorPowerRequired, conveyorConfig, trampolineConfig, deflectorConfig, lockedCells, rooms, controlMode, activeRoomId, difficulty, creatorName, fogOfWar, fogVisibilityDistance, fogKeepRevealed, gameNotes, creatorNotes]);
 
   // Live Path Solver effect (debounced)
   useEffect(() => {
@@ -695,6 +710,8 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     rooms: level.rooms,
     controlMode: level.controlMode,
     initialControlledRooms: level.initialControlledRooms,
+    gameNotes: level.gameNotes,
+    creatorNotes: level.creatorNotes,
     ...(savedRequestId ? { requestId: savedRequestId } : {}),
     position: savedLevels.length
   }), [difficulty, savedRequestId, savedLevels.length]);
@@ -784,11 +801,9 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     }
   }, [generateLevelData]);
 
-  /** Loads level JSON from localStorage clipboard. Returns error string or null on success. */
-  const handlePasteBoard = useCallback((): string | null => {
-    if (typeof window === 'undefined') return 'Unavailable';
-    const raw = localStorage.getItem('editorClipboard');
-    if (!raw) return 'Pano boş.';
+  /** Imports a raw level JSON string directly. Returns error string or null on success. */
+  const doImportLevelJson = useCallback((raw: string): string | null => {
+    if (!raw) return 'JSON boş.';
     try {
       const parsed = JSON.parse(raw) as any;
 
@@ -892,11 +907,21 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     } catch {
       return 'Geçersiz JSON.';
     }
-  }, []);
+  }, [setWidth, setHeight, setGrid, setObjects, setBoxes, setEdges, setLevelName, setTrailCollision, setLockedCells, setRooms, setActiveRoomId, setPendingW, setPendingH, setFogOfWar, setFogVisibilityDistance, setControlMode, setConveyorPowerRequired, setConveyorConfig, setTrampolineConfig, setDeflectorConfig, setActivePlacingBoxId]);
+
+  /** Loads level JSON from localStorage clipboard. Returns error string or null on success. */
+  const handlePasteBoard = useCallback((): string | null => {
+    if (typeof window === 'undefined') return 'Unavailable';
+    const raw = localStorage.getItem('editorClipboard');
+    if (!raw) return 'Pano boş.';
+    return doImportLevelJson(raw);
+  }, [doImportLevelJson]);
 
   const loadFirestoreLevel = useCallback((fl: FirestoreLevel) => {
     setFirestoreEditId(fl.firestoreId);
     setLevelName(fl.name);
+    setGameNotes(fl.gameNotes ?? '');
+    setCreatorNotes(fl.creatorNotes ?? '');
     setOptimalSolution(null);
     setOptimalSolutionMoves(0);
     setTrailCollision(!!fl.trailCollision);
@@ -994,7 +1019,6 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     setActivePlacingBoxId(null);
 
     setSelection(null);
-    setGeneratedCandidates([]);
     setActiveCandidateIndex(null);
   }, []);
 
@@ -1037,6 +1061,8 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
   const handleNewLevel = useCallback(() => {
     router.push('/editor');
     setLevelName('My Level');
+    setGameNotes('');
+    setCreatorNotes('');
     setOptimalSolution(null);
     setOptimalSolutionMoves(0);
     setWidth(5); setHeight(5); setPendingW(5); setPendingH(5);
@@ -1072,11 +1098,25 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     setBoxes([]); setLockedCells({}); setConveyorPowerRequired([]); setConveyorConfig([]); setTrampolineConfig([]); setDeflectorConfig([]); setActivePlacingBoxId(null); setFirestoreEditId(null);
 
     setSelection(null);
-    setGeneratedCandidates([]);
     setActiveCandidateIndex(null);
   }, [router]);
 
+  const handleDeleteLevel = useCallback(async (id: number) => {
+    const target = savedLevels.find((l) => l.id === id);
+    const name = target?.name ?? 'Level';
+    const confirmMsg = t('levels.delete_body', { name }) || `"${name}" will be deleted permanently. Are you sure?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const { deleteStoredLevel } = await import('@/app/src/lib/db');
+    await deleteStoredLevel(id);
+    await reloadLevels();
+    if (editId === id) {
+      handleNewLevel();
+    }
+  }, [savedLevels, reloadLevels, editId, handleNewLevel, t]);
+
   const [generatorDialogOpen, setGeneratorDialogOpen] = useState(false);
+  const [aiAssistantDialogOpen, setAiAssistantDialogOpen] = useState(false);
 
   const doGenerateLevel = useCallback((
     level: LevelData,
@@ -1089,32 +1129,85 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     setLevelName(level.name);
     setOptimalSolution(solution);
     setOptimalSolutionMoves(moveCount);
-    setWidth(level.width); setHeight(level.height);
-    setPendingW(level.width); setPendingH(level.height);
-    setEdges({
-      top: typeof level.edges.top === 'string' ? { type: level.edges.top } : level.edges.top,
-      bottom: typeof level.edges.bottom === 'string' ? { type: level.edges.bottom } : level.edges.bottom,
-      left: typeof level.edges.left === 'string' ? { type: level.edges.left } : level.edges.left,
-      right: typeof level.edges.right === 'string' ? { type: level.edges.right } : level.edges.right,
-    } as any);
-    setGrid(level.grid as CellType[][]);
     setTrailCollision(!!level.trailCollision);
     setDifficulty((level.difficulty != undefined ? level.difficulty : 2) as 1 | 2 | 3 | 4);
     setSavedRequestId(null);
     setFirestoreEditId(null);
-    setFogOfWar(level.rooms?.[0]?.fogOfWar ?? false);
-    setFogVisibilityDistance(level.rooms?.[0]?.fogVisibilityDistance ?? 1.5);
-    setFogKeepRevealed(level.rooms?.[0]?.fogKeepRevealed ?? true);
-    
+
+    const parsedControlMode = level.controlMode ?? 'all_rooms';
+    setControlMode(parsedControlMode);
+
+    if (level.rooms && level.rooms.length > 0) {
+      const parsedRooms = level.rooms.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        width: r.width,
+        height: r.height,
+        x: r.x ?? 0,
+        y: r.y ?? 0,
+        edges: {
+          top: typeof r.edges.top === 'string' ? { type: r.edges.top } : r.edges.top,
+          bottom: typeof r.edges.bottom === 'string' ? { type: r.edges.bottom } : r.edges.bottom,
+          left: typeof r.edges.left === 'string' ? { type: r.edges.left } : r.edges.left,
+          right: typeof r.edges.right === 'string' ? { type: r.edges.right } : r.edges.right,
+        },
+        grid: typeof r.grid === 'string' ? JSON.parse(r.grid) : r.grid,
+        fogOfWar: r.fogOfWar ?? false,
+        fogVisibilityDistance: r.fogVisibilityDistance ?? 1.5,
+        fogKeepRevealed: r.fogKeepRevealed ?? true,
+      }));
+      setRooms(parsedRooms);
+
+      const firstRoom = parsedRooms[0];
+      setActiveRoomId(firstRoom.id);
+      setWidth(firstRoom.width); setHeight(firstRoom.height);
+      setPendingW(firstRoom.width); setPendingH(firstRoom.height);
+      setEdges(firstRoom.edges);
+      setGrid(firstRoom.grid);
+      setFogOfWar(firstRoom.fogOfWar ?? false);
+      setFogVisibilityDistance(firstRoom.fogVisibilityDistance ?? 1.5);
+      setFogKeepRevealed(firstRoom.fogKeepRevealed ?? true);
+    } else {
+      const legacyEdges = {
+        top: typeof level.edges.top === 'string' ? { type: level.edges.top } : level.edges.top,
+        bottom: typeof level.edges.bottom === 'string' ? { type: level.edges.bottom } : level.edges.bottom,
+        left: typeof level.edges.left === 'string' ? { type: level.edges.left } : level.edges.left,
+        right: typeof level.edges.right === 'string' ? { type: level.edges.right } : level.edges.right,
+      } as any;
+      const mainRoom = {
+        id: 'main',
+        name: level.name,
+        width: level.width,
+        height: level.height,
+        x: 0,
+        y: 0,
+        edges: legacyEdges,
+        grid: level.grid,
+        fogOfWar: false,
+        fogVisibilityDistance: 1.5,
+        fogKeepRevealed: true,
+      };
+      setRooms([mainRoom]);
+      setActiveRoomId('main');
+      setWidth(level.width); setHeight(level.height);
+      setPendingW(level.width); setPendingH(level.height);
+      setEdges(legacyEdges);
+      setGrid(level.grid as CellType[][]);
+      setFogOfWar(false);
+      setFogVisibilityDistance(1.5);
+      setFogKeepRevealed(true);
+    }
+
     const objs: ObjConfig[] = (level.initialObjects ?? []).map((obj) => ({
       id: obj.id,
       row: obj.position.row,
       col: obj.position.col,
+      roomId: obj.position.roomId ?? 'main',
       mode: obj.mode,
       lockOnTarget: obj.lockOnTarget,
     }));
     if (objs.length === 0) {
-      objs.push({ id: 1, row: null, col: null, mode: 'normal', lockOnTarget: true });
+      objs.push({ id: 1, row: null, col: null, roomId: 'main', mode: 'normal', lockOnTarget: true });
     }
     setObjects(objs);
 
@@ -1122,6 +1215,7 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
       id: b.id,
       row: b.position.row,
       col: b.position.col,
+      roomId: b.position.roomId ?? 'main',
       requiresPower: b.requiresPower ?? false,
       durabilityEnabled: b.durabilityEnabled ?? false,
       durability: b.durability ?? 3,
@@ -1183,16 +1277,21 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     fogKeepRevealed, setFogKeepRevealed,
     // Tool
     activeTool, setActiveTool, router,
+    gameNotes, setGameNotes, creatorNotes, setCreatorNotes,
     // Saved levels
     savedLevels, levelsLoading,
+    levelsDialogOpen, setLevelsDialogOpen,
     // UI
     testLevel, setTestLevel, testError,
     saveDialogOpen, setSaveDialogOpen, savePosition, setSavePosition,
     saveSuccess, copied,
     submitDialogOpen, setSubmitDialogOpen, submitNote, setSubmitNote, submitStatus, submitError,
     generatorDialogOpen, setGeneratorDialogOpen,
+    aiAssistantDialogOpen, setAiAssistantDialogOpen,
     optimalSolution,
     optimalSolutionMoves,
+    showSolutionPath,
+    setShowSolutionPath,
     // Admin
     parts, selectedPartId, setSelectedPartId, firestoreLevels,
     showFirestoreLevels, setShowFirestoreLevels, publishStatus, firestoreEditId, setFirestoreEditId,
@@ -1206,9 +1305,11 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
     applyResize, paintCell, generateLevelData,
     doSave, handleSaveClick,
     handleSubmitLevel, handleSaveAndSubmit,
-    handleCopyBoard, handlePasteBoard,
+    handleCopyBoard, handlePasteBoard, doImportLevelJson,
     loadFirestoreLevel, doPublish,
     handleLoadLevel, handleNewLevel, handleTest,
     doGenerateLevel,
+    handleReorderLevels,
+    handleDeleteLevel,
   };
 }

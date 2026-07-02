@@ -1,9 +1,13 @@
+/**
+ * DOSYA AMACI: Bu dosya, Cloudflare Worker API'larına istek gönderirken
+ * yetkilendirme belirteçlerini (ID Token) otomatik olarak yöneten istemci sarmalayıcısını barındırır.
+ */
+
 import { auth } from '@/app/src/lib/firebase';
 
 /**
- * Proactively fetches a valid Firebase ID Token for the logged-in user.
- * If the current token is close to expiry (less than 5 minutes remaining),
- * it forces a token refresh via `getIdToken(true)` as required.
+ * Giriş yapmış kullanıcının Firebase ID Token'ını getirir.
+ * Belirtecin süresi dolmak üzereyse (son 5 dakika) yenilenmeye zorlanır.
  */
 export async function getWorkerIdToken(): Promise<string | null> {
   const user = auth.currentUser;
@@ -14,27 +18,26 @@ export async function getWorkerIdToken(): Promise<string | null> {
     const expirationTime = new Date(tokenResult.expirationTime).getTime();
     const now = Date.now();
 
-    // If token expires in less than 5 minutes (300,000 ms), force-refresh it
+    // Belirtecin süresi 5 dakikadan az sürede dolacaksa yenilemeye zorla (force refresh)
     const forceRefresh = expirationTime - now < 5 * 60 * 1000;
     return await user.getIdToken(forceRefresh);
   } catch (err) {
     console.error('[workerClient] Error resolving Firebase ID Token:', err);
-    // Fallback: try standard refresh
+    // Hata durumunda alternatif yenileme denemesi
     return await user.getIdToken(true);
   }
 }
 
 /**
- * Fetch helper for worker API endpoints.
- * Automatically injects the Authorization: Bearer <token> header when authenticated
- * and handles baseUrl routing to Cloudflare Worker.
+ * Cloudflare Worker API uç noktalarına genel istek gönderme yardımcısı.
+ * Oturum açılmışsa Authorization başlığına otomatik olarak Bearer token yerleştirir.
  */
 export async function workerFetch<T = any>(
   path: string,
   options: {
     method?: 'GET' | 'POST' | 'DELETE' | 'PUT';
     body?: unknown;
-    requireAuth?: boolean; // default: false
+    requireAuth?: boolean; // varsayılan: false (kimlik doğrulama zorunlu mu?)
     headers?: Record<string, string>;
   } = {}
 ): Promise<T> {
@@ -45,6 +48,7 @@ export async function workerFetch<T = any>(
     token = await getWorkerIdToken();
   }
 
+  // İstek için kimlik doğrulaması zorunluysa ve token yoksa hata fırlatır
   if (requireAuth && !token) {
     throw new Error('Unauthorized: No active session.');
   }
@@ -54,7 +58,7 @@ export async function workerFetch<T = any>(
     process.env.NEXT_PUBLIC_WORKER_API_URL ||
     '';
 
-  // Ensure path starts with /
+  // Yolun '/' ile başladığından emin olunur
   const sanitizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = `${baseUrl}${sanitizedPath}`;
 
@@ -86,10 +90,11 @@ export async function workerFetch<T = any>(
         errorMessage = errorJson.error;
       }
     } catch {
-      // Ignored: keep default message
+      // Hata yoksayılır
     }
     throw new Error(errorMessage);
   }
 
   return (await response.json()) as T;
 }
+

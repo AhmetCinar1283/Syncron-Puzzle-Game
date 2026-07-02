@@ -1,4 +1,8 @@
 'use client';
+/**
+ * DOSYA AMACI: Bu dosya, /admin/* altındaki yönetim yollarına erişimi
+ * kısıtlayan ve kullanıcının rolünü (admin veya moderator) doğrulayan güvenlik sarmalayıcısını barındırır.
+ */
 
 import { useAuth } from '@/app/src/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -9,16 +13,15 @@ interface AdminGuardProps {
 }
 
 /**
- * A security wrapper component for routes under /admin/*.
- * Validates the Firebase user session, and explicitly parses the custom claims
- * on the Firebase ID Token (decoded JWT token).
- * Redirects to /403 if claims.admin and claims.moderator are both missing/false.
+ * AdminGuard - Yetkisiz kullanıcıların yönetim sayfalarına girmesini engeller.
+ * Eğer kullanıcı 'admin' veya 'moderator' rolüne sahip değilse /403 sayfasına yönlendirilir.
  */
 export function AdminGuard({ children }: { children: ReactNode }) {
   const { user, role, loading } = useAuth();
   const router = useRouter();
   const [isValidated, setIsValidated] = useState<boolean>(false);
 
+  // Rol kontrolü ve yetkilendirme doğrulama süreci
   useEffect(() => {
     if (loading) return;
 
@@ -30,6 +33,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     const isAdmin = role === 'admin';
     const isMod = role === 'moderator';
 
+    // Rol yetersizse 403 hata sayfasına yönlendirilir
     if (!isAdmin && !isMod) {
       console.warn('[AdminGuard] Access Denied: Role invalid.', { uid: user.uid, role });
       router.replace('/403');
@@ -38,6 +42,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     }
   }, [user, role, loading, router]);
 
+  // Yükleme veya doğrulama durumunda bekleme ekranı gösterilir
   if (loading || (!isValidated && user)) {
     return (
       <main
@@ -73,3 +78,4 @@ export function AdminGuard({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
+

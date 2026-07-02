@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, oyuncuların kazandığı başarı rozetlerini (badges) listelemesi ve 
+ * profillerinde sergileyecekleri rozet vitrinini (showcase) yönetmesi için API uç noktalarını tanımlar.
+ */
+
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../types';
@@ -22,6 +27,7 @@ interface BadgeRow {
 
 // ─── GET /badges/:uid ────────────────────────────────────────────────────────
 // Public endpoint to retrieve all badges awarded to a specific user.
+// Belirtilen kullanıcının kazandığı tüm rozetleri listeler.
 badgesRouter.get('/badges/:uid', async (c) => {
   const uid = c.req.param('uid');
   if (!uid || uid.length > 128) {
@@ -52,6 +58,7 @@ badgesRouter.get('/badges/:uid', async (c) => {
 
 // ─── POST /badges/showcase ────────────────────────────────────────────────────
 // Authenticated endpoint for users to select up to 5 badges to show off on profile.
+// Giriş yapmış kullanıcının profilinde sergilemek üzere en fazla 5 adet rozet seçmesini sağlar.
 badgesRouter.post('/badges/showcase', firebaseAuth, async (c) => {
   const uid = c.get('uid');
 

@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, kullanıcının kazandığı rozetleri getiren ve vitrin rozetlerini
+ * güncelleyen API istemci fonksiyonlarını barındırır.
+ */
+
 import { workerFetch } from './workerClient';
 
 export interface Badge {
@@ -15,8 +20,8 @@ export interface BadgesResponse {
 }
 
 /**
- * Fetch all badges awarded to a specific user.
- * Public endpoint.
+ * Belirli bir kullanıcının kazandığı tüm rozetleri getirir.
+ * Herkese açık (kimlik doğrulaması gerektirmeyen) uç noktadır.
  */
 export async function getUserBadges(uid: string): Promise<BadgesResponse> {
   return workerFetch<BadgesResponse>(`/badges/${uid}`, {
@@ -26,8 +31,8 @@ export async function getUserBadges(uid: string): Promise<BadgesResponse> {
 }
 
 /**
- * Update the user's showcased badges (maximum 5).
- * Authenticated endpoint.
+ * Kullanıcının profilinde sergilemek istediği vitrin rozetlerini günceller (en fazla 5 adet).
+ * Kimlik doğrulaması gerektiren uç noktadır.
  */
 export async function updateShowcase(badgeIds: string[]): Promise<{ success: boolean }> {
   return workerFetch<{ success: boolean }>('/badges/showcase', {
@@ -36,3 +41,4 @@ export async function updateShowcase(badgeIds: string[]): Promise<{ success: boo
     requireAuth: true,
   });
 }
+

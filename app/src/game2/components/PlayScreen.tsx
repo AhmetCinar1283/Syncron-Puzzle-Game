@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { solveFromState } from '@/app/src/games/logic/solver';
 import GameBoard from './GameBoard';
 import { Entity } from '../logic/entityTypes';
 import { Cell } from '../logic/cellTypes';
@@ -59,8 +60,11 @@ interface PlayScreenProps {
     levelEdges?: LevelEdges;
     trailCollision?: boolean;
     onMoveExecuted?: (direction: Direction | 'switch_room') => void;
-    onButtonPressed?: (buttonType: UIButtonType) => void;
+    onUndoExecuted?: () => void;
+    onButtonPressed?: (buttonType: UIButtonType, details?: { isDeath?: boolean }) => void;
     isTestMode?: boolean;
+    gameNotes?: string;
+    solutionSteps?: string[] | null;
 }
 
 export function PlayScreen({
@@ -73,12 +77,37 @@ export function PlayScreen({
     levelEdges,
     trailCollision,
     onMoveExecuted,
+    onUndoExecuted,
     onButtonPressed,
     isTestMode,
+    gameNotes,
+    solutionSteps,
 }: PlayScreenProps) {
     const t = useT();
     const { play, muted, toggleMute } = useSoundManager();
     const [moveCount, setMoveCount] = useState(0);
+    const [showNotes, setShowNotes] = useState(false);
+    const [isCompact, setIsCompact] = useState(false);
+    const activeStepRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsCompact(window.innerWidth < 850);
+        };
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        if (activeStepRef.current) {
+            activeStepRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center',
+            });
+        }
+    }, [moveCount]);
 
     // ── Oyun motoru ─────────────────────────────────────────────────────────
     const {
@@ -94,6 +123,8 @@ export function PlayScreen({
         cancelAnimation,
         clearUiEvents,
         getEntities,
+        undo,
+        canUndo,
     } = useGameEngine({ 
         initialEntities, 
         initialGrid, 
@@ -106,6 +137,7 @@ export function PlayScreen({
 
     const isGameOverRef  = useRef(isGameOver);
     isGameOverRef.current  = isGameOver;
+
 
     // ── Ses tetikleyicileri ─────────────────────────────────────────────────
     const prevIsGameOver = useRef(false);
@@ -146,12 +178,13 @@ export function PlayScreen({
 
     // ── UI Button Handler ───────────────────────────────────────────────────
     const handleButtonPress = useCallback((buttonType: UIButtonType) => {
+        const isDeath = uiEvents.some(e => e.kind === 'text' && e.textType === 'error');
         clearUiEvents();
         if (buttonType === 'restart') {
             setMoveCount(0);
         }
-        onButtonPressed?.(buttonType);
-    }, [clearUiEvents, onButtonPressed]);
+        onButtonPressed?.(buttonType, { isDeath });
+    }, [uiEvents, clearUiEvents, onButtonPressed]);
 
     const handleExecuteAction = useCallback((action: GameActionButton) => {
         if (isAnimating || isGameOver) return;
@@ -212,6 +245,50 @@ export function PlayScreen({
         }
     }, [getEntities, executeTurn, onMoveExecuted, isAnimating, cancelAnimation, controlMode, controlledRoomIds]);
 
+    const handleUndo = useCallback(() => {
+        if (isAnimating) return;
+        const undone = undo();
+        if (undone) {
+            setMoveCount(c => Math.max(0, c - 1));
+            onUndoExecuted?.();
+            play('toggle');
+        }
+    }, [isAnimating, undo, onUndoExecuted, play]);
+
+    const handleStepForward = useCallback(() => {
+        if (isAnimating || isGameOver) return;
+
+        const result = solveFromState(
+            getEntities(),
+            rooms,
+            controlledRoomIds,
+            controlMode,
+            !!trailCollision,
+            35,
+            3000
+        );
+
+        if (result.solvable && result.solution && result.solution.length > 0) {
+            const nextStep = result.solution[0];
+            if (nextStep === 'switch_room') {
+                if (controlMode === 'selected_room') {
+                    const roomKeys = Object.keys(rooms);
+                    if (roomKeys.length > 1) {
+                        const currentIdx = roomKeys.indexOf(controlledRoomIds[0] ?? '');
+                        const nextIdx = (currentIdx + 1) % roomKeys.length;
+                        setControlledRoomIds([roomKeys[nextIdx]]);
+                        play('toggle');
+                        onMoveExecuted?.('switch_room');
+                    }
+                }
+            } else {
+                triggerMove(nextStep);
+            }
+        } else {
+            play('lose');
+        }
+    }, [isAnimating, isGameOver, getEntities, rooms, controlledRoomIds, controlMode, trailCollision, triggerMove, play, onMoveExecuted, setControlledRoomIds]);
+
     const handleKey = useCallback((e: KeyboardEvent) => {
         if (e.key === 'r' || e.key === 'R') {
             e.preventDefault();
@@ -240,12 +317,23 @@ export function PlayScreen({
             return;
         }
 
+        if (e.key === 'z' || e.key === 'Z') {
+            e.preventDefault();
+            handleUndo();
+            return;
+        }
+        if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            handleStepForward();
+            return;
+        }
+
         if (isGameOverRef.current) return;
         const rawDirection = KEY_TO_DIRECTION[e.key];
         if (!rawDirection) return;
         e.preventDefault();
         triggerMove(rawDirection);
-    }, [triggerMove, handleButtonPress, controlMode, controlledRoomIds, rooms, play, setControlledRoomIds]);
+    }, [triggerMove, handleButtonPress, controlMode, controlledRoomIds, rooms, play, setControlledRoomIds, handleUndo, handleStepForward]);
 
     const handleAnimationEnd = useCallback(() => {
         onAnimationEnd();
@@ -309,6 +397,92 @@ export function PlayScreen({
         }
     }, [pendingUi, handleButtonPress, isTestMode]);
 
+    const renderSolutionSteps = (isCompactView: boolean) => {
+        if (!isTestMode || !solutionSteps || solutionSteps.length === 0) return null;
+        
+        const directionColors: Record<string, string> = {
+            up: '#38bdf8',
+            down: '#f43f5e',
+            left: '#fbbf24',
+            right: '#34d399',
+            switch_room: '#a855f7',
+        };
+        
+        const directionArrows: Record<string, string> = {
+            up: '↑',
+            down: '↓',
+            left: '←',
+            right: '→',
+            switch_room: '❖',
+        };
+
+        return (
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    overflowX: 'auto',
+                    padding: isCompactView ? '4px 8px' : '0 8px',
+                    width: '100%',
+                    maxWidth: isCompactView ? '100%' : '360px',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                    height: isCompactView ? 36 : '100%',
+                    boxSizing: 'border-box',
+                }}
+            >
+                {solutionSteps.map((step, idx) => {
+                    const isCompleted = idx < moveCount;
+                    const isActive = idx === moveCount;
+                    const color = directionColors[step] || '#94a3b8';
+                    const arrow = directionArrows[step] || '?';
+                    
+                    return (
+                        <div
+                            key={idx}
+                            ref={isActive ? activeStepRef : null}
+                            title={`Step #${idx + 1}: ${step}`}
+                            style={{
+                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 22,
+                                height: 22,
+                                borderRadius: '50%',
+                                background: isActive 
+                                    ? `${color}25` 
+                                    : isCompleted 
+                                        ? 'rgba(30, 41, 59, 0.15)' 
+                                        : 'rgba(30, 41, 59, 0.4)',
+                                border: isActive 
+                                    ? `2px solid ${color}` 
+                                    : isCompleted 
+                                        ? '1px solid rgba(71, 85, 105, 0.2)' 
+                                        : `1px solid ${color}40`,
+                                color: isActive 
+                                    ? color 
+                                    : isCompleted 
+                                        ? '#475569' 
+                                        : '#e2e8f0',
+                                fontSize: 11,
+                                fontWeight: 'bold',
+                                boxShadow: isActive ? `0 0 10px ${color}` : 'none',
+                                opacity: isActive ? 1 : isCompleted ? 0.4 : 0.8,
+                                transform: isActive ? 'scale(1.15)' : 'none',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            }}
+                        >
+                            {arrow}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <div
             style={{
@@ -337,17 +511,17 @@ export function PlayScreen({
                     gap: 8,
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, maxWidth: '28vw', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, maxWidth: isCompact ? '35vw' : '25vw', overflow: 'hidden' }}>
                     <button
                         onClick={() => handleButtonPress('menu')}
-                        title="Levels"
+                        title={isTestMode ? "Close Test" : "Levels"}
                         style={{
                             fontSize: 14,
                             width: 28,
                             height: 28,
-                            background: 'rgba(0,255,136,0.05)',
-                            border: '1px solid rgba(0,255,136,0.2)',
-                            color: '#00ff88',
+                            background: isTestMode ? 'rgba(239, 68, 68, 0.05)' : 'rgba(0,255,136,0.05)',
+                            border: isTestMode ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(0,255,136,0.2)',
+                            color: isTestMode ? '#ef4444' : '#00ff88',
                             borderRadius: 6,
                             cursor: 'pointer',
                             display: 'flex',
@@ -357,16 +531,17 @@ export function PlayScreen({
                             flexShrink: 0,
                             touchAction: 'manipulation',
                             lineHeight: 1,
+                            boxShadow: isTestMode ? '0 0 8px rgba(239, 68, 68, 0.15)' : 'none',
                         }}
                     >
-                        ←
+                        {isTestMode ? '✕' : '←'}
                     </button>
                     <div
                         style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#00ff88',
-                            textShadow: '0 0 8px rgba(0,255,136,0.5)',
+                            color: isTestMode ? '#ef4444' : '#00ff88',
+                            textShadow: isTestMode ? '0 0 8px rgba(239, 68, 68, 0.4)' : '0 0 8px rgba(0,255,136,0.5)',
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                             whiteSpace: 'nowrap',
@@ -376,79 +551,123 @@ export function PlayScreen({
                     >
                         {levelName || 'LEVEL'}
                     </div>
+                    {isTestMode && (
+                        <span style={{
+                            fontSize: 8,
+                            padding: '2px 4px',
+                            borderRadius: 4,
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            color: '#ef4444',
+                            fontWeight: 900,
+                            letterSpacing: '0.05em',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            TEST
+                        </span>
+                    )}
+                    {gameNotes && !isCompact && (
+                        <button
+                            onClick={() => setShowNotes(true)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 9,
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                background: 'rgba(251,191,36,0.1)',
+                                border: '1px solid rgba(251,191,36,0.4)',
+                                color: '#fbbf24',
+                                borderRadius: 5,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                boxShadow: '0 0 8px rgba(251,191,36,0.15)',
+                                touchAction: 'manipulation',
+                            }}
+                        >
+                            💡 {t('hud.level_notes')}
+                        </button>
+                    )}
                 </div>
 
-                {/* Orta: Seçili oda çipleri / Oyuncu modları */}
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, justifyContent: 'center', flexWrap: 'nowrap' }}>
-                    {controlMode === 'selected_room' ? (
-                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: '#475569', fontWeight: 'bold', letterSpacing: '0.05em' }}>ROOMS:</span>
-                            {Object.keys(rooms).map((rId) => {
-                                const isActive = controlledRoomIds.includes(rId);
-                                return (
-                                    <button
-                                        key={rId}
-                                        onClick={() => {
-                                            if (controlMode === 'selected_room') {
-                                                const roomKeys = Object.keys(rooms);
-                                                const currentIdx = roomKeys.indexOf(controlledRoomIds[0] ?? '');
-                                                const targetIdx = roomKeys.indexOf(rId);
-                                                if (currentIdx !== -1 && targetIdx !== -1 && currentIdx !== targetIdx) {
-                                                    const steps = (targetIdx - currentIdx + roomKeys.length) % roomKeys.length;
-                                                    for (let i = 0; i < steps; i++) {
-                                                        onMoveExecuted?.('switch_room');
-                                                    }
-                                                }
-                                            }
-                                            setControlledRoomIds([rId]);
-                                            play('toggle');
-                                        }}
-                                        style={{
-                                            fontSize: 9,
-                                            padding: '2px 8px',
-                                            borderRadius: 5,
-                                            background: isActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(31, 41, 55, 0.4)',
-                                            border: `1px solid ${isActive ? '#00ff88' : 'rgba(75, 85, 99, 0.3)'}`,
-                                            color: isActive ? '#00ff88' : '#94a3b8',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s',
-                                        }}
-                                    >
-                                        {rooms[rId].name}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                {/* Orta: Çözüm yolu (Desktop) veya Oda Çipleri/Modlar */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, justifyContent: 'center', flexWrap: 'nowrap', overflow: 'hidden' }}>
+                    {(!isCompact && isTestMode && solutionSteps && solutionSteps.length > 0) ? (
+                        renderSolutionSteps(false)
                     ) : (
-                        getEntities()
-                            .filter(e => e.type === 'player')
-                            .map((obj) => {
-                                const info = OBJECT_NEON[obj.id] ?? { color: '#bf5fff', label: `P${obj.id}`, glow: '' };
-                                const mode = (obj.customData.mode as string) ?? 'normal';
-                                return (
-                                    <div key={obj.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                        <span
-                                            style={{
-                                                display: 'inline-block',
-                                                width: 8,
-                                                height: 8,
-                                                borderRadius: '50%',
-                                                backgroundColor: info.color,
-                                                boxShadow: info.glow,
-                                                flexShrink: 0,
-                                            }}
-                                        />
-                                        <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                                            {info.label}:{' '}
-                                            <span style={{ color: info.color }}>
-                                                {mode === 'reversed' ? '⬇' : '⬆'}
-                                            </span>
-                                        </span>
-                                    </div>
-                                );
-                            })
+                        <>
+                            {controlMode === 'selected_room' ? (
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 9, color: '#475569', fontWeight: 'bold', letterSpacing: '0.05em' }}>ROOMS:</span>
+                                    {Object.keys(rooms).map((rId) => {
+                                        const isActive = controlledRoomIds.includes(rId);
+                                        return (
+                                            <button
+                                                key={rId}
+                                                onClick={() => {
+                                                    if (controlMode === 'selected_room') {
+                                                        const roomKeys = Object.keys(rooms);
+                                                        const currentIdx = roomKeys.indexOf(controlledRoomIds[0] ?? '');
+                                                        const targetIdx = roomKeys.indexOf(rId);
+                                                        if (currentIdx !== -1 && targetIdx !== -1 && currentIdx !== targetIdx) {
+                                                            const steps = (targetIdx - currentIdx + roomKeys.length) % roomKeys.length;
+                                                            for (let i = 0; i < steps; i++) {
+                                                                onMoveExecuted?.('switch_room');
+                                                            }
+                                                        }
+                                                    }
+                                                    setControlledRoomIds([rId]);
+                                                    play('toggle');
+                                                }}
+                                                style={{
+                                                    fontSize: 9,
+                                                    padding: '2px 8px',
+                                                    borderRadius: 5,
+                                                    background: isActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(31, 41, 55, 0.4)',
+                                                    border: `1px solid ${isActive ? '#00ff88' : 'rgba(75, 85, 99, 0.3)'}`,
+                                                    color: isActive ? '#00ff88' : '#94a3b8',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                }}
+                                            >
+                                                {rooms[rId].name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                getEntities()
+                                    .filter(e => e.type === 'player')
+                                    .map((obj) => {
+                                        const info = OBJECT_NEON[obj.id] ?? { color: '#bf5fff', label: `P${obj.id}`, glow: '' };
+                                        const mode = (obj.customData.mode as string) ?? 'normal';
+                                        return (
+                                            <div key={obj.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                <span
+                                                    style={{
+                                                        display: 'inline-block',
+                                                        width: 8,
+                                                        height: 8,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: info.color,
+                                                        boxShadow: info.glow,
+                                                        flexShrink: 0,
+                                                    }}
+                                                />
+                                                <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                                                    {info.label}:{' '}
+                                                    <span style={{ color: info.color }}>
+                                                        {mode === 'reversed' ? '⬇' : '⬆'}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        );
+                                    })
+                            )}
+                        </>
                     )}
-                    <span style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap', marginLeft: 8 }}>
                         {t('hud.moves')}{' '}
                         <span style={{ color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
                             {moveCount}
@@ -480,6 +699,48 @@ export function PlayScreen({
                         {muted ? '🔇' : '🔊'}
                     </button>
                     <button
+                        onClick={handleUndo}
+                        disabled={isAnimating || !canUndo}
+                        title={t('hud.undo')}
+                        style={{
+                            fontSize: 11,
+                            padding: '4px 10px',
+                            background: 'rgba(0,255,136,0.05)',
+                            border: '1px solid rgba(0,255,136,0.3)',
+                            color: '#00ff88',
+                            borderRadius: 6,
+                            cursor: isAnimating || !canUndo ? 'not-allowed' : 'pointer',
+                            opacity: isAnimating || !canUndo ? 0.4 : 1,
+                            letterSpacing: '0.04em',
+                            transition: 'all 0.15s',
+                            whiteSpace: 'nowrap',
+                            touchAction: 'manipulation',
+                        }}
+                    >
+                        ↩ {!isCompact && t('hud.undo')}
+                    </button>
+                    <button
+                        onClick={handleStepForward}
+                        disabled={isAnimating || isGameOver}
+                        title={t('hud.step_forward')}
+                        style={{
+                            fontSize: 11,
+                            padding: '4px 10px',
+                            background: 'rgba(0,255,136,0.05)',
+                            border: '1px solid rgba(0,255,136,0.3)',
+                            color: '#00ff88',
+                            borderRadius: 6,
+                            cursor: isAnimating || isGameOver ? 'not-allowed' : 'pointer',
+                            opacity: isAnimating || isGameOver ? 0.4 : 1,
+                            letterSpacing: '0.04em',
+                            transition: 'all 0.15s',
+                            whiteSpace: 'nowrap',
+                            touchAction: 'manipulation',
+                        }}
+                    >
+                        ↪ {!isCompact && t('hud.step_forward')}
+                    </button>
+                    <button
                         onClick={() => handleButtonPress('restart')}
                         style={{
                             fontSize: 11,
@@ -499,6 +760,38 @@ export function PlayScreen({
                     </button>
                 </div>
             </div>
+
+            {/* Mobile / Compact Solution steps bar (below HUD) */}
+            {isCompact && isTestMode && solutionSteps && solutionSteps.length > 0 && (
+                <div
+                    style={{
+                        flexShrink: 0,
+                        height: 36,
+                        background: 'rgba(3, 7, 18, 0.9)',
+                        borderBottom: '1px solid rgba(0, 196, 255, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxSizing: 'border-box',
+                    }}
+                >
+                    <span style={{ 
+                        fontSize: 9, 
+                        color: '#00c4ff', 
+                        fontWeight: 800, 
+                        paddingLeft: 12, 
+                        paddingRight: 10, 
+                        borderRight: '1px solid rgba(0, 196, 255, 0.2)', 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        flexShrink: 0,
+                        letterSpacing: '0.05em'
+                    }}>
+                        KEY
+                    </span>
+                    {renderSolutionSteps(true)}
+                </div>
+            )}
 
             {/* ── Seviye Özellikleri Göstergesi ──────────────── */}
             <div
@@ -684,6 +977,103 @@ export function PlayScreen({
                     onButtonPress={handleButtonPress}
                     isTestMode={isTestMode}
                 />
+            )}
+
+            {showNotes && (
+                <div
+                    onClick={() => setShowNotes(false)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(2,5,14,0.85)',
+                        backdropFilter: 'blur(5px)',
+                        zIndex: 110,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 24,
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: 'rgba(6, 13, 26, 0.98)',
+                            border: '1px solid rgba(251, 191, 36, 0.4)',
+                            borderRadius: 14,
+                            padding: '20px 24px',
+                            boxShadow: '0 0 30px rgba(251, 191, 36, 0.15)',
+                            width: '100%',
+                            maxWidth: 400,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxSizing: 'border-box',
+                            gap: 16,
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <h2
+                                style={{
+                                    margin: 0,
+                                    fontSize: 14,
+                                    fontWeight: 800,
+                                    letterSpacing: '0.1em',
+                                    textTransform: 'uppercase',
+                                    color: '#fbbf24',
+                                    textShadow: '0 0 10px rgba(251,191,36,0.3)',
+                                }}
+                            >
+                                💡 {t('hud.level_notes')}
+                            </h2>
+                            <button
+                                onClick={() => setShowNotes(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#475569',
+                                    fontSize: 16,
+                                    cursor: 'pointer',
+                                    transition: 'color 0.15s',
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div
+                            style={{
+                                color: '#94a3b8',
+                                fontSize: 12,
+                                lineHeight: 1.5,
+                                whiteSpace: 'pre-wrap',
+                                overflowY: 'auto',
+                                maxHeight: '40vh',
+                                paddingRight: 6,
+                            }}
+                        >
+                            {gameNotes}
+                        </div>
+                        <button
+                            onClick={() => setShowNotes(false)}
+                            style={{
+                                width: '100%',
+                                padding: '8px 0',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                letterSpacing: '0.05em',
+                                textTransform: 'uppercase',
+                                background: 'rgba(251,191,36,0.1)',
+                                border: '1px solid rgba(251,191,36,0.3)',
+                                color: '#fbbf24',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            {t('hud.level_notes_close')}
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

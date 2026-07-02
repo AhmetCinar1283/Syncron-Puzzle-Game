@@ -1,3 +1,9 @@
+/**
+ * DOSYA AMACI: Bu dosya, Cloudflare Worker uygulamasının ana giriş noktasıdır. 
+ * Hono framework'ünü başlatır, API rotalarını (routes) kaydeder ve haftalık/günlük 
+ * zamanlanmış görevleri (cron triggers) yönetir.
+ */
+
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { AppContext, Env } from './types';
@@ -12,12 +18,15 @@ import { playedLevelsRouter } from './routes/playedLevels';
 import { runLogRetention } from './scheduled/logRetention';
 import { runBadgeDistribution } from './scheduled/badgeDistribution';
 import { runAnonymousCleanup } from './scheduled/anonymousCleanup';
+import { storeRouter } from './routes/store';
+import { donorApiRouter } from './routes/donorApi';
 
 const app = new Hono<AppContext>();
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 // GET is required for admin read endpoints (/admin/users/:uid/logs, etc.)
 // /internal/log is server-to-server only but still benefits from CORS config
+// CORS politikalarını ayarlar ve belirtilen kök adrese (ALLOWED_ORIGIN) izin verir.
 app.use('*', (c, next) => {
   return cors({
     origin: c.env.ALLOWED_ORIGIN,
@@ -36,8 +45,11 @@ app.route('/', leaderboardRouter);
 app.route('/', badgesRouter);
 app.route('/', friendsRouter);
 app.route('/', playedLevelsRouter); // GET /played-levels, DELETE /admin/levels/:id
+app.route('/', storeRouter);
+app.route('/', donorApiRouter);
 
 // ─── Error handlers ───────────────────────────────────────────────────────────
+// Worker içerisinde yakalanamayan genel hataları (500) yönetir ve JSON yanıtı döner.
 app.onError((err, c) => {
   console.error('Unhandled worker error:', err);
   c.header('Access-Control-Allow-Origin', c.env.ALLOWED_ORIGIN);
@@ -46,6 +58,7 @@ app.onError((err, c) => {
   return c.json({ success: false, error: 'Internal error' }, 500);
 });
 
+// Tanımlanmamış rotalara gelen istekler için 404 yanıtı döner.
 app.notFound((c) => c.text('Not Found', 404));
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
@@ -55,6 +68,7 @@ export default {
 
   // Cron Trigger: runs weekly log retention (archive old logs to R2, delete from D1)
   // Schedule: "0 3 * * 0" = every Sunday at 03:00 UTC (configured in wrangler.jsonc)
+  // Belirlenen zamanlanmış görevleri (cron) tetikleyerek temizlik, log arşivleme ve rozet dağıtımı yapar.
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     if (event.cron === '0 3 * * SUN') {
       ctx.waitUntil(runLogRetention(env));

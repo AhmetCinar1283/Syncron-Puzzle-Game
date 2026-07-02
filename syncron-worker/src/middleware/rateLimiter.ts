@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, Firebase Functions döngüsel hatalarının API'yi suistimal etmesini 
+ * önlemek amacıyla bellek içi kayan pencere (sliding-window) hız limitleyicisi (rate limiter) içerir.
+ */
+
+/**
  * Sliding-window rate limiter for the Worker.
  *
  * Used on /internal/log to prevent Firebase Functions loops from
@@ -27,6 +32,7 @@ const uidMap = new Map<string, WindowEntry>();
 const CLEANUP_INTERVAL_MS = 5 * 60_000;
 let lastCleanup = Date.now();
 
+// Bellek sızıntılarını önlemek için süresi dolmuş limit kayıtlarını Map'ten temizler.
 function pruneMap(map: Map<string, WindowEntry>): void {
   const now = Date.now();
   if (now - lastCleanup < CLEANUP_INTERVAL_MS) return;
@@ -42,6 +48,7 @@ function pruneMap(map: Map<string, WindowEntry>): void {
  * Returns true if the request is within the allowed rate.
  * Returns false if the limit is exceeded (caller should return 429).
  */
+// Belirtilen anahtar (anahtar: global veya uid) için istek sıklığının limit sınırlarında olup olmadığını kontrol eder.
 function checkLimit(map: Map<string, WindowEntry>, key: string, max: number): boolean {
   pruneMap(map);
   const now = Date.now();
@@ -64,6 +71,7 @@ function checkLimit(map: Map<string, WindowEntry>, key: string, max: number): bo
  * Check both global and per-UID limits for the /internal/log endpoint.
  * Returns null if all limits are satisfied, or an error string if exceeded.
  */
+// Log uç noktası için hem genel (global) hem de kullanıcı bazlı (per-UID) hız limitlerini doğrular.
 export function checkInternalLogRateLimit(uid: string): string | null {
   if (!checkLimit(globalMap, 'global', GLOBAL_MAX)) {
     return 'Global rate limit exceeded on /internal/log — possible loop detected';

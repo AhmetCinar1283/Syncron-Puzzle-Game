@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, seviye tamamlama isteklerinin (seviye ID'si, yapılan hamleler, 
+ * harcanan süre vb.) doğruluğunu ve limitlerini doğrulayan Zod şemasını içerir.
+ */
+
 import { z } from 'zod';
 import { MOVES_LIMIT } from '../types';
 
@@ -9,3 +14,22 @@ export const completeLevelSchema = z.object({
   timeSpent: z.number({ required_error: 'Invalid timeSpent' })
     .min(0, 'Invalid timeSpent'),
 });
+
+export const telemetrySchema = z.object({
+  id: z.string({ required_error: 'Missing id' }).min(1, 'Missing id'),
+  levelId: z.string({ required_error: 'Missing levelId' }).min(1, 'Missing levelId'),
+  version: z.number({ required_error: 'Missing version' }).int().min(1),
+  outcome: z.enum(['win', 'restart', 'quit'], { required_error: 'Invalid outcome' }),
+  timeSpent: z.number({ required_error: 'Missing timeSpent' }).min(0),
+  restarts: z.number().int().min(0).default(0),
+  deaths: z.number().int().min(0).default(0),
+  movesCount: z.number().int().min(0).default(0),
+});
+
+export const feedbackSchema = z.object({
+  levelId: z.string({ required_error: 'Missing levelId' }).min(1, 'Missing levelId'),
+  version: z.number({ required_error: 'Missing version' }).int().min(1),
+  difficulty: z.enum(['easy', 'normal', 'hard'], { required_error: 'Invalid difficulty' }),
+  liked: z.number().int().min(0).max(1), // 1 = liked (thumbs up), 0 = disliked (thumbs down)
+});
+

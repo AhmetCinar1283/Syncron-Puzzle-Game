@@ -25,6 +25,7 @@ const VFX_SOUNDS: Record<string, string> = {
     sound_portal_enter: '/sounds/portal.mp3',
     sound_portal_exit:  '/sounds/teleport.mp3',
     sound_boing:        '/sounds/boing.mp3',
+    sound_tick:         '/sounds/tick.mp3',
     sound_conveyor:     '/sounds/conveyor.mp3',
     sound_toggle:       '/sounds/toggle.mp3',
     sound_win:          '/sounds/win.mp3',

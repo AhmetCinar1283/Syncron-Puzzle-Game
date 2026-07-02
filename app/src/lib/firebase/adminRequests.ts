@@ -11,12 +11,12 @@ import type { LevelRequest } from './firestore';
 import type { LevelOrderEntry } from './adminTypes';
 
 /**
- * Approves a community level request:
- * 1. Creates a new doc in `levels/` with attribution fields
- * 2. Appends the new LevelOrderEntry to `levelParts/{partId}.order`
- * 3. Marks the request as 'approved'
+ * Topluluk tarafından gönderilen bir bölüm oluşturma isteğini onaylar:
+ * 1. `levels/` koleksiyonunda yapımcı bilgileriyle yeni bir doküman oluşturur.
+ * 2. Yeni LevelOrderEntry kaydını `levelParts/{partId}.order` alanına ekler.
+ * 3. İstek durumunu 'approved' (onaylandı) olarak işaretler.
  *
- * Uses a batch write so steps 1+2 are atomic; step 3 updates separately.
+ * Adımlar 1 ve 2'nin atomik olması için toplu yazma (batch write) kullanılır.
  */
 export async function approveLevelRequest(
   requestId: string,
@@ -26,10 +26,10 @@ export async function approveLevelRequest(
 ): Promise<void> {
   const batch = writeBatch(db);
 
-  // 1. Create the level document ref (prevLevelId computed below after reading part)
+  // 1. Yeni bölüm doküman referansını oluşturur
   const levelRef = doc(collection(db, 'levels'));
 
-  // 2. Determine position for the new entry
+  // 2. Yeni bölüm için sıralama konumunu belirler
   const partRef = doc(db, 'levelParts', partId);
   const partSnap = await getDoc(partRef);
   const currentOrder: Record<string, LevelOrderEntry> = partSnap.exists()
@@ -40,19 +40,19 @@ export async function approveLevelRequest(
     -1,
   );
 
-  // Find the current last-position level (becomes prevLevelId for the approved level)
+  // Mevcut en son pozisyondaki bölümü bulur (yeni bölümün prevLevelId değeri olacaktır)
   const prevEntry = Object.values(currentOrder).find(
     (e) => (e.position ?? -1) === maxPos,
   );
   const prevLevelId: string | null = prevEntry?.id ?? null;
 
-  // 1a. Now create the level document with prevLevelId
+  // 1a. Bölüm verilerini prevLevelId ile birlikte set eder
   batch.set(levelRef, {
     name: req.name,
     width: req.width,
     height: req.height,
     edges: req.edges,
-    grid: JSON.stringify(req.grid), // Firestore doesn't support nested arrays
+    grid: JSON.stringify(req.grid), // Firestore iç içe dizileri doğrudan desteklemez
     initialObjects: req.initialObjects,
     targets: req.targets,
     trailCollision: req.trailCollision ?? false,
@@ -70,9 +70,11 @@ export async function approveLevelRequest(
     ...(req.rooms && { rooms: req.rooms }),
     ...(req.controlMode && { controlMode: req.controlMode }),
     ...(req.initialControlledRooms && { initialControlledRooms: req.initialControlledRooms }),
+    ...(req.gameNotes != undefined && { gameNotes: req.gameNotes }),
+    ...(req.creatorNotes != undefined && { creatorNotes: req.creatorNotes }),
   });
 
-  // 3. Build order entry
+  // 3. Bölüm paketi sırasına yeni girdiyi hazırlar
   const entry: Omit<LevelOrderEntry, 'updatedAt'> & { updatedAt: ReturnType<typeof serverTimestamp>; position: number } = {
     id: levelRef.id,
     name: req.name,
@@ -85,7 +87,7 @@ export async function approveLevelRequest(
   };
 
   if (partSnap.exists()) {
-    // Field-path update — concurrent-safe: only this level's key is written
+    // Eş zamanlı yazma güvenliği için sadece ilgili bölümün anahtarını günceller
     batch.update(partRef, {
       [`order.${entry.id}`]: entry,
       updatedAt: serverTimestamp(),
@@ -101,7 +103,7 @@ export async function approveLevelRequest(
 
   await batch.commit();
 
-  // 3. Mark request as approved (outside batch — not critical to atomicity)
+  // 3. İstek durumunu onaylandı olarak işaretler (batch dışındadır, kritik değildir)
   await updateDoc(doc(db, 'levelRequests', requestId), {
     status: 'approved',
     updatedAt: serverTimestamp(),
@@ -109,7 +111,7 @@ export async function approveLevelRequest(
 }
 
 /**
- * Rejects a community level request with an optional admin note.
+ * Topluluk tarafından gönderilen bir bölüm oluşturma isteğini isteğe bağlı bir notla reddeder.
  */
 export async function rejectLevelRequest(requestId: string, note?: string): Promise<void> {
   await updateDoc(doc(db, 'levelRequests', requestId), {
@@ -118,3 +120,4 @@ export async function rejectLevelRequest(requestId: string, note?: string): Prom
     ...(note ? { adminNote: note } : {}),
   });
 }
+

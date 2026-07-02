@@ -1,3 +1,9 @@
+/**
+ * DOSYA AMACI: Bu dosya, uygulamanın Firebase Cloud Functions (v2) giriş noktasıdır. 
+ * Kullanıcı oluşturma/yükseltme tetikleyicilerini, özel tag taleplerini, destek talebi 
+ * mesaj tetikleyicilerini ve eski anonim kullanıcıların temizlenme görevlerini yönetir.
+ */
+
 import * as functions from 'firebase-functions/v2';
 import * as admin from 'firebase-admin';
 import { defineSecret } from 'firebase-functions/params';
@@ -30,6 +36,7 @@ const MAX_TAG_LEN = 10;
 const MAX_TAG_CHANGES = 5;
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
+// 5 haneli, okunabilirliği yüksek (benzersiz karakterlerden oluşan) rastgele bir tag üretir.
 function randomTag(): string {
     let result = '';
     for (let i = 0; i <= 5; i++) {
@@ -45,6 +52,7 @@ function randomTag(): string {
  *
  * Retries up to 20 times on collision (extremely rare at 32^5 slots).
  */
+// Kullanıcıya benzersiz bir tag atar; çakışma durumunda işlemi yeniden dener.
 async function assignUniqueTag(uid: string, extraUpdates?: Record<string, any>): Promise<string> {
     const MAX_ATTEMPTS = 20;
 
@@ -77,6 +85,7 @@ async function assignUniqueTag(uid: string, extraUpdates?: Record<string, any>):
 // ─── Trigger: new users/{uid} document created ────────────────────────────────
 // Fires when any user doc is first created. Anonymous users are skipped.
 
+// Yeni bir kullanıcı dökümanı oluşturulduğunda tetiklenir; kullanıcıya tag atar ve log gönderir.
 export const onUserCreated = functions.firestore.onDocumentCreated(
     {
         document: 'users/{uid}',
@@ -126,6 +135,7 @@ export const onUserCreated = functions.firestore.onDocumentCreated(
 // ─── Trigger: anonymous user upgrades to google/email ────────────────────────
 // The onUserCreated trigger won't fire on upgrade (same UID, doc already exists).
 
+// Anonim bir hesap normal hesaba yükseltildiğinde tetiklenir; tag atar ve log gönderir.
 export const onUserUpgraded = functions.firestore.onDocumentUpdated(
     {
         document: 'users/{uid}',
@@ -177,6 +187,7 @@ export const onUserUpgraded = functions.firestore.onDocumentUpdated(
 // Client sends { tag: "MYTAG" }. Validates chars/length, checks rate limits,
 // checks uniqueness, then atomically assigns.
 
+// Kullanıcının kendi belirlediği özel tag'i atamasını sağlayan callable fonksiyondur.
 export const requestNewTag = functions.https.onCall(
     {
         region: 'europe-west3',
@@ -313,6 +324,7 @@ export const requestNewTag = functions.https.onCall(
 // IDEMPOTENCY: setting boolean flags to true is safe if the trigger fires
 // more than once for the same message (Firebase at-least-once delivery).
 
+// Destek talebine mesaj eklendiğinde tetiklenir; bildirim e-postası gönderir ve log tutar.
 export const onTicketMessageCreated = functions.firestore.onDocumentCreated(
     {
         document: 'supportTickets/{ticketId}/messages/{messageId}',
@@ -478,6 +490,7 @@ export const onTicketMessageCreated = functions.firestore.onDocumentCreated(
 
 const ANONYMOUS_RETENTION_DAYS = 30;
 
+// Belirli süre boyunca aktif olmayan anonim kullanıcıların verilerini ve hesaplarını temizler.
 export const cleanupOldAnonymousUsers = functions.scheduler.onSchedule(
     {
         schedule: '5 4 * * *', // daily at 04:05 UTC

@@ -1,9 +1,16 @@
+/**
+ * DOSYA AMACI: Bu dosya, HTML5 Gamepad API aracılığıyla oyun kumandası (gamepad) girdilerini
+ * dinleyen ve yönlendiren bir React hook'u sunar.
+ */
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 
+// Yön tanımlamaları
 export type GamepadDirection = 'up' | 'down' | 'left' | 'right';
 
+// Hook parametre tipleri
 interface UseGamepadProps {
   onMove?: (direction: GamepadDirection) => void;
   onRestart?: () => void;
@@ -14,6 +21,9 @@ interface UseGamepadProps {
   enabled?: boolean;
 }
 
+/**
+ * useGamepad - Oyun kumandası (gamepad) girdilerini dinleyen ve ilgili callback'leri tetikleyen hook.
+ */
 export function useGamepad({
   onMove,
   onRestart,
@@ -23,15 +33,16 @@ export function useGamepad({
   onAxisMove,
   enabled = true,
 }: UseGamepadProps = {}) {
+  // Bağlı olan aktif gamepad durumunu tutar
   const [connectedGamepad, setConnectedGamepad] = useState<Gamepad | null>(null);
 
-  // Keep references to callbacks to avoid resetting the RAF loop when they change
+  // RAF (requestAnimationFrame) döngüsünün callback güncellemelerinde sıfırlanmaması için callback referanslarını tutar
   const callbacksRef = useRef({ onMove, onRestart, onMenu, onConfirm, onButtonPress, onAxisMove });
   useEffect(() => {
     callbacksRef.current = { onMove, onRestart, onMenu, onConfirm, onButtonPress, onAxisMove };
   }, [onMove, onRestart, onMenu, onConfirm, onButtonPress, onAxisMove]);
 
-  // Track previous state for discrete action triggering
+  // Tekil tuş/eksen hareketlerini algılamak için bir önceki karedeki durumu saklar
   const prevStateRef = useRef<{
     buttons: boolean[];
     axes: number[];
@@ -40,13 +51,14 @@ export function useGamepad({
     axes: [],
   });
 
+  // Gamepad bağlantı ve ayrılma olaylarını dinler
   useEffect(() => {
     if (!enabled) {
       setConnectedGamepad(null);
       return;
     }
 
-    // Check for already connected gamepads on mount
+    // Sayfa yüklendiğinde halihazırda bağlı olan bir gamepad varsa kontrol eder
     const checkInitialGamepads = () => {
       if (typeof navigator === 'undefined' || !navigator.getGamepads) return;
       const gps = navigator.getGamepads();
@@ -60,11 +72,13 @@ export function useGamepad({
 
     checkInitialGamepads();
 
+    // Gamepad bağlandığında tetiklenir
     const handleConnect = (e: GamepadEvent) => {
       console.log('Gamepad connected:', e.gamepad.id);
       setConnectedGamepad(e.gamepad);
     };
 
+    // Gamepad bağlantısı koptuğunda tetiklenir
     const handleDisconnect = (e: GamepadEvent) => {
       console.log('Gamepad disconnected:', e.gamepad.id);
       setConnectedGamepad(null);
@@ -79,16 +93,18 @@ export function useGamepad({
     };
   }, [enabled]);
 
+  // Gamepad girdilerini sürekli olarak tarayan (polling) RAF döngüsünü başlatır
   useEffect(() => {
     if (!enabled || !connectedGamepad) return;
 
     let rAFId: number;
 
+    // Gamepad verilerini tarayan ana döngü
     const pollGamepad = () => {
       if (typeof navigator === 'undefined' || !navigator.getGamepads) return;
       
       const gamepads = navigator.getGamepads();
-      // Find the gamepad we are tracking
+      // Takip ettiğimiz gamepad'i dizin değerinden bulur
       const gp = gamepads[connectedGamepad.index];
       if (!gp) {
         rAFId = requestAnimationFrame(pollGamepad);
@@ -99,7 +115,7 @@ export function useGamepad({
       const currentButtons = gp.buttons.map(b => b.pressed);
       const currentAxes = [...gp.axes];
 
-      // Pad previous state arrays if they are empty (first run)
+      // İlk çalıştırmada önceki durum dizilerini sıfırlar
       if (prev.buttons.length === 0) {
         prev.buttons = new Array(gp.buttons.length).fill(false);
       }
@@ -109,7 +125,7 @@ export function useGamepad({
 
       const { onMove: triggerMove, onRestart: triggerRestart, onMenu: triggerMenu, onConfirm: triggerConfirm, onButtonPress: triggerButtonPress, onAxisMove: triggerAxisMove } = callbacksRef.current;
 
-      // 1. Process Buttons
+      // 1. Buton Girdilerini İşle
       for (let i = 0; i < gp.buttons.length; i++) {
         const pressed = gp.buttons[i].pressed;
         const prevPressed = prev.buttons[i];
@@ -117,26 +133,23 @@ export function useGamepad({
         if (pressed !== prevPressed) {
           triggerButtonPress?.(i, pressed);
 
-          // Trigger on transition from false to true
+          // Tuşa basıldığı an (false -> true geçişi)
           if (pressed && !prevPressed) {
-            // Confirm button (A / Cross)
+            // Onay Tuşu (A / Cross)
             if (i === 0) triggerConfirm?.();
 
-            // D-Pad Up
+            // D-Pad Yön Tuşları
             if (i === 12) triggerMove?.('up');
-            // D-Pad Down
             if (i === 13) triggerMove?.('down');
-            // D-Pad Left
             if (i === 14) triggerMove?.('left');
-            // D-Pad Right
             if (i === 15) triggerMove?.('right');
 
-            // Restart buttons: Y / Triangle (button 3), X / Square (button 2), or Select/Share (button 8)
+            // Yeniden Başlatma Tuşları: Y / Triangle (3), X / Square (2) veya Select (8)
             if (i === 2 || i === 3 || i === 8) {
               triggerRestart?.();
             }
 
-            // Menu buttons: B / Circle (button 1), Start/Options (button 9)
+            // Menü Tuşları: B / Circle (1) veya Start (9)
             if (i === 1 || i === 9) {
               triggerMenu?.();
             }
@@ -144,10 +157,9 @@ export function useGamepad({
         }
       }
 
-      // 2. Process Analog Sticks (Axes)
-      // Left Stick Horizontal: axis 0
-      // Left Stick Vertical: axis 1
-      const AXIS_THRESHOLD = 0.5;
+      // 2. Analog Çubuk Girdilerini İşle (Eksenler)
+      // Sol Çubuk Yatay: eksen 0, Sol Çubuk Dikey: eksen 1
+      const AXIS_THRESHOLD = 0.5; // Eksen hareketi eşiği
 
       for (let i = 0; i < gp.axes.length; i++) {
         const val = gp.axes[i];
@@ -157,7 +169,7 @@ export function useGamepad({
           triggerAxisMove?.(i, val);
         }
 
-        // Horizontal Left Stick
+        // Yatay Eksen (Sol/Sağ)
         if (i === 0) {
           if (val < -AXIS_THRESHOLD && prevVal >= -AXIS_THRESHOLD) {
             triggerMove?.('left');
@@ -166,7 +178,7 @@ export function useGamepad({
           }
         }
 
-        // Vertical Left Stick
+        // Dikey Eksen (Yukarı/Aşağı)
         if (i === 1) {
           if (val < -AXIS_THRESHOLD && prevVal >= -AXIS_THRESHOLD) {
             triggerMove?.('up');
@@ -176,7 +188,7 @@ export function useGamepad({
         }
       }
 
-      // Save state for next tick
+      // Durumu bir sonraki kare için sakla
       prevStateRef.current = {
         buttons: currentButtons,
         axes: currentAxes,
@@ -197,3 +209,4 @@ export function useGamepad({
     isConnected: !!connectedGamepad,
   };
 }
+

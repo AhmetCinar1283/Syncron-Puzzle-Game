@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, Cloudflare Worker genelinde kullanılan tip tanımlamalarını (interfaces), 
+ * çevresel değişken şemalarını (Env), destek talebi kısıtlarını ve Hono uygulama bağlamını (AppContext) içerir.
+ */
+
 export interface Env {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_API_KEY: string;
@@ -11,6 +16,10 @@ export interface Env {
   AUDIT_DB: D1Database;
   /** Cloudflare R2 bucket binding for log archive cold storage */
   syncron_audit_archive: R2Bucket;
+  /** Lemon Squeezy Webhook signing secret */
+  LS_WEBHOOK_SECRET: string;
+  /** Lemon Squeezy API key */
+  LS_API_KEY: string;
 }
 
 export interface CompleteLevelRequest {
@@ -29,6 +38,7 @@ export interface CompleteLevelResponse {
   isGoodSolution: boolean;    // made it into top-3 (but not best/new-best)
   stars: StarCount;
   scoreDelta: number;
+  xpDelta: number;
 }
 
 export interface PeriodIds {

@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, gönderilen seviye çözümlerinin (hamle dizilerinin) doğruluğunu 
+ * oyun motorunu sunucu tarafında simüle ederek (replay) test eden doğrulama servisini içerir.
+ */
+
 import type { Cell } from '../../../app/src/game2/logic/cellTypes';
 import type { Entity } from '../../../app/src/game2/logic/entityTypes';
 import type { Direction, ActionIntent } from '../../../app/src/game2/logic/types';
@@ -30,6 +35,7 @@ const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
  * Replay a move sequence on the given level and return true if the result is a win.
  * Returns false for invalid moves or if the game is lost/not won after all moves.
  */
+// Hamle dizisini seviye üzerinde simüle eder; tüm hamleler sonunda kazanma durumuna ulaşılırsa true döner.
 export function verifyMoves(level: any, moves: string[]): boolean {
   // 1. Validate all directions/actions are supported before starting
   for (const m of moves) {

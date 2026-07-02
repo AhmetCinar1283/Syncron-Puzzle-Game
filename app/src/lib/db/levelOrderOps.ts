@@ -1,7 +1,9 @@
 import { getDB } from './schema';
 import type { StoredLevel } from './schema';
 
-/** Returns all levels in their current display order. */
+/** 
+ * Tüm yerel bölümleri şu anki görüntülenme sıralarına göre getirir.
+ */
 export async function getOrderedLevels(): Promise<(StoredLevel & { id: number })[]> {
   const db = getDB();
   const orderRecord = await db.levelOrder.get(1 as never);
@@ -17,7 +19,9 @@ export async function getOrderedLevels(): Promise<(StoredLevel & { id: number })
     .filter((x): x is StoredLevel & { id: number } => x !== null);
 }
 
-/** Returns the Dexie ID of the level that comes after currentId in the order. */
+/** 
+ * Sıralamada mevcut ID'den bir sonra gelen bölümün Dexie ID'sini döndürür.
+ */
 export async function getNextLevelId(currentId: number): Promise<number | null> {
   const db = getDB();
   const orderRecord = await db.levelOrder.get(1 as never);
@@ -27,8 +31,11 @@ export async function getNextLevelId(currentId: number): Promise<number | null> 
   return order[idx + 1];
 }
 
-/** Replaces the entire order array (used by drag-and-drop / up-down reorder). */
+/** 
+ * Tüm sıralama dizisini yeni diziyle değiştirir (sürükle-bırak veya yukarı-aşağı hareket sonrası).
+ */
 export async function reorderLevels(newOrder: number[]): Promise<void> {
   const db = getDB();
   await db.levelOrder.put({ id: 1, order: newOrder });
 }
+

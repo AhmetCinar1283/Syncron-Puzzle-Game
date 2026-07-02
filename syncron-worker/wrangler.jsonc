@@ -52,4 +52,6 @@
 	// Secrets (set via CLI, never in this file):
 	//   wrangler secret put GOOGLE_SERVICE_ACCOUNT
 	//   wrangler secret put LOG_SECRET
+	//   wrangler secret put LS_WEBHOOK_SECRET
+	//   wrangler secret put LS_API_KEY
 }

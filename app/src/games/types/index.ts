@@ -4,6 +4,12 @@ export type CellType =
   | 'forbidden'
   | 'target_1'
   | 'target_2'
+  | 'target_3'
+  | 'target_4'
+  | 'target_5'
+  | 'target_6'
+  | 'target_7'
+  | 'target_8'
   | 'direction_toggle'
   | 'control_switch'
   | 'direction_deflector'
@@ -136,6 +142,8 @@ export interface LevelData {
   rooms?: any[];
   controlMode?: 'all_rooms' | 'selected_room';
   initialControlledRooms?: string[];
+  gameNotes?: string;
+  creatorNotes?: string;
 }
 
 export interface GameObjectState {

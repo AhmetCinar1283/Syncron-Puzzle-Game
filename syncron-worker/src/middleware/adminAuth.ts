@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, admin paneline erişmeye çalışan isteklerin Firebase kimlik doğrulamasını (JWT token) 
+ * doğrulayan ve kullanıcının rolünü ('admin' veya 'moderator') kontrol eden yetkilendirme ara yazılımını (middleware) içerir.
+ */
+
+/**
  * Admin authentication middleware.
  *
  * Verifies the Firebase ID token and checks that the caller has
@@ -15,6 +20,7 @@ import { fsGet, fromDoc } from '../services/firestore';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import type { AppContext } from '../types';
 
+// İsteğin başlığındaki (Authorization) Firebase ID Token'ı ve kullanıcının admin/moderator rolünü doğrular.
 export const adminAuth = createMiddleware<AppContext>(async (c, next) => {
   // 1. Extract Bearer token
   const authHeader = c.req.header('Authorization') ?? '';

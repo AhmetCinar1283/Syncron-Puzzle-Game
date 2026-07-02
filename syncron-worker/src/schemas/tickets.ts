@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, yeni destek talebi oluşturma isteklerinin (kategori, konu, 
+ * mesaj gövdesi vb.) karakter sınırlarını ve geçerliliğini doğrulayan Zod şemasını içerir.
+ */
+
 import { z } from 'zod';
 import {
   TICKET_CATEGORIES,

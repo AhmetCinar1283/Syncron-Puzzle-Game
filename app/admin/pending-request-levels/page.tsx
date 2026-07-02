@@ -129,7 +129,25 @@ function RequestRow({ req, parts, onApprove, onReject }: RequestRowProps) {
         <div style={{ padding: '0 16px 14px', borderTop: '1px solid rgba(30,58,95,0.25)', paddingTop: 14, display: 'flex', flexWrap: 'wrap', gap: 20 }}>
           {/* Grid preview */}
           {expanded && (
-            <GridPreview grid={req.grid as CellType[][]} cellSize={Math.max(14, Math.min(24, Math.floor(200 / req.width)))} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 200px' }}>
+              <GridPreview grid={req.grid as CellType[][]} cellSize={Math.max(14, Math.min(24, Math.floor(200 / req.width)))} />
+              {(req.gameNotes || req.creatorNotes) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, background: 'rgba(6,13,26,0.5)', border: '1px solid rgba(30,58,95,0.4)', borderRadius: 8, fontSize: 11 }}>
+                  {req.gameNotes && (
+                    <div>
+                      <span style={{ color: '#00c4ff', fontWeight: 800, textTransform: 'uppercase', fontSize: 9 }}>{t('editor.game_notes')}: </span>
+                      <p style={{ color: '#94a3b8', margin: '4px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.3 }}>{req.gameNotes}</p>
+                    </div>
+                  )}
+                  {req.creatorNotes && (
+                    <div style={{ marginTop: req.gameNotes ? 8 : 0 }}>
+                      <span style={{ color: '#fbbf24', fontWeight: 800, textTransform: 'uppercase', fontSize: 9 }}>{t('editor.creator_notes')}: </span>
+                      <p style={{ color: '#94a3b8', margin: '4px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.3 }}>{req.creatorNotes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Approve panel */}

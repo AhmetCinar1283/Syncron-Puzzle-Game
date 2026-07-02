@@ -456,3 +456,111 @@ export function getSolutionTrajectories(
 
   return { player1: p1Path, player2: p2Path };
 }
+
+export function solveFromState(
+  entities: Entity[],
+  rooms: Record<string, RoomState>,
+  controlledRoomIds: string[],
+  controlMode: 'all_rooms' | 'selected_room',
+  trailCollision: boolean,
+  maxMoves: number = 26,
+  maxStates: number = 2000
+): SolverResult {
+  const levelBounds: LevelBounds = {
+    rooms: Object.entries(rooms).reduce((acc, [rId, room]) => {
+      acc[rId] = { rows: room.height, cols: room.width, edges: room.edges };
+      return acc;
+    }, {} as Record<string, { rows: number; cols: number; edges: RoomState['edges'] }>),
+    trailCollision,
+  };
+
+  const wonInit = checkWinCondition(entities, rooms);
+  if (wonInit) {
+    return {
+      solvable: true,
+      solution: [],
+      statesExplored: 0,
+      moveCount: 0,
+    };
+  }
+
+  const queue: {
+    entities: Entity[];
+    rooms: Record<string, RoomState>;
+    controlledRoomIds: string[];
+    path: (Direction | 'switch_room')[];
+  }[] = [];
+
+  queue.push({
+    entities: cloneEntities(entities),
+    rooms: cloneRooms(rooms),
+    controlledRoomIds: [...controlledRoomIds],
+    path: [],
+  });
+
+  const visited = new Set<string>();
+  visited.add(serializeState(entities, rooms, controlledRoomIds));
+
+  const roomKeys = Object.keys(rooms);
+  const canSwitchRooms = controlMode === 'selected_room' && roomKeys.length > 1;
+
+  let statesExplored = 0;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+
+    const { entities: currEntities, rooms: currRooms, controlledRoomIds: currControlled, path } = current;
+    statesExplored++;
+
+    if (statesExplored >= maxStates) {
+      break;
+    }
+
+    const actions: (Direction | 'switch_room')[] = ['up', 'down', 'left', 'right'];
+    if (canSwitchRooms) {
+      actions.push('switch_room');
+    }
+
+    for (const action of actions) {
+      const next = transition(currEntities, currRooms, action, controlMode, currControlled, levelBounds);
+
+      if (next.won) {
+        const fullSolution = [...path, action];
+        const moveCount = fullSolution.filter((a) => a !== 'switch_room').length;
+        return {
+          solvable: true,
+          solution: fullSolution,
+          statesExplored,
+          moveCount,
+        };
+      }
+
+      if (next.lost) {
+        continue;
+      }
+
+      const stateKey = serializeState(next.entities, next.rooms, next.controlledRoomIds);
+      if (!visited.has(stateKey)) {
+        visited.add(stateKey);
+
+        if (path.length + 1 < maxMoves) {
+          queue.push({
+            entities: next.entities,
+            rooms: next.rooms,
+            controlledRoomIds: next.controlledRoomIds,
+            path: [...path, action],
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    solvable: false,
+    solution: null,
+    statesExplored,
+    moveCount: 0,
+  };
+}
+

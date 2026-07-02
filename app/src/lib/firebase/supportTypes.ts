@@ -1,16 +1,12 @@
 /**
- * Client-side type definitions for the support ticket system.
- *
- * Convention: all Firestore Timestamps are converted to Unix milliseconds
- * (number) by the fetch functions in support.ts — the same pattern used by
- * LevelRequest in firestore.ts.
+ * DOSYA AMACI: Bu dosya, destek biletleri (support ticket) sistemi için
+ * istemci tarafında kullanılan veri modellerini, sabitleri ve etiket dil eşlemelerini barındırır.
  */
 
-// ─── Enums / Unions ───────────────────────────────────────────────────────────
+// ─── Enums / Unions (Bilet Parametre Seçenekleri) ────────────────────────────────
 
 /**
- * The 7 supported ticket categories.
- * Keep in sync with TICKET_CATEGORIES in syncron-worker/src/types.ts.
+ * Destek biletleri için geçerli olan 7 kategori türü.
  */
 export type TicketCategory =
   | 'general'
@@ -21,6 +17,9 @@ export type TicketCategory =
   | 'suggestion'
   | 'data_deletion';
 
+/**
+ * Biletlerin durumları.
+ */
 export type TicketStatus =
   | 'open'
   | 'in_progress'
@@ -28,64 +27,50 @@ export type TicketStatus =
   | 'resolved'
   | 'closed';
 
+/**
+ * Biletlerin öncelik seviyeleri.
+ */
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 
-// ─── Document shapes ──────────────────────────────────────────────────────────
+// ─── Document shapes (Firestore Doküman Modelleri) ──────────────────────────────
 
 /**
- * Mirrors the `supportTickets/{ticketId}` Firestore document.
- * Subcollection messages are fetched separately via getTicketMessages().
+ * Firestore'daki `supportTickets/{ticketId}` doküman şeması.
  */
 export interface SupportTicket {
   id: string;
-  /** UID of the user who opened the ticket. */
-  uid: string;
+  uid: string; // Bileti oluşturan kullanıcının UID'si
   email: string;
   displayName: string;
   tag: string | null;
   category: TicketCategory;
-  /** Short descriptive subject line (5–100 chars). */
-  subject: string;
+  subject: string; // Kısa konu başlığı (5-100 karakter)
   status: TicketStatus;
   priority: TicketPriority;
-  /** True while the admin has not read the latest user message. */
-  hasUnreadAdmin: boolean;
-  /** True while the user has not read the latest admin reply. */
-  hasUnreadUser: boolean;
-  /** Unix ms. */
-  createdAt: number;
-  /** Unix ms — updated whenever a message is sent or status changes. */
-  updatedAt: number;
-  /** Unix ms, or null if not yet closed. */
-  closedAt: number | null;
-  /**
-   * Admin-only internal note. Never exposed to the ticket owner.
-   * Will be null/absent when read by non-admin clients (Firestore rules
-   * do NOT restrict field-level reads — we simply never display it in user UI).
-   */
-  adminNote: string | null;
+  hasUnreadAdmin: boolean; // Yöneticinin okumadığı yeni kullanıcı mesajı var mı?
+  hasUnreadUser: boolean; // Kullanıcının okumadığı yeni yönetici cevabı var mı?
+  createdAt: number; // Unix ms
+  updatedAt: number; // Unix ms
+  closedAt: number | null; // Kapatılma ms zaman damgası veya null
+  adminNote: string | null; // Yalnızca yöneticilere özel dahili not (kullanıcıya gösterilmez)
 }
 
 /**
- * One message inside the `supportTickets/{ticketId}/messages/{messageId}`
- * subcollection.
+ * Bir bilet altındaki `messages/{messageId}` alt koleksiyon doküman şeması.
  */
 export interface TicketMessage {
   id: string;
   senderType: 'user' | 'admin';
   senderUid: string;
   senderName: string;
-  /** Message body (20–2000 chars). */
-  body: string;
-  /** Unix ms. */
-  createdAt: number;
+  body: string; // Mesaj gövdesi (20-2000 karakter)
+  createdAt: number; // Unix ms
 }
 
-// ─── Request / filter shapes ──────────────────────────────────────────────────
+// ─── Request / filter shapes (İstek / Filtre Modelleri) ──────────────────────────
 
 /**
- * Payload sent to the Worker's POST /create-ticket endpoint.
- * The worker derives uid / email / displayName / tag from the ID token.
+ * POST /create-ticket API ucuna gönderilen bilet oluşturma gövdesi.
  */
 export interface CreateTicketPayload {
   category: TicketCategory;
@@ -94,15 +79,14 @@ export interface CreateTicketPayload {
 }
 
 /**
- * Filters used in the admin ticket list page.
- * 'all' means no filter is applied for that dimension.
+ * Yönetici bilet listeleme sayfasında kullanılan filtre yapısı.
  */
 export interface TicketFilter {
   status: TicketStatus | 'all';
   category: TicketCategory | 'all';
 }
 
-// ─── Validation constraints (client mirror of worker constants) ───────────────
+// ─── Validation constraints (Doğrulama Sınırları) ───────────────────────────────
 
 export const TICKET_SUBJECT_MIN = 5;
 export const TICKET_SUBJECT_MAX = 100;
@@ -111,7 +95,7 @@ export const TICKET_BODY_MAX = 2000;
 export const TICKET_REPLY_MIN = 5;
 export const TICKET_REPLY_MAX = 2000;
 
-// ─── Display helpers (labels, colours) ───────────────────────────────────────
+// ─── Display helpers (Görsel ve Dil Etiketleri) ───────────────────────────────
 
 export const CATEGORY_LABELS: Record<TicketCategory, { en: string; tr: string }> = {
   general:       { en: 'General Question',        tr: 'Genel Soru' },
@@ -131,13 +115,13 @@ export const STATUS_LABELS: Record<TicketStatus, { en: string; tr: string }> = {
   closed:        { en: 'Closed',           tr: 'Kapatıldı' },
 };
 
-/** Neon accent colours for each status — consistent with the app theme. */
+/** Durumlar için neon vurgu renkleri (tema uyumlu) */
 export const STATUS_COLORS: Record<TicketStatus, string> = {
-  open:         '#00ff88', // green
-  in_progress:  '#00c4ff', // cyan
-  waiting_user: '#ffd700', // gold
-  resolved:     '#6b7280', // grey
-  closed:       '#ec4899', // pink
+  open:         '#00ff88', // yeşil
+  in_progress:  '#00c4ff', // camgöbeği
+  waiting_user: '#ffd700', // altın sarısı
+  resolved:     '#6b7280', // gri
+  closed:       '#ec4899', // pembe
 };
 
 export const PRIORITY_LABELS: Record<TicketPriority, { en: string; tr: string }> = {
@@ -153,3 +137,4 @@ export const PRIORITY_COLORS: Record<TicketPriority, string> = {
   high:   '#ffd700',
   urgent: '#ec4899',
 };
+

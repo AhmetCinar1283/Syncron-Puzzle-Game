@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, liderlik tablosu sorgu parametrelerinin (limit, yakınındakiler, 
+ * sadece arkadaşlar vb.) tiplerini ve limitlerini doğrulayan Zod şemasını içerir.
+ */
+
 import { z } from 'zod';
 
 export const leaderboardQuerySchema = z.object({

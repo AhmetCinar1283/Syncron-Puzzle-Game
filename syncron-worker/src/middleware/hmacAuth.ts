@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, Firebase Functions ve Cloudflare Worker arasındaki servisler arası (service-to-service) 
+ * iletişimin güvenliğini sağlamak için isteklerin HMAC-SHA256 imzalarını doğrulayan ara yazılımı (middleware) içerir.
+ */
+
+/**
  * HMAC-SHA256 service-to-service authentication middleware.
  *
  * Used exclusively for the POST /internal/log endpoint, which is called by
@@ -22,6 +27,7 @@ import type { AppContext } from '../types';
 
 const MAX_DRIFT_MS = 5 * 60 * 1000; // ±5 minutes
 
+// Firebase Functions'tan gelen isteklerin HMAC imzasını ve zaman damgası geçerliliğini doğrular.
 export const hmacAuth = createMiddleware<AppContext>(async (c, next) => {
   const timestamp = c.req.header('X-Timestamp');
   const signature = c.req.header('X-Signature');

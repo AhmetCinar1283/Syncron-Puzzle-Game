@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, arkadaşlık işlemleri (istek gönderme, istek yanıtlama, arama) 
+ * için gelen HTTP isteklerinin parametrelerini doğrulayan Zod şemalarını içerir.
+ */
+
 import { z } from 'zod';
 
 export const friendRequestSchema = z.object({

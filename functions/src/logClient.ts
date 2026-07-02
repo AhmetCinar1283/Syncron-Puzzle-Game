@@ -1,4 +1,10 @@
 /**
+ * DOSYA AMACI: Bu dosya, Firebase Functions üzerinde gerçekleşen işlemlerin (kullanıcı kaydı, 
+ * rol değişikliği, vb.) denetim günlüklerini (audit logs) Cloudflare Worker'a güvenli bir 
+ * şekilde (HMAC-SHA256 imzası ile) POST isteği olarak gönderen log istemcisini içerir.
+ */
+
+/**
  * logClient.ts — Audit Log HTTP Client for Firebase Functions
  *
  * Sends audit log entries to the Cloudflare Worker (/internal/log) using
@@ -53,6 +59,7 @@ interface LogPayload {
  * Computes HMAC-SHA256 of `message` using `secret` and returns it as base64.
  * Uses Node.js `crypto` module (available in Firebase Functions runtime).
  */
+// Paylaşılan gizli anahtar (secret) ile mesajın HMAC-SHA256 imzasını oluşturur ve base64 olarak döner.
 function hmacBase64(secret: string, message: string): string {
   return crypto
     .createHmac('sha256', secret)
@@ -65,6 +72,7 @@ function hmacBase64(secret: string, message: string): string {
  * Used to hash the request body before including it in the signed message,
  * preventing body substitution after the signature is generated.
  */
+// İstek gövdesinin (body) değiştirilmesini önlemek amacıyla SHA-256 hash'ini (hex tabanında) hesaplar.
 function sha256Hex(data: string): string {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
@@ -87,6 +95,7 @@ const TIMEOUT_MS = 8_000; // 8 second timeout — Functions have 60s limit
  *
  * @returns Promise<void> — always resolves (failures are warned, not thrown)
  */
+// Denetim günlüğünü (audit log) hazırlayıp imzalayarak Cloudflare Worker'a HTTP POST ile gönderir.
 export async function sendLogToWorker(
   action:    AuditAction | string,
   category:  AuditCategory,

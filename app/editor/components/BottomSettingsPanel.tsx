@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import { useEditorContext } from '../EditorContext';
 import { useT } from '@/app/src/contexts/LanguageContext';
+import { getPlayerColor } from '@/app/src/game2/components/playerColors';
 
 export default function BottomSettingsPanel({ isMobile, visible }: { isMobile: boolean; visible?: boolean }) {
   const { grid, setGrid, rooms, width, height, boxes, setBoxes, activePlacingBoxId, setActivePlacingBoxId,
     setActiveTool, conveyorPowerRequired, setConveyorPowerRequired,
     conveyorConfig, setConveyorConfig,
     trampolineConfig, setTrampolineConfig,
-    deflectorConfig, setDeflectorConfig, activeRoomId } = useEditorContext();
+    deflectorConfig, setDeflectorConfig, activeRoomId,
+    objects, setObjects } = useEditorContext();
   const t = useT();
   const [expanded, setExpanded] = useState(false);
 
@@ -50,7 +52,7 @@ export default function BottomSettingsPanel({ isMobile, visible }: { isMobile: b
     });
   };
 
-  const hasContent = boxes.length > 0 || conveyorCells.length > 0 || trampolineCells.length > 0 || controlSwitchCells.length > 0 || deflectorCells.length > 0;
+  const hasContent = objects.length > 0 || boxes.length > 0 || conveyorCells.length > 0 || trampolineCells.length > 0 || controlSwitchCells.length > 0 || deflectorCells.length > 0;
 
   if (!hasContent) return null;
   if (isMobile && !visible) return null;
@@ -72,6 +74,9 @@ export default function BottomSettingsPanel({ isMobile, visible }: { isMobile: b
         }}
       >
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {objects.length > 0 && (
+            <span style={{ fontSize: 11, color: '#00ff88' }}>🟢 {objects.length} player{objects.length > 1 ? 's' : ''}</span>
+          )}
           {boxes.length > 0 && (
             <span style={{ fontSize: 11, color: '#f97316' }}>▣ {boxes.length} box{boxes.length > 1 ? 'es' : ''}</span>
           )}
@@ -94,6 +99,73 @@ export default function BottomSettingsPanel({ isMobile, visible }: { isMobile: b
       {/* Expanded content */}
       {expanded && (
         <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'row', gap: 12, overflowX: 'auto' }}>
+
+          {/* Players */}
+          {objects.length > 0 && (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00ff88', marginBottom: 8 }}>Players</div>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                {objects.map((obj) => {
+                  const { hex: color } = getPlayerColor(obj.id - 1);
+                  return (
+                    <div key={obj.id} style={{
+                      flexShrink: 0,
+                      padding: '8px 10px', minWidth: 140,
+                      background: 'rgba(0,255,136,0.04)',
+                      border: `1px solid rgba(0,255,136,0.2)`,
+                      borderRadius: 8,
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, color: color, fontWeight: 700 }}>🟢 Player {obj.id}</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: obj.row !== null ? color : '#334155', marginBottom: 6 }}>
+                        {obj.row !== null ? `${obj.roomId ?? 'main'} (${obj.row}, ${obj.col})` : t('editor.not_placed')}
+                        {obj.row !== null && (
+                          <button
+                            onClick={() => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, row: null, col: null } : o))}
+                            style={{ marginLeft: 4, fontSize: 9, background: 'none', border: 'none', color: '#334155', cursor: 'pointer' }}
+                          >✕</button>
+                        )}
+                      </div>
+                      
+                      {/* Mode selection */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 6 }}>
+                        <span style={{ fontSize: 8, color: '#64748b', fontWeight: 'bold' }}>Mode:</span>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {(['normal', 'reversed'] as const).map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, mode: m } : o))}
+                              style={{
+                                flex: 1, padding: '3px 4px', fontSize: 8, fontWeight: 700,
+                                background: obj.mode === m ? `${color}20` : 'rgba(255,255,255,0.02)',
+                                border: `1px solid ${obj.mode === m ? color : 'rgba(255,255,255,0.1)'}`,
+                                color: obj.mode === m ? color : '#64748b',
+                                borderRadius: 4, cursor: 'pointer',
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              {m === 'normal' ? 'Normal' : 'Reversed'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Lock on target */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox" checked={obj.lockOnTarget}
+                          onChange={(e) => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, lockOnTarget: e.target.checked } : o))}
+                          style={{ accentColor: color, width: 11, height: 11 }}
+                        />
+                        <span style={{ fontSize: 9, color: obj.lockOnTarget ? color : '#475569' }}>Lock on Target</span>
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Boxes */}
           {boxes.length > 0 && (

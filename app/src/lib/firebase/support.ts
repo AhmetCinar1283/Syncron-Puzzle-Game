@@ -23,10 +23,10 @@ import type {
   TicketPriority,
 } from './supportTypes';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers (Yardımcı Fonksiyonlar) ──────────────────────────────────────────
 
 /**
- * Robustly converts any Firestore timestamp or number to Unix milliseconds (number).
+ * Firestore zaman damgalarını veya sayıları Unix milisaniyeye (sayı türünde) dönüştürür.
  */
 function toMs(v: unknown): number {
   if (v instanceof Timestamp) return v.toMillis();
@@ -38,7 +38,7 @@ function toMs(v: unknown): number {
 }
 
 /**
- * Maps a Firestore document snapshot to a SupportTicket object.
+ * Firestore doküman sonucunu SupportTicket nesnesine eşler.
  */
 function mapDocToSupportTicket(d: any): SupportTicket {
   const data = d.data();
@@ -62,7 +62,7 @@ function mapDocToSupportTicket(d: any): SupportTicket {
 }
 
 /**
- * Maps a Firestore document snapshot to a TicketMessage object.
+ * Firestore doküman sonucunu TicketMessage nesnesine eşler.
  */
 function mapDocToTicketMessage(d: any): TicketMessage {
   const data = d.data();
@@ -76,10 +76,10 @@ function mapDocToTicketMessage(d: any): TicketMessage {
   };
 }
 
-// ─── User Functions ──────────────────────────────────────────────────────────
+// ─── User Functions (Kullanıcı Tarafı Fonksiyonları) ──────────────────────────
 
 /**
- * Fetches all support tickets for a specific user.
+ * Belirli bir kullanıcının tüm destek biletlerini getirir.
  */
 export async function getUserTickets(uid: string): Promise<SupportTicket[]> {
   try {
@@ -97,7 +97,7 @@ export async function getUserTickets(uid: string): Promise<SupportTicket[]> {
 }
 
 /**
- * Subscribes to all support tickets of a user in real-time.
+ * Bir kullanıcının destek biletlerini gerçek zamanlı olarak dinler (onSnapshot).
  */
 export function subscribeToUserTickets(
   uid: string,
@@ -121,7 +121,7 @@ export function subscribeToUserTickets(
 }
 
 /**
- * Fetches all messages inside a support ticket, in chronological order.
+ * Bir bilet altındaki tüm mesajları kronolojik sırayla getirir.
  */
 export async function getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
   try {
@@ -138,7 +138,7 @@ export async function getTicketMessages(ticketId: string): Promise<TicketMessage
 }
 
 /**
- * Appends a new message from the user to a ticket.
+ * Kullanıcı tarafından bir bilete yeni bir mesaj ekler.
  */
 export async function sendTicketMessage(
   ticketId: string,
@@ -161,7 +161,7 @@ export async function sendTicketMessage(
 }
 
 /**
- * Marks a ticket as read by the user (clears the unread reply badge).
+ * Bileti kullanıcı tarafından okundu olarak işaretler (okunmamış bildirim rozetini temizler).
  */
 export async function markTicketAsRead(ticketId: string): Promise<void> {
   try {
@@ -175,7 +175,7 @@ export async function markTicketAsRead(ticketId: string): Promise<void> {
 }
 
 /**
- * Subscribes to the messages of a ticket in real-time.
+ * Bir biletin mesajlarını gerçek zamanlı olarak dinler.
  */
 export function subscribeToMessages(
   ticketId: string,
@@ -197,12 +197,10 @@ export function subscribeToMessages(
   );
 }
 
-// ─── Admin Functions ─────────────────────────────────────────────────────────
+// ─── Admin Functions (Yönetici Tarafı Fonksiyonları) ─────────────────────────
 
 /**
- * Fetches all tickets in the system, ordered by last update first.
- * If status filter is applied, utilizes status index.
- * Category filtering is done client-side to ensure query performance and avoid missing index issues.
+ * Sistemdeki tüm biletleri son güncelleme tarihine göre sıralanmış olarak getirir.
  */
 export async function getAllTickets(filter?: TicketFilter): Promise<SupportTicket[]> {
   try {
@@ -229,7 +227,7 @@ export async function getAllTickets(filter?: TicketFilter): Promise<SupportTicke
 }
 
 /**
- * Subscribes to all tickets in real-time, ordered by last update first.
+ * Sistemdeki tüm biletleri gerçek zamanlı olarak dinler.
  */
 export function subscribeToAllTickets(
   callback: (tickets: SupportTicket[]) => void,
@@ -259,7 +257,7 @@ export function subscribeToAllTickets(
 }
 
 /**
- * Updates a ticket's current status and updates closedAt timestamp if resolved/closed.
+ * Bir biletin durumunu günceller ve kapatılmış/çözülmüşse closedAt zaman damgasını set eder.
  */
 export async function updateTicketStatus(ticketId: string, status: TicketStatus): Promise<void> {
   try {
@@ -280,7 +278,7 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
 }
 
 /**
- * Updates a ticket's priority level.
+ * Bir biletin öncelik seviyesini günceller.
  */
 export async function updateTicketPriority(
   ticketId: string,
@@ -298,7 +296,7 @@ export async function updateTicketPriority(
 }
 
 /**
- * Sets an internal, admin-only note on the ticket.
+ * Bir bilete sadece yöneticilerin görebileceği dahili not ekler.
  */
 export async function setAdminNote(ticketId: string, note: string): Promise<void> {
   try {
@@ -313,7 +311,7 @@ export async function setAdminNote(ticketId: string, note: string): Promise<void
 }
 
 /**
- * Appends a new reply from an admin to a ticket.
+ * Yönetici tarafından bilete yeni bir cevap mesajı ekler.
  */
 export async function sendAdminReply(
   ticketId: string,
@@ -335,7 +333,7 @@ export async function sendAdminReply(
 }
 
 /**
- * Marks a ticket as read by the admin (clears the unread user message badge).
+ * Bileti yönetici tarafından okundu olarak işaretler (okunmamış kullanıcı bildirim rozetini temizler).
  */
 export async function markTicketAsReadByAdmin(ticketId: string): Promise<void> {
   try {
@@ -349,7 +347,7 @@ export async function markTicketAsReadByAdmin(ticketId: string): Promise<void> {
 }
 
 /**
- * Counts all tickets in the system that have unread user messages for the admin.
+ * Yöneticinin okumadığı, kullanıcı tarafından gönderilmiş bekleyen biletlerin toplam sayısını döner.
  */
 export async function getUnreadTicketCount(): Promise<number> {
   try {
@@ -361,3 +359,4 @@ export async function getUnreadTicketCount(): Promise<number> {
     return 0;
   }
 }
+

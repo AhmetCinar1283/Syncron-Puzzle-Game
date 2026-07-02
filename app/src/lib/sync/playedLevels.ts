@@ -1,37 +1,35 @@
 /**
- * Client-side sync: fetches played level records from the Cloudflare D1 Worker
- * and merges them into the local Dexie cache.
+ * DOSYA AMACI: Bu dosya, oynanan bölümlerin kayıtlarını Cloudflare D1 Worker'dan
+ * çekip yerel Dexie (IndexedDB) veritabanına entegre eden istemci senkronizasyon mantığını barındırır.
  *
- * Strategy: delta sync using `?since=` cursor stored in Dexie syncMeta.
- *   - First call (no cursor): fetches ALL records for the user.
- *   - Subsequent calls: fetches only records with updated_at > lastSync.
- *   - Deleted level tombstones are applied to Dexie on every sync.
- *
- * The `serverTime` returned by the Worker (not the client clock) is saved as
- * the next cursor to avoid clock-skew issues.
+ * Strateji: Dexie syncMeta içinde tutulan `since` parametresiyle delta senkronizasyonu yapılır.
+ *   - İlk çağrı (imleç yoksa): Kullanıcının tüm kayıtları getirilir.
+ *   - Sonraki çağrılar: Sadece son senkronizasyondan sonra güncellenen kayıtlar çekilir.
  */
 
 import type { User } from 'firebase/auth';
 import { getDB } from '../db';
 import type { StoredPlayedLevel } from '../db';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants (Sabitler) ──────────────────────────────────────────────────────
 
 const SYNC_KEY = 'playedLevels_d1';
-const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 dakika bekleme süresi
 
 const WORKER_URL =
   process.env.NEXT_PUBLIC_WORKER_URL ?? 'https://syncron-worker.ahmetemre.workers.dev';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers (Yardımcı Fonksiyonlar) ──────────────────────────────────────────
 
+/**
+ * Son başarılı senkronizasyon zaman damgasını ve ISO formatındaki imleci okur.
+ */
 async function readLastSync(): Promise<{ timestamp: number; cursor: string | null }> {
   try {
     const db = getDB();
     const record = await db.syncMeta.get(SYNC_KEY);
     if (!record || record.lastSync === 0) return { timestamp: 0, cursor: null };
-    // Reconstruct the ISO cursor from the stored ms timestamp.
-    // The Worker stores serverTime as an ISO string; we round-trip via Date.
+    // Kaydedilen ms zaman damgasından ISO imlecini oluşturur
     return {
       timestamp: record.lastSync,
       cursor: new Date(record.lastSync).toISOString(),
@@ -41,29 +39,32 @@ async function readLastSync(): Promise<{ timestamp: number; cursor: string | nul
   }
 }
 
+/**
+ * Sunucu tarafından dönülen zaman damgasını bir sonraki senkronizasyon için kaydeder.
+ */
 async function writeLastSync(serverTimeIso: string): Promise<void> {
   try {
     const db = getDB();
     const tsMs = new Date(serverTimeIso).getTime();
     if (isNaN(tsMs)) return;
     await db.syncMeta.put({ collection: SYNC_KEY, lastSync: tsMs });
-  } catch { /* ignore write failures */ }
+  } catch { /* yazma hataları yoksayılır */ }
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
+// ─── Main export (Ana Dışa Aktarılan Fonksiyonlar) ──────────────────────────────
 
 export interface SyncPlayedLevelsResult {
-  /** Number of records upserted into Dexie */
+  /** Dexie'ye eklenen/güncellenen kayıt sayısı */
   upserted: number;
-  /** Number of Dexie records deleted (level tombstones) */
+  /** Silinen Dexie kayıt sayısı */
   deleted: number;
 }
 
 /**
- * Syncs the current user's played level records from Cloudflare D1 → Dexie.
+ * Mevcut kullanıcının oynadığı bölümlerin kayıtlarını Cloudflare D1 veritabanından Dexie'ye senkronize eder.
  *
- * @param user   — Firebase Auth user (needed for ID token)
- * @param force  — if true, bypasses the 5-minute cooldown and triggers full sync
+ * @param user   Firebase Auth kullanıcı nesnesi (ID belirteci almak için)
+ * @param force  true ise 5 dakikalık bekleme süresini yoksayar ve tam senkronizasyon yapar
  */
 export async function syncPlayedLevelsFromWorker(
   user: User,
@@ -75,7 +76,7 @@ export async function syncPlayedLevelsFromWorker(
     return { upserted: 0, deleted: 0 };
   }
 
-  // Build request URL — omit `since` on first (full) sync
+  // İstek URL'sini hazırlar - ilk senkronizasyonda `since` parametresi eklenmez
   let url = `${WORKER_URL}/played-levels`;
   if (!force && lastCursor) {
     url += `?since=${encodeURIComponent(lastCursor)}`;
@@ -122,13 +123,12 @@ export async function syncPlayedLevelsFromWorker(
   let upserted = 0;
   let deleted = 0;
 
-  // ── Apply records (upsert: server wins on equal or better stars) ─────────
+  // ── Kayıtları Uygula (Upsert: Sunucudaki yıldız sayısı daha iyiyse yerel güncellenir) ──
   if (data.records.length > 0) {
     await dexie.transaction('rw', dexie.playedLevels, async () => {
       for (const r of data.records) {
         const existing = await dexie.playedLevels.get(r.levelId);
-        // Server is the authority — always write if server stars >= local stars
-        // (or if no local record exists).
+        // Sunucu yetkili kaynaktır - sunucu yıldızı >= yerel yıldız ise veya yerel kayıt yoksa yazar
         if (!existing || r.stars >= (existing.stars ?? 0)) {
           const record: StoredPlayedLevel = {
             levelId:     r.levelId,
@@ -146,7 +146,7 @@ export async function syncPlayedLevelsFromWorker(
     });
   }
 
-  // ── Apply tombstones (delete stale Dexie entries for removed levels) ─────
+  // ── Silinenleri Uygula (Tombstones: Kaldırılan bölümlerin yerel kayıtlarını siler) ──
   if (data.deletedLevelIds.length > 0) {
     await dexie.transaction('rw', dexie.playedLevels, async () => {
       for (const levelId of data.deletedLevelIds) {
@@ -159,7 +159,7 @@ export async function syncPlayedLevelsFromWorker(
     });
   }
 
-  // ── Persist the server-issued cursor ─────────────────────────────────────
+  // ── Sunucu tarafından verilen zaman damgası imlecini kaydeder ──
   await writeLastSync(data.serverTime);
 
   if (upserted > 0 || deleted > 0) {
@@ -168,3 +168,4 @@ export async function syncPlayedLevelsFromWorker(
 
   return { upserted, deleted };
 }
+

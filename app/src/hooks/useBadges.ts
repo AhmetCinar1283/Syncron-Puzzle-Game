@@ -1,15 +1,22 @@
+/**
+ * DOSYA AMACI: Bu dosya, kullanıcının rozetlerini yükleyen, önbelleğe alan ve 
+ * profil vitrininde sergilenen rozetleri güncelleyen useBadges hook'unu içerir.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { getUserBadges, updateShowcase, Badge } from '../lib/api/badgesClient';
 
 const cache: Record<string, { data: Badge[]; timestamp: number }> = {};
 const CACHE_DURATION_MS = 60000; // 1 minute
 
+// Kullanıcının başarı rozetleri durumunu, yüklenme durumunu ve hata yönetimini sarmalar.
 export function useBadges(uid: string | null) {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // API aracılığıyla kullanıcının tüm rozetlerini çeker ve 1 dakika süreyle önbelleğe alır.
   const fetchBadges = useCallback(async (force = false) => {
     if (!uid) {
       setBadges([]);
@@ -44,6 +51,7 @@ export function useBadges(uid: string | null) {
     fetchBadges();
   }, [fetchBadges]);
 
+  // Seçilen rozetleri profil vitrini olarak kaydeder ve rozet önbelleğini yeniler.
   const saveShowcase = useCallback(async (badgeIds: string[]) => {
     setSaving(true);
     setError(null);

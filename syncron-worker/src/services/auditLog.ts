@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, D1 veritabanı üzerinde denetim günlüklerinin (audit logs) yazılması, 
+ * sorgulanması, istatistiklerinin çekilmesi ve eski logların silinmesi gibi veritabanı işlemlerini barındırır.
+ */
+
+/**
  * Audit Log Service — D1 Database Operations
  *
  * ALL queries use D1's parameterized binding (.bind()) to prevent SQL injection.
@@ -25,6 +30,8 @@ export type AuditAction =
   | 'payment.success'
   | 'payment.failed'
   | 'payment.refund'
+  | 'donation.received'
+  | 'donation.badge_awarded'
   // Admin actions (future)
   | 'admin.role_change'
   | 'admin.ticket_status_change';
@@ -66,6 +73,7 @@ export interface AuditLogStats {
  * Inserts a new audit log entry into D1.
  * All parameters are bound — never interpolated into the SQL string.
  */
+// D1 veritabanına yeni bir denetim günlüğü (audit log) yazar.
 export async function writeAuditLog(
   db: D1Database,
   uid: string,
@@ -94,6 +102,7 @@ export async function writeAuditLog(
  * Supports filtering by category, action, and date range.
  * All dynamic values are parameterized — never interpolated.
  */
+// Belirli bir kullanıcının loglarını verilen filtreler ve sayfalamaya göre sorgular.
 export async function queryAuditLogs(
   db: D1Database,
   uid: string,
@@ -154,6 +163,7 @@ export async function queryAuditLogs(
 /**
  * Returns aggregate statistics for a specific user.
  */
+// Kullanıcının toplam log, bitirilen seviye ve oluşturulan bilet sayılarını özetler.
 export async function getAuditLogStats(
   db: D1Database,
   uid: string,
@@ -180,6 +190,7 @@ export async function getAuditLogStats(
 /**
  * Returns the most recent log entry for a user (used for "last seen" display).
  */
+// Kullanıcının en son log kaydına ait zaman damgasını döner (son görülme).
 export async function getLastActivity(
   db: D1Database,
   uid: string,
@@ -203,6 +214,7 @@ export async function getLastActivity(
  * Fetches a batch of logs older than the given ISO cutoff date.
  * Used by the retention cron to identify rows to archive.
  */
+// Belirli bir tarihten eski olan logları arşivleme amacıyla toplu olarak getirir.
 export async function fetchOldLogBatch(
   db: D1Database,
   cutoffIso: string,
@@ -226,6 +238,7 @@ export async function fetchOldLogBatch(
  * IDs are passed as an array and bound with individual placeholders.
  * Max batch size: 999 (SQLite IN clause limit).
  */
+// Arşivlenen logları ID dizisine göre veritabanından toplu olarak siler.
 export async function deleteLogBatch(
   db: D1Database,
   ids: string[],
@@ -241,6 +254,7 @@ export async function deleteLogBatch(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Veritabanından çekilen JSON formatındaki log detaylarını (metadata) güvenli bir şekilde objeye dönüştürür.
 function safeParseJson(str: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(str);

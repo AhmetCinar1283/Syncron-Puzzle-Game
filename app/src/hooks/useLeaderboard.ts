@@ -1,11 +1,23 @@
+/**
+ * DOSYA AMACI: Bu dosya, liderlik tablosu (leaderboard) verilerini getirmek,
+ * önbelleğe (cache) almak ve güncellemeyi kolaylaştırmak amacıyla kullanılan bir React hook'udur.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, LeaderboardResponse } from '../lib/api/leaderboardClient';
 import { useAuthContext } from '../contexts/AuthContext';
 
-// Simple in-memory cache
+// Liderlik tablosu verilerini geçici olarak saklamak için basit bellek içi önbellek
 const cache: Record<string, { data: LeaderboardResponse; timestamp: number }> = {};
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const CACHE_DURATION = 2 * 60 * 1000; // 2 dakika (milisaniye cinsinden önbellek süresi)
 
+/**
+ * useLeaderboard - Liderlik tablosu verilerini çeken, önbellekleyen ve yöneten hook.
+ * 
+ * @param category Liderlik kategorisi ('stars' | 'levels' | 'records' | 'creators')
+ * @param period Zaman dilimi ('daily' | 'weekly' | 'monthly' | 'all_time')
+ * @param options Ek filtre seçenekleri (aroundMe: kullanıcının çevresi, friendsOnly: sadece arkadaşlar)
+ */
 export function useLeaderboard(
   category: 'stars' | 'levels' | 'records' | 'creators',
   period: 'daily' | 'weekly' | 'monthly' | 'all_time',
@@ -20,13 +32,16 @@ export function useLeaderboard(
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuthContext();
 
+  // Önbellek anahtarını parametrelere göre belirler
   const cacheKey = `${category}:${period}:${aroundMe}:${friendsOnly}:${user?.uid || 'anonymous'}`;
 
+  // Veriyi API'den çeken ana fonksiyon
   const fetchData = useCallback(async (force = false) => {
     setLoading(true);
     setError(null);
 
     const now = Date.now();
+    // Zorlama (force) yoksa ve önbellekte geçerli veri varsa önbellekteki veriyi kullanır
     if (!force && cache[cacheKey] && now - cache[cacheKey].timestamp < CACHE_DURATION) {
       setData(cache[cacheKey].data);
       setLoading(false);
@@ -34,6 +49,7 @@ export function useLeaderboard(
     }
 
     try {
+      // API istemcisi üzerinden liderlik tablosu isteği gönderilir
       const response = await getLeaderboard(category, period, {
         limit: 50,
         aroundMe,
@@ -41,6 +57,7 @@ export function useLeaderboard(
       });
 
       if (response.success) {
+        // İstek başarılıysa önbelleğe kaydeder ve durumu günceller
         cache[cacheKey] = { data: response, timestamp: now };
         setData(response);
       } else {
@@ -54,6 +71,7 @@ export function useLeaderboard(
     }
   }, [category, period, aroundMe, friendsOnly, cacheKey]);
 
+  // Hook yüklendiğinde veya parametreler değiştiğinde veriyi otomatik çeker
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -62,7 +80,9 @@ export function useLeaderboard(
     data,
     loading,
     error,
-    refresh: () => fetchData(true),
+    refresh: () => fetchData(true), // Verileri yeniden (önbelleği atlayarak) yükleme fonksiyonu
   };
 }
+
 export default useLeaderboard;
+

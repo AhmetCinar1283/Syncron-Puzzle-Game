@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, istemciden gelen Firebase ID Token'larını (JWT) Google'ın genel JWKS anahtarlarını 
+ * kullanarak kriptografik olarak (RS256) doğrulayan auth servisini içerir.
+ */
+
+/**
  * Verify a Firebase ID token using RS256 cryptographic validation.
  *
  * Uses the `jose` library to:
@@ -35,6 +40,7 @@ export interface VerifiedToken {
  * @param idToken - Raw JWT string from the Authorization: Bearer header
  * @param projectId - Firebase project ID (used for iss + aud claim validation)
  */
+// Firebase ID Token'ını (JWT) doğrular ve içindeki kullanıcı kimlik bilgilerini (uid, e-posta vb.) döner.
 export async function verifyIdToken(
   idToken: string,
   projectId: string,

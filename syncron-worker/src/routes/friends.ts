@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, arkadaşlık ilişkilerinin (istek gönderme, istek kabul/ret etme, 
+ * arkadaş silme, arama, engelleme, engeli kaldırma vb.) D1 veritabanı üzerinde yönetildiği API uç noktalarını tanımlar.
+ */
+
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { firebaseAuth } from '../middleware/auth';
@@ -19,6 +24,7 @@ function getCanonicalKeys(uid1: string, uid2: string) {
 }
 
 // ─── POST /friends/request ───────────────────────────────────────────────────
+// Başka bir oyuncuya arkadaşlık isteği gönderir (tag veya UID ile).
 friendsRouter.post('/friends/request', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const db = c.env.AUDIT_DB;
@@ -69,13 +75,14 @@ friendsRouter.post('/friends/request', firebaseAuth, async (c) => {
                 const userData = fromDoc(userDoc);
                 const displayName = typeof userData.displayName === 'string' ? userData.displayName : 'Player';
                 const userTag = typeof userData.tag === 'string' ? userData.tag : null;
+                const xp = typeof userData.xp === 'number' ? userData.xp : null;
                 let showcaseBadges: any[] = [];
                 if (Array.isArray(userData.showcaseBadges)) {
                   showcaseBadges = userData.showcaseBadges;
                 }
                 const jsonBadges = JSON.stringify(showcaseBadges);
 
-                await upsertUserProfile(db, resolvedUid, displayName, userTag, showcaseBadges);
+                await upsertUserProfile(db, resolvedUid, displayName, userTag, showcaseBadges, xp);
 
                 profile = { uid: resolvedUid };
               }
@@ -111,13 +118,14 @@ friendsRouter.post('/friends/request', firebaseAuth, async (c) => {
             const userData = fromDoc(userDoc);
             const displayName = typeof userData.displayName === 'string' ? userData.displayName : 'Player';
             const userTag = typeof userData.tag === 'string' ? userData.tag : null;
+            const xp = typeof userData.xp === 'number' ? userData.xp : null;
             let showcaseBadges: any[] = [];
             if (Array.isArray(userData.showcaseBadges)) {
               showcaseBadges = userData.showcaseBadges;
             }
             const jsonBadges = JSON.stringify(showcaseBadges);
 
-            await upsertUserProfile(db, targetUid, displayName, userTag, showcaseBadges);
+            await upsertUserProfile(db, targetUid, displayName, userTag, showcaseBadges, xp);
 
             profile = { uid: targetUid };
           }
@@ -219,6 +227,7 @@ friendsRouter.post('/friends/request', firebaseAuth, async (c) => {
 });
 
 // ─── POST /friends/accept ────────────────────────────────────────────────────
+// Başka bir oyuncunun gönderdiği arkadaşlık isteğini onaylar ve arkadaşlığı başlatır.
 friendsRouter.post('/friends/accept', firebaseAuth, async (c) => {
   const uid = c.get('uid');
 
@@ -295,6 +304,7 @@ friendsRouter.post('/friends/accept', firebaseAuth, async (c) => {
 });
 
 // ─── POST /friends/reject ────────────────────────────────────────────────────
+// Gelen bir arkadaşlık isteğini reddeder.
 friendsRouter.post('/friends/reject', firebaseAuth, async (c) => {
   const uid = c.get('uid');
 
@@ -343,6 +353,7 @@ friendsRouter.post('/friends/reject', firebaseAuth, async (c) => {
 });
 
 // ─── DELETE /friends/:uid ────────────────────────────────────────────────────
+// Mevcut bir arkadaşlığı sonlandırır (arkadaşı siler).
 friendsRouter.delete('/friends/:uid', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const targetUid = c.req.param('uid');
@@ -377,6 +388,7 @@ friendsRouter.delete('/friends/:uid', firebaseAuth, async (c) => {
 });
 
 // ─── GET /friends ────────────────────────────────────────────────────────────
+// Kullanıcının arkadaşlarını ve profil detaylarını listeler.
 friendsRouter.get('/friends', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const db = c.env.AUDIT_DB;
@@ -416,13 +428,14 @@ friendsRouter.get('/friends', firebaseAuth, async (c) => {
             const userData = fromDoc(userDoc);
             const displayName = typeof userData.displayName === 'string' ? userData.displayName : 'Player';
             const userTag = typeof userData.tag === 'string' ? userData.tag : null;
+            const xp = typeof userData.xp === 'number' ? userData.xp : null;
             let showcaseBadges: any[] = [];
             if (Array.isArray(userData.showcaseBadges)) {
               showcaseBadges = userData.showcaseBadges;
             }
             const jsonBadges = JSON.stringify(showcaseBadges);
 
-            await upsertUserProfile(db, missingUid, displayName, userTag, showcaseBadges);
+            await upsertUserProfile(db, missingUid, displayName, userTag, showcaseBadges, xp);
 
             return {
               uid: missingUid,
@@ -493,6 +506,7 @@ friendsRouter.get('/friends', firebaseAuth, async (c) => {
 });
 
 // ─── GET /friends/requests ───────────────────────────────────────────────────
+// Kullanıcıya gelen veya kullanıcının gönderdiği bekleyen arkadaşlık isteklerini listeler.
 friendsRouter.get('/friends/requests', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const db = c.env.AUDIT_DB;
@@ -534,13 +548,14 @@ friendsRouter.get('/friends/requests', firebaseAuth, async (c) => {
             const userData = fromDoc(userDoc);
             const displayName = typeof userData.displayName === 'string' ? userData.displayName : 'Player';
             const userTag = typeof userData.tag === 'string' ? userData.tag : null;
+            const xp = typeof userData.xp === 'number' ? userData.xp : null;
             let showcaseBadges: any[] = [];
             if (Array.isArray(userData.showcaseBadges)) {
               showcaseBadges = userData.showcaseBadges;
             }
             const jsonBadges = JSON.stringify(showcaseBadges);
 
-            await upsertUserProfile(db, missingUid, displayName, userTag, showcaseBadges);
+            await upsertUserProfile(db, missingUid, displayName, userTag, showcaseBadges, xp);
 
             return {
               uid: missingUid,
@@ -611,6 +626,7 @@ friendsRouter.get('/friends/requests', firebaseAuth, async (c) => {
 });
 
 // ─── GET /users/search ────────────────────────────────────────────────────────
+// Oyuncuları tag (etiket) bazlı aramak için kullanılır.
 friendsRouter.get('/users/search', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const tagParam = c.req.query('tag');
@@ -662,6 +678,7 @@ friendsRouter.get('/users/search', firebaseAuth, async (c) => {
               const userData = fromDoc(userDoc);
               const displayName = typeof userData.displayName === 'string' ? userData.displayName : 'Player';
               const userTag = typeof userData.tag === 'string' ? userData.tag : null;
+              const xp = typeof userData.xp === 'number' ? userData.xp : null;
 
               let showcaseBadges: any[] = [];
               if (Array.isArray(userData.showcaseBadges)) {
@@ -670,7 +687,7 @@ friendsRouter.get('/users/search', firebaseAuth, async (c) => {
               const jsonBadges = JSON.stringify(showcaseBadges);
 
               // Cache user profile in D1 user_profiles table
-              await upsertUserProfile(db, targetUid, displayName, userTag, showcaseBadges);
+              await upsertUserProfile(db, targetUid, displayName, userTag, showcaseBadges, xp);
 
               // Get relationship status from friendships
               const friendship = await db
@@ -731,6 +748,7 @@ friendsRouter.get('/users/search', firebaseAuth, async (c) => {
 
 // ─── POST /friends/block/:uid ───────────────────────────────────────────────
 
+// Belirtilen bir kullanıcıyı engeller.
 friendsRouter.post('/friends/block/:uid', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const targetUid = c.req.param('uid');
@@ -783,6 +801,7 @@ friendsRouter.post('/friends/block/:uid', firebaseAuth, async (c) => {
 
 // ─── DELETE /friends/block/:uid ─────────────────────────────────────────────
 
+// Engellenmiş bir kullanıcının engelini kaldırır.
 friendsRouter.delete('/friends/block/:uid', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const targetUid = c.req.param('uid');
@@ -822,6 +841,7 @@ friendsRouter.delete('/friends/block/:uid', firebaseAuth, async (c) => {
 
 // ─── GET /friends/blocked ───────────────────────────────────────────────────
 
+// Kullanıcının engellediği kişilerin listesini getirir.
 friendsRouter.get('/friends/blocked', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const db = c.env.AUDIT_DB;

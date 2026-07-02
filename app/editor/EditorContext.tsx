@@ -17,8 +17,9 @@ export interface EditorContextValue {
   isAnonymous: boolean;
   isModerator: boolean;
   userTag: string | null;
-  // Level data
   levelName: string; setLevelName: (v: string) => void;
+  gameNotes: string; setGameNotes: (v: string) => void;
+  creatorNotes: string; setCreatorNotes: (v: string) => void;
   width: number; setWidth: React.Dispatch<React.SetStateAction<number>>;
   height: number; setHeight: React.Dispatch<React.SetStateAction<number>>;
   pendingW: number; setPendingW: (v: number) => void;
@@ -72,6 +73,7 @@ export interface EditorContextValue {
   moveSelection: (sel: SelectionRect, dr: number, dc: number) => void;
   // Saved levels
   savedLevels: (StoredLevel & { id: number })[]; levelsLoading: boolean;
+  levelsDialogOpen: boolean; setLevelsDialogOpen: (v: boolean) => void;
   // UI state
   testLevel: LevelData | null; setTestLevel: (l: LevelData | null) => void;
   testError: string | null;
@@ -83,8 +85,11 @@ export interface EditorContextValue {
   submitNote: string; setSubmitNote: (v: string) => void;
   submitStatus: string; submitError: string;
   generatorDialogOpen: boolean; setGeneratorDialogOpen: (v: boolean) => void;
+  aiAssistantDialogOpen: boolean; setAiAssistantDialogOpen: (v: boolean) => void;
   optimalSolution: string[] | null;
   optimalSolutionMoves: number;
+  showSolutionPath: boolean;
+  setShowSolutionPath: React.Dispatch<React.SetStateAction<boolean>>;
   // Admin / Firestore
   parts: LevelPart[]; selectedPartId: string; setSelectedPartId: (v: string) => void;
   firestoreLevels: FirestoreLevel[];
@@ -104,11 +109,14 @@ export interface EditorContextValue {
   handleSaveAndSubmit: () => void;
   handleCopyBoard: () => void;
   handlePasteBoard: () => string | null;
+  doImportLevelJson: (raw: string) => string | null;
   loadFirestoreLevel: (fl: FirestoreLevel) => void;
   doPublish: () => void;
   handleLoadLevel: (stored: StoredLevel & { id: number }) => void;
   handleNewLevel: () => void;
   handleTest: () => void;
+  handleReorderLevels: (newOrder: number[]) => Promise<void>;
+  handleDeleteLevel: (id: number) => Promise<void>;
   // Generated options
   generatedCandidates: { level: LevelData; solution: string[] | null; moveCount: number }[];
   setGeneratedCandidates: React.Dispatch<React.SetStateAction<{ level: LevelData; solution: string[] | null; moveCount: number }[]>>;

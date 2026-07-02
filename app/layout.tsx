@@ -7,6 +7,7 @@ import FirestoreSync from "./src/components/FirestoreSync";
 import UserBadge from "./src/components/UserBadge";
 import BackButtonManager from "./src/components/BackButtonManager";
 import StoreProvider from "./src/store/StoreProvider";
+import AdSenseLoader from "./src/components/AdSenseLoader";
 
 const BASE_URL = 'https://syncron.polyvoclub.com';
 
@@ -93,13 +94,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet" />
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3798429741438186"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-        />
+        <AdSenseLoader />
         {GA_ID && (
           <>
             <Script

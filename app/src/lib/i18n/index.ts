@@ -1,24 +1,29 @@
 import tr from './tr';
 import en from './en';
 
+// Desteklenen diller
 export type Lang = 'tr' | 'en';
 
+// Dil paketleri sözlüğü
 const translations: Record<Lang, Record<string, string>> = { tr, en };
 
-/** All registered languages — add a new entry here to support a new language */
+/** Tanımlı tüm dillerin listesi */
 export const LANGS: { code: Lang; label: string }[] = [
   { code: 'tr', label: 'TR' },
   { code: 'en', label: 'EN' },
 ];
 
-/** Translate a key with optional variable interpolation: {name}, {n}, etc. */
+/**
+ * Belirtilen dildeki anahtara ait çeviriyi döndürür.
+ * İsteğe bağlı olarak `{name}`, `{n}` gibi değişkenleri (vars) yerleştirir (interpolation).
+ */
 export function translate(
   lang: Lang,
   key: string,
   vars?: Record<string, string | number>,
 ): string {
   const dict = translations[lang];
-  // Fall back to 'tr' if key missing in current lang
+  // Anahtar bulunamazsa önce Türkçe'ye, o da yoksa anahtarın kendisine geri döner (fallback)
   let str = dict[key] ?? translations.tr[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
@@ -27,3 +32,4 @@ export function translate(
   }
   return str;
 }
+

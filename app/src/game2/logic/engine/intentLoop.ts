@@ -763,7 +763,7 @@ function resolveDependencyChains(
                 bumpDirection: dir,
                 bumpReason: bumpReason,
             },
-            vfxTriggers: ['sound_boing'],
+            vfxTriggers: ['sound_tick'],
         });
     }
 

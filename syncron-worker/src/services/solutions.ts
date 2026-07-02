@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, seviyeleri bitiren en iyi çözümleri (hamle sayısı en az olan top-3 çözüm) 
+ * Firestore üzerinde saklayan, okuyan, güncelleyen ve yıldız (star) derecelerini hesaplayan servis fonksiyonlarını içerir.
+ */
+
 import { fsGet, fsSet, fromDoc } from './firestore';
 import type { StarCount } from '../types';
 
@@ -28,6 +33,7 @@ export interface SolutionStats {
  * Read solution stats for a level (best, worst-in-top, count).
  * Replaces the old getBestMoveCount — call once, use all three values.
  */
+// Seviyenin mevcut en iyi/en kötü çözümlerini ve bunları yapanların istatistiklerini getirir.
 export async function getSolutionStats(
   projectId: string,
   firestoreId: string,
@@ -56,6 +62,7 @@ export async function getSolutionStats(
  * - 2★: moveCount <= floor(bestMoveCount * 1.2)
  * - 1★: everything else
  */
+// Oyuncunun hamle sayısını, o seviyenin en iyi hamle sayısı ile kıyaslayarak kaç yıldız kazandığını hesaplar.
 export function computeStars(moveCount: number, bestMoveCount: number | null): StarCount {
   if (bestMoveCount === null || moveCount <= bestMoveCount) return 3;
   if (moveCount <= Math.floor(bestMoveCount * 1.2)) return 2;
@@ -66,6 +73,7 @@ export function computeStars(moveCount: number, bestMoveCount: number | null): S
  * Update the top-N shortest solutions for a level.
  * Only writes if the new solution is strictly better than the uid's existing entry.
  */
+// Eğer oyuncu kendi rekorunu kırdıysa veya ilk 3'e girdiyse, en iyi çözümler listesini günceller ve kaydeder.
 export async function updateSolutions(
   projectId: string,
   firestoreId: string,

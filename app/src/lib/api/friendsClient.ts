@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, arkadaşlık ilişkileri, arkadaş arama, arkadaşlık istekleri
+ * ve engelleme işlemlerini yöneten API istemci fonksiyonlarını barındırır.
+ */
+
 import { workerFetch } from './workerClient';
 
 export interface Friend {
@@ -26,7 +31,7 @@ export interface UserSearchResult {
 }
 
 /**
- * Fetch the list of accepted friends for the current user.
+ * Giriş yapmış kullanıcının kabul edilmiş arkadaş listesini getirir.
  */
 export async function getFriends(): Promise<{ success: boolean; friends: Friend[] }> {
   return workerFetch<{ success: boolean; friends: Friend[] }>('/friends', {
@@ -36,7 +41,7 @@ export async function getFriends(): Promise<{ success: boolean; friends: Friend[
 }
 
 /**
- * Fetch the list of incoming pending friend requests.
+ * Kullanıcıya gelen bekleyen arkadaşlık isteklerini getirir.
  */
 export async function getFriendRequests(): Promise<{ success: boolean; requests: FriendRequest[] }> {
   return workerFetch<{ success: boolean; requests: FriendRequest[] }>('/friends/requests', {
@@ -46,7 +51,7 @@ export async function getFriendRequests(): Promise<{ success: boolean; requests:
 }
 
 /**
- * Search for user profiles by their unique tag.
+ * Benzersiz etikete (tag) göre kullanıcı profillerini arar.
  */
 export async function searchUserByTag(tag: string): Promise<{ success: boolean; users: UserSearchResult[] }> {
   return workerFetch<{ success: boolean; users: UserSearchResult[] }>(
@@ -59,7 +64,7 @@ export async function searchUserByTag(tag: string): Promise<{ success: boolean; 
 }
 
 /**
- * Send a friend request using target UID or target tag.
+ * Hedef UID veya etiket (tag) kullanarak arkadaşlık isteği gönderir.
  */
 export async function sendFriendRequest(params: {
   targetUid?: string;
@@ -73,7 +78,7 @@ export async function sendFriendRequest(params: {
 }
 
 /**
- * Accept an incoming friend request from a user.
+ * Gelen arkadaşlık isteğini kabul eder.
  */
 export async function acceptFriendRequest(uid: string): Promise<{ success: boolean }> {
   return workerFetch<{ success: boolean }>('/friends/accept', {
@@ -84,7 +89,7 @@ export async function acceptFriendRequest(uid: string): Promise<{ success: boole
 }
 
 /**
- * Reject/cancel an incoming friend request.
+ * Gelen arkadaşlık isteğini reddeder veya iptal eder.
  */
 export async function rejectFriendRequest(uid: string): Promise<{ success: boolean }> {
   return workerFetch<{ success: boolean }>('/friends/reject', {
@@ -95,7 +100,7 @@ export async function rejectFriendRequest(uid: string): Promise<{ success: boole
 }
 
 /**
- * Remove/delete an existing friendship.
+ * Mevcut arkadaşlığı siler / arkadaşı listeden çıkarır.
  */
 export async function removeFriend(uid: string): Promise<{ success: boolean }> {
   return workerFetch<{ success: boolean }>(`/friends/${uid}`, {
@@ -105,7 +110,7 @@ export async function removeFriend(uid: string): Promise<{ success: boolean }> {
 }
 
 /**
- * Block another user.
+ * Başka bir kullanıcıyı engeller.
  */
 export async function blockUser(uid: string): Promise<{ success: boolean }> {
   return workerFetch<{ success: boolean }>(`/friends/block/${uid}`, {
@@ -115,7 +120,7 @@ export async function blockUser(uid: string): Promise<{ success: boolean }> {
 }
 
 /**
- * Unblock a blocked user.
+ * Engellenmiş bir kullanıcının engelini kaldırır.
  */
 export async function unblockUser(uid: string): Promise<{ success: boolean }> {
   return workerFetch<{ success: boolean }>(`/friends/block/${uid}`, {
@@ -125,7 +130,7 @@ export async function unblockUser(uid: string): Promise<{ success: boolean }> {
 }
 
 /**
- * Fetch list of blocked users.
+ * Engellenmiş kullanıcıların listesini getirir.
  */
 export async function getBlockedUsers(): Promise<{ success: boolean; blocked: Friend[] }> {
   return workerFetch<{ success: boolean; blocked: Friend[] }>('/friends/blocked', {
@@ -133,4 +138,5 @@ export async function getBlockedUsers(): Promise<{ success: boolean; blocked: Fr
     requireAuth: true,
   });
 }
+
 

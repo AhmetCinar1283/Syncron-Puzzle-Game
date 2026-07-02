@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, uygulama genelinde çoklu dil (i18n) desteği sağlayan ve 
+ * seçilen dili/çeviri fonksiyonunu (t) alt bileşenlere sunan LanguageContext yapısını içerir.
+ */
+
 'use client';
 
 import {
@@ -19,6 +24,7 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+// Tarayıcı yerel depolama (localStorage) kaydına göre başlangıç dilini (varsayılan 'en') belirler.
 function getInitialLang(): Lang {
   try {
     const stored = localStorage.getItem('lang');
@@ -27,6 +33,7 @@ function getInitialLang(): Lang {
   return 'en';
 }
 
+// Dil durumunu (state) yöneten ve çeviri fonksiyonunu (t) sağlayarak alt bileşenleri sarmalayan sağlayıcı bileşendir.
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(getInitialLang);
 
@@ -47,6 +54,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Dil ve çeviri durumuna erişmek için kullanılan özel React hook'u.
 export function useLanguage() {
   const ctx = useContext(LanguageContext);
   if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
@@ -54,6 +62,7 @@ export function useLanguage() {
 }
 
 /** Shorthand hook — returns just the translate function */
+// Sadece çeviri (translate) fonksiyonunu (t) doğrudan çağırmak için kolaylık sağlayan kısayol hook'u.
 export function useT(): T {
   return useLanguage().t;
 }

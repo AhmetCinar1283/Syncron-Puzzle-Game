@@ -2,9 +2,8 @@ import { getDB } from './schema';
 import type { StoredLevel } from './schema';
 
 /**
- * Saves a new level and inserts its ID at `position` in the order array.
- * `position` is 0-based. Omit / pass undefined to append at the end.
- * Existing entries at or after `position` shift right (no other record updated).
+ * Yeni bir bölüm kaydeder ve ID'sini sıralama dizisinde belirtilen `position` indeksine ekler.
+ * `position` belirtilmezse dizinin sonuna eklenir.
  */
 export async function saveLevelAtPosition(
   levelData: Omit<StoredLevel, 'id' | 'createdAt' | 'updatedAt'>,
@@ -24,7 +23,7 @@ export async function saveLevelAtPosition(
   return id;
 }
 
-/** Updates an existing level's data (keeps its position in order). */
+/** Var olan bir bölümün verilerini günceller (sıralamadaki yerini korur). */
 export async function updateStoredLevel(
   id: number,
   levelData: Omit<StoredLevel, 'id' | 'createdAt' | 'updatedAt'>,
@@ -35,7 +34,7 @@ export async function updateStoredLevel(
   await db.levels.update(id, { ...levelData, updatedAt: Date.now() });
 }
 
-/** Removes a level from both the levels table and the order array. */
+/** Bir bölümü hem levels tablosundan hem de sıralama dizisinden siler. */
 export async function deleteStoredLevel(id: number): Promise<void> {
   const db = getDB();
   await db.levels.delete(id);
@@ -45,15 +44,16 @@ export async function deleteStoredLevel(id: number): Promise<void> {
   await db.levelOrder.put({ id: 1, order });
 }
 
-/** Updates only the requestId field on a stored level (tracks Firestore submission). */
+/** Bir bölümün sadece requestId alanını günceller (Firestore'a gönderim sürecini izlemek için). */
 export async function setLevelRequestId(id: number, requestId: string): Promise<void> {
   const db = getDB();
   await db.levels.update(id, { requestId });
 }
 
-/** Clears all Dexie tables and localStorage (dev / debug utility). */
+/** Tüm Dexie tablolarını ve localStorage'ı temizler (geliştirici/hata ayıklama aracıdır). */
 export async function localClear(): Promise<void> {
   const db = getDB();
   await Promise.all(db.tables.map((t) => t.clear()));
   localStorage.clear();
 }
+

@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, kullanıcıların teknik veya genel sorunlar için 
+ * yeni destek talepleri (support tickets) oluşturmasını sağlayan API ucunu tanımlar.
+ */
+
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { createTicketSchema } from '../schemas/tickets';
@@ -14,6 +19,7 @@ const ticketRateLimits = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_TICKETS = 2;
 
+// Kullanıcının gönderdiği destek talebini doğrular, hız limitini kontrol eder ve Firestore'a kaydeder.
 ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   console.log(`[CreateTicket] Handling ticket creation request for UID: ${uid}`);

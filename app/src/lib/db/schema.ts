@@ -1,12 +1,20 @@
+/**
+ * DOSYA AMACI: Bu dosya, Dexie.js (IndexedDB) kullanarak tarayıcı tarafında
+ * yerel veritabanı şemasını, tablo yapılarını ve versiyon geçmişini tanımlar.
+ */
+
 import Dexie, { type Table } from 'dexie';
 import type { LevelEdges, CellType, LevelObjectDef, LevelTargetDef, BoxDef, Position, ConveyorCellConfig, TrampolineCellConfig, DeflectorCellConfig } from '../../games/types';
 export type LauncherCellConfig = any;
 
-// ─── Stored Types ─────────────────────────────────────────────────────────────
+// ─── Stored Types (Veri Modelleri) ─────────────────────────────────────────────
 
+/**
+ * Yerel olarak saklanan bir bölümün (level) şeması.
+ */
 export interface StoredLevel {
-  id?: number;           // auto-increment Dexie ID
-  firestoreId?: string;  // Firestore document ID (preset levels only)
+  id?: number;           // Dexie otomatik artan birincil anahtar ID'si
+  firestoreId?: string;  // Firestore doküman ID'si (yalnızca hazır bölümler için)
   lockedCells?: Record<string, boolean>;
   name: string;
   width: number;
@@ -22,48 +30,58 @@ export interface StoredLevel {
   launcherConfig?: LauncherCellConfig[];
   trampolineConfig?: TrampolineCellConfig[];
   deflectorConfig?: DeflectorCellConfig[];
-  creatorName?: string;  // Attribution for community-submitted levels
-  difficulty?: 1 | 2 | 3 | 4;  // 1=Kolay, 2=Orta, 3=Zor, 4=Çok Zor
-  part?: string;          // Firestore part id (preset levels only)
-  requestId?: string;     // Firestore levelRequests doc ID (tracks pending submission)
-  isNeedSync?: boolean;   // true = fetch fresh full data from Firestore before playing
-  rooms?: any[];          // Multi-room support list
+  creatorName?: string;  // Topluluk tarafından oluşturulan bölümler için oluşturan kişi
+  difficulty?: 1 | 2 | 3 | 4;  // Zorluk derecesi: 1=Kolay, 2=Orta, 3=Zor, 4=Çok Zor
+  version?: number;       // Bölüm versiyon numarası (istatistik takibi için)
+  part?: string;          // Bölüm paketi ID'si (kampanya bölümleri için)
+  requestId?: string;     // Bekleyen onay isteklerini takip etmek için Firestore levelRequests ID'si
+  isNeedSync?: boolean;   // true = oynamadan önce Firestore'dan güncel veriyi çek
+  rooms?: any[];          // Çoklu oda (multi-room) desteği listesi
   controlMode?: 'all_rooms' | 'selected_room';
   initialControlledRooms?: string[];
+  gameNotes?: string;
+  creatorNotes?: string;
   createdAt: number;
   position: number;
   updatedAt: number;
 }
 
 /**
- * Single record (id: 1) storing the display order of level IDs.
- * Insertion/reorder only touches this one record — no bulk updates needed.
+ * Bölümlerin ekrandaki görüntülenme sırasını tutan tek bir kayıt (id: 1).
+ * Sıralama güncellemeleri yalnızca bu kaydı değiştirir.
  */
 export interface LevelOrderRecord {
   id: 1;
-  order: number[]; // StoredLevel IDs in display order
+  order: number[]; // Görüntülenme sırasına göre StoredLevel ID listesi
 }
 
-/** Cached record of a completed level, synced from Firestore. */
+/** 
+ * Tamamlanan bölümlerin yerel önbellek kaydı.
+ */
 export interface StoredPlayedLevel {
-  levelId: string;     // primary key = Firestore doc ID
+  levelId: string;     // Birincil anahtar = Firestore doküman ID'si
   score: number;
-  timeSpent: number;   // seconds
-  completedAt: number; // ms
-  updatedAt: number;   // ms
-  moveCount?: number;  // best move count achieved
-  moves?: string[];    // ordered move directions, e.g. ['up', 'right', ...]
-  stars?: 1 | 2 | 3;  // best star rating achieved (1–3)
+  timeSpent: number;   // Saniye cinsinden harcanan süre
+  completedAt: number; // ms zaman damgası
+  updatedAt: number;   // ms zaman damgası
+  moveCount?: number;  // Elde edilen en iyi hamle sayısı
+  moves?: string[];    // Hamlelerin yön dizisi (örn: ['up', 'right', ...])
+  stars?: 1 | 2 | 3;   // Kazanılan en iyi yıldız derecesi (1-3 arası)
 }
 
-/** Per-collection sync metadata — replaces localStorage-based cooldown tracking. */
+/** 
+ * Koleksiyon bazlı senkronizasyon zaman damgalarını tutan tablo şeması.
+ */
 export interface SyncMetaRecord {
-  collection: string; // primary key (e.g. "part_1", "playedLevels")
-  lastSync: number;   // ms timestamp of last successful sync
+  collection: string; // Birincil anahtar (örn: "part_1", "playedLevels")
+  lastSync: number;   // En son başarılı senkronizasyonun ms zaman damgası
 }
 
-// ─── Database ─────────────────────────────────────────────────────────────────
+// ─── Database (Veritabanı Sınıfı) ───────────────────────────────────────────────
 
+/**
+ * Uygulamanın IndexedDB veritabanı yönetim sınıfı.
+ */
 export class KnowAndConquerDB extends Dexie {
   levels!: Table<StoredLevel>;
   levelOrder!: Table<LevelOrderRecord>;
@@ -73,14 +91,11 @@ export class KnowAndConquerDB extends Dexie {
 
   constructor() {
     super('KnowAndConquerDB');
+    // Versiyon 1-9: Veritabanı şema versiyon geçmişi
     this.version(1).stores({ levels: '++id', levelOrder: 'id' });
-    // Version 2: added initialBoxes and conveyorPowerRequired (optional fields, no migration needed)
     this.version(2).stores({ levels: '++id', levelOrder: 'id' });
-    // Version 3: separate table for preset (campaign) levels — read-only for users
     this.version(3).stores({ levels: '++id', levelOrder: 'id', presetLevels: '++id' });
-    // Version 4: firestoreId index on presetLevels for fast Firestore sync matching
     this.version(4).stores({ levels: '++id', levelOrder: 'id', presetLevels: '++id, firestoreId' });
-    // Version 5: syncMeta (per-collection lastSync) + playedLevels cache from Firestore
     this.version(5).stores({
       levels: '++id',
       levelOrder: 'id',
@@ -88,7 +103,6 @@ export class KnowAndConquerDB extends Dexie {
       syncMeta: 'collection',
       playedLevels: 'levelId, updatedAt',
     });
-    // Version 6: creatorName field added to StoredLevel (optional, no destructive migration needed)
     this.version(6).stores({
       levels: '++id',
       levelOrder: 'id',
@@ -96,7 +110,6 @@ export class KnowAndConquerDB extends Dexie {
       syncMeta: 'collection',
       playedLevels: 'levelId, updatedAt',
     });
-    // Version 7: difficulty, part, requestId fields (optional, no destructive migration needed)
     this.version(7).stores({
       levels: '++id',
       levelOrder: 'id',
@@ -104,7 +117,6 @@ export class KnowAndConquerDB extends Dexie {
       syncMeta: 'collection',
       playedLevels: 'levelId, updatedAt',
     });
-    // Version 8: isNeedSync field for lazy Firestore fetch (optional, no destructive migration needed)
     this.version(8).stores({
       levels: '++id',
       levelOrder: 'id',
@@ -112,7 +124,6 @@ export class KnowAndConquerDB extends Dexie {
       syncMeta: 'collection',
       playedLevels: 'levelId, updatedAt',
     });
-    // Version 9: stars field added to StoredPlayedLevel (optional, no destructive migration needed)
     this.version(9).stores({
       levels: '++id',
       levelOrder: 'id',
@@ -120,9 +131,8 @@ export class KnowAndConquerDB extends Dexie {
       syncMeta: 'collection',
       playedLevels: 'levelId, updatedAt',
     });
-    // Version 10: playedLevels canonical source moved from Firestore → Cloudflare D1.
-    // The old syncMeta key 'playedLevels' (Firestore cursor) is deleted so the
-    // new D1 sync (keyed 'playedLevels_d1') triggers a full re-fetch on first open.
+    // Versiyon 10: Oynanan bölümler kaynağının Firestore'dan Cloudflare D1'e taşınması.
+    // Eski Firestore imlecini siler, böylece yeni D1 senkronizasyonu tam çekim tetikler.
     this.version(10).stores({
       levels: '++id',
       levelOrder: 'id',
@@ -130,15 +140,16 @@ export class KnowAndConquerDB extends Dexie {
       syncMeta: 'collection',
       playedLevels: 'levelId, updatedAt',
     }).upgrade((tx) => {
-      // Remove the stale Firestore sync cursor so the user gets a clean D1 full-sync.
+      // Temiz bir D1 tam senkronizasyonu tetiklemek için eski imleci temizler
       return tx.table('syncMeta').delete('playedLevels');
     });
   }
 }
 
-// Lazy singleton — only instantiated in browser
+// Lazy singleton - Yalnızca tarayıcı ortamında başlatılır
 let _db: KnowAndConquerDB | undefined;
 export function getDB(): KnowAndConquerDB {
   if (!_db) _db = new KnowAndConquerDB();
   return _db;
 }
+

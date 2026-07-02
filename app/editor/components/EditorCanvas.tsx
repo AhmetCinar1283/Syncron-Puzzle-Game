@@ -36,6 +36,7 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
     edges,
     setEdges,
     optimalSolutionTrajectory,
+    showSolutionPath,
     fogOfWar,
     setFogOfWar,
     fogVisibilityDistance,
@@ -291,98 +292,114 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
           const activeRoom = rooms.find((r) => r.id === activeRoomId);
           if (!activeRoom) return null;
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderLeft: '1px solid rgba(148, 163, 184, 0.15)', paddingLeft: 12, marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderLeft: '1px solid rgba(148, 163, 184, 0.15)', paddingLeft: 12, marginLeft: 'auto', flexWrap: 'wrap' }}>
               
-              {/* X position input container */}
+              {/* Control Mode Segmented Buttons */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'rgba(15, 23, 42, 0.6)',
+                borderRadius: 8,
+                border: '1px solid rgba(148, 163, 184, 0.15)',
+                padding: 2,
+                height: 32,
+                boxSizing: 'border-box',
+              }}>
+                <button
+                  onClick={() => setControlMode('all_rooms')}
+                  style={{
+                    background: controlMode === 'all_rooms' ? '#00c4ff' : 'transparent',
+                    border: 'none',
+                    color: controlMode === 'all_rooms' ? '#0f172a' : '#94a3b8',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow: controlMode === 'all_rooms' ? '0 0 8px rgba(0, 196, 255, 0.3)' : 'none',
+                  }}
+                >
+                  All Rooms
+                </button>
+                <button
+                  onClick={() => setControlMode('selected_room')}
+                  style={{
+                    background: controlMode === 'selected_room' ? '#00c4ff' : 'transparent',
+                    border: 'none',
+                    color: controlMode === 'selected_room' ? '#0f172a' : '#94a3b8',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow: controlMode === 'selected_room' ? '0 0 8px rgba(0, 196, 255, 0.3)' : 'none',
+                  }}
+                >
+                  Selected Room
+                </button>
+              </div>
+
+              {/* Unified Coordinates Card */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(15, 23, 42, 0.5)',
-                padding: '5px 10px',
-                borderRadius: 6,
+                background: 'rgba(15, 23, 42, 0.6)',
+                padding: '0 8px',
+                borderRadius: 8,
                 border: '1px solid rgba(148, 163, 184, 0.15)',
                 height: 32,
                 boxSizing: 'border-box',
               }}>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 800 }}>X:</span>
+                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', marginRight: 4 }}>Room POS:</span>
+                
+                <span style={{ fontSize: 10, color: '#475569', fontWeight: 800 }}>X</span>
                 <input
                   type="number"
                   value={activeRoom.x}
                   onChange={(e) => updateRoomLayoutPosition(activeRoom.id, Number(e.target.value), activeRoom.y)}
                   style={{
-                    background: 'transparent',
-                    border: 'none',
+                    background: 'rgba(15, 23, 42, 0.4)',
+                    border: '1px solid rgba(148, 163, 184, 0.1)',
+                    borderRadius: 4,
                     color: '#e2e8f0',
                     width: 32,
-                    fontSize: 12,
-                    fontWeight: 600,
+                    height: 22,
+                    fontSize: 11,
+                    fontWeight: 700,
                     textAlign: 'center',
                     outline: 'none',
                   }}
                 />
-              </div>
 
-              {/* Y position input container */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'rgba(15, 23, 42, 0.5)',
-                padding: '5px 10px',
-                borderRadius: 6,
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                height: 32,
-                boxSizing: 'border-box',
-              }}>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 800 }}>Y:</span>
+                <span style={{ fontSize: 10, color: '#475569', fontWeight: 800, margin: '0 2px' }}>×</span>
+
+                <span style={{ fontSize: 10, color: '#475569', fontWeight: 800 }}>Y</span>
                 <input
                   type="number"
                   value={activeRoom.y}
                   onChange={(e) => updateRoomLayoutPosition(activeRoom.id, activeRoom.x, Number(e.target.value))}
                   style={{
-                    background: 'transparent',
-                    border: 'none',
+                    background: 'rgba(15, 23, 42, 0.4)',
+                    border: '1px solid rgba(148, 163, 184, 0.1)',
+                    borderRadius: 4,
                     color: '#e2e8f0',
                     width: 32,
-                    fontSize: 12,
-                    fontWeight: 600,
+                    height: 22,
+                    fontSize: 11,
+                    fontWeight: 700,
                     textAlign: 'center',
                     outline: 'none',
                   }}
                 />
-              </div>
-
-              {/* CONTROL mode selector container */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'rgba(15, 23, 42, 0.5)',
-                padding: '5px 10px',
-                borderRadius: 6,
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                height: 32,
-                boxSizing: 'border-box',
-              }}>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 800 }}>CONTROL:</span>
-                <select
-                  value={controlMode}
-                  onChange={(e) => setControlMode(e.target.value as any)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#e2e8f0',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    outline: 'none',
-                    cursor: 'pointer',
-                    paddingRight: 4,
-                  }}
-                >
-                  <option value="all_rooms" style={{ background: '#0f172a' }}>All Rooms</option>
-                  <option value="selected_room" style={{ background: '#0f172a' }}>Selected Room</option>
-                </select>
               </div>
 
               {/* FOW premium toggle container */}
@@ -394,17 +411,17 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
                   gap: 8,
                   cursor: 'pointer',
                   userSelect: 'none',
-                  padding: '5px 10px',
-                  borderRadius: 6,
-                  background: 'rgba(30, 41, 59, 0.3)',
-                  border: `1px solid ${fogOfWar ? 'rgba(0, 196, 255, 0.3)' : 'rgba(148, 163, 184, 0.15)'}`,
+                  padding: '0 10px',
+                  borderRadius: 8,
+                  background: fogOfWar ? 'rgba(0, 196, 255, 0.1)' : 'rgba(30, 41, 59, 0.3)',
+                  border: `1px solid ${fogOfWar ? '#00c4ff' : 'rgba(148, 163, 184, 0.15)'}`,
                   height: 32,
                   boxSizing: 'border-box',
                   transition: 'all 0.2s ease',
-                  boxShadow: fogOfWar ? '0 0 10px rgba(0, 196, 255, 0.1)' : 'none',
+                  boxShadow: fogOfWar ? '0 0 10px rgba(0, 196, 255, 0.15)' : 'none',
                 }}
               >
-                <span style={{ fontSize: 10, color: fogOfWar ? '#00c4ff' : '#94a3b8', fontWeight: 800, letterSpacing: '0.05em' }}>FOW:</span>
+                <span style={{ fontSize: 10, color: fogOfWar ? '#00c4ff' : '#94a3b8', fontWeight: 800, letterSpacing: '0.05em' }}>FOG OF WAR</span>
                 <div style={{
                   width: 32,
                   height: 18,
@@ -412,7 +429,6 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
                   backgroundColor: fogOfWar ? '#00c4ff' : '#1e293b',
                   position: 'relative',
                   transition: 'background-color 0.2s ease',
-                  boxShadow: fogOfWar ? '0 0 8px rgba(0, 196, 255, 0.4)' : 'none',
                 }}>
                   <div style={{
                     width: 14,
@@ -430,34 +446,35 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
               {/* Fog of War specific options */}
               {fogOfWar && (
                 <>
-                  {/* Fog Visibility Distance container */}
+                  {/* Fog Visibility Distance Range Slider */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6,
-                    background: 'rgba(15, 23, 42, 0.5)',
-                    padding: '5px 10px',
-                    borderRadius: 6,
+                    gap: 10,
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    padding: '0 12px',
+                    borderRadius: 8,
                     border: '1px solid rgba(148, 163, 184, 0.15)',
                     height: 32,
                     boxSizing: 'border-box',
                   }}>
-                    <span style={{ fontSize: 10, color: '#64748b', fontWeight: 800 }}>DIST:</span>
+                    <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                      DIST: <span style={{ color: '#00c4ff', fontWeight: 'bold' }}>{fogVisibilityDistance}</span>
+                    </span>
                     <input
-                      type="number"
+                      type="range"
                       step="0.5"
                       min="1"
                       max="10"
                       value={fogVisibilityDistance}
                       onChange={(e) => setFogVisibilityDistance(Number(e.target.value))}
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#e2e8f0',
-                        width: 36,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        textAlign: 'center',
+                        width: 70,
+                        accentColor: '#00c4ff',
+                        cursor: 'pointer',
+                        height: 4,
+                        borderRadius: 2,
+                        background: '#1e293b',
                         outline: 'none',
                       }}
                     />
@@ -472,18 +489,18 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
                       gap: 8,
                       cursor: 'pointer',
                       userSelect: 'none',
-                      padding: '5px 10px',
-                      borderRadius: 6,
-                      background: 'rgba(30, 41, 59, 0.3)',
-                      border: `1px solid ${fogKeepRevealed ? 'rgba(0, 196, 255, 0.3)' : 'rgba(148, 163, 184, 0.15)'}`,
+                      padding: '0 10px',
+                      borderRadius: 8,
+                      background: fogKeepRevealed ? 'rgba(0, 196, 255, 0.1)' : 'rgba(30, 41, 59, 0.3)',
+                      border: `1px solid ${fogKeepRevealed ? '#00c4ff' : 'rgba(148, 163, 184, 0.15)'}`,
                       height: 32,
                       boxSizing: 'border-box',
                       transition: 'all 0.2s ease',
-                      boxShadow: fogKeepRevealed ? '0 0 10px rgba(0, 196, 255, 0.1)' : 'none',
+                      boxShadow: fogKeepRevealed ? '0 0 10px rgba(0, 196, 255, 0.15)' : 'none',
                     }}
                     title="Daha önce açılan yerler hafif görünür kalmaya devam etsin mi? Kapatılırsa sadece anlık görüş alanındaki hücreler görünür, arkası tekrar tamamen kararır."
                   >
-                    <span style={{ fontSize: 10, color: fogKeepRevealed ? '#00c4ff' : '#94a3b8', fontWeight: 800, letterSpacing: '0.05em' }}>PERSIST:</span>
+                    <span style={{ fontSize: 10, color: fogKeepRevealed ? '#00c4ff' : '#94a3b8', fontWeight: 800, letterSpacing: '0.05em' }}>PERSIST</span>
                     <div style={{
                       width: 32,
                       height: 18,
@@ -491,7 +508,6 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
                       backgroundColor: fogKeepRevealed ? '#00c4ff' : '#1e293b',
                       position: 'relative',
                       transition: 'background-color 0.2s ease',
-                      boxShadow: fogKeepRevealed ? '0 0 8px rgba(0, 196, 255, 0.4)' : 'none',
                     }}>
                       <div style={{
                         width: 14,
@@ -520,7 +536,7 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
         margin: '24px auto',
         flexShrink: 0,
       }}>
-        {optimalSolutionTrajectory && (() => {
+        {showSolutionPath && optimalSolutionTrajectory && (() => {
           const getOffsetPoints = (
             points: { roomId?: string; row: number; col: number; stepIndex?: number }[],
             isPlayer2: boolean

@@ -1,4 +1,10 @@
 /**
+ * DOSYA AMACI: Bu dosya, destek taleplerine (support tickets) admin tarafından verilen 
+ * yanıtları kullanıcılara e-posta bildirimi (TR ve EN olarak) göndermek için 
+ * Resend API entegrasyonunu ve e-posta şablonlarını içerir.
+ */
+
+/**
  * Resend email module for support ticket reply notifications.
  *
  * Setup (one-time):
@@ -49,6 +55,7 @@ export interface TicketEmailParams {
  * Callers should catch the error, log it with functions.logger.error(),
  * and continue — email failure must not roll back the ticket message.
  */
+// Destek talebi yanıt e-postasını Resend API kullanarak gönderir.
 export async function sendSupportReplyEmail(
   params: TicketEmailParams,
   resendApiKey: string,
@@ -104,6 +111,7 @@ interface HtmlParams {
  * Apple Mail. Uses table-based layout and inline styles only.
  * Content is bilingual (TR / EN) since user language is not stored in tickets.
  */
+// E-posta istemcileri için HTML formatında iki dilli şablon oluşturur.
 function buildEmailHtml(p: HtmlParams): string {
   return `<!DOCTYPE html>
 <html lang="tr">
@@ -206,6 +214,7 @@ interface TextParams {
 }
 
 /** Plain-text fallback for email clients that don't render HTML. */
+// HTML desteklemeyen e-posta istemcileri için düz metin (plain text) şablon oluşturur.
 function buildEmailText(p: TextParams): string {
   return [
     `Merhaba / Hello, ${p.displayName}`,
@@ -238,6 +247,7 @@ function buildEmailText(p: TextParams): string {
  * Escapes HTML special characters to prevent XSS in user-supplied content
  * embedded in the email body.
  */
+// Kullanıcı girdilerindeki özel HTML karakterlerini XSS saldırılarına karşı temizler.
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')

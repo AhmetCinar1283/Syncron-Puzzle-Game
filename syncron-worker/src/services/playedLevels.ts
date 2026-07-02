@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, oyuncuların bitirdiği seviyelere (played_levels) ait verileri 
+ * okuyan, güncelleyen (upsert), silen ve silinen seviyeleri (tombstone) takip eden veritabanı işlemlerini barındırır.
+ */
+
+/**
  * D1 service layer for the `played_levels` and `deleted_levels` tables.
  *
  * All playedLevel writes go through here — no Firestore subcollection involvement.
@@ -34,6 +39,7 @@ export interface UpsertPlayedLevelParams {
  * Fetch a single played_levels row for (uid, levelId).
  * Returns null if the user has not yet completed this level.
  */
+// Kullanıcının belirli bir seviyeyi bitirip bitirmediğini kontrol etmek için oynama kaydını sorgular.
 export async function getPlayedLevel(
   db: D1Database,
   uid: string,
@@ -56,6 +62,7 @@ export async function getPlayedLevel(
  * Returns rows in ascending `updated_at` order so the client can use the
  * last row's `updated_at` as its next `since` cursor if needed.
  */
+// Belirli bir zaman damgasından (since) sonra tamamlanan veya güncellenen seviyeleri listeler (senkronizasyon için).
 export async function getPlayedLevelsSince(
   db: D1Database,
   uid: string,
@@ -90,6 +97,7 @@ export async function getPlayedLevelsSince(
  * Return level IDs that were deleted after `since` (tombstone lookup for delta sync).
  * If `since` is null, returns ALL deleted level IDs.
  */
+// Belirli bir zaman damgasından (since) sonra silinmiş seviyelerin kimliklerini (IDs) getirir.
 export async function getDeletedLevelsSince(
   db: D1Database,
   since: string | null,
@@ -123,6 +131,7 @@ export async function getDeletedLevelsSince(
  *   - completed_at: keep the original first-completion timestamp
  *   - updated_at: always set to now
  */
+// Seviye bitirme kaydını veritabanına ekler veya günceller; ilk kez bitirildiyse wasFirstCompletion: true döner.
 export async function upsertPlayedLevel(
   db: D1Database,
   params: UpsertPlayedLevelParams,
@@ -190,6 +199,7 @@ export interface LevelDeletionImpact {
  * Reads all played_levels rows for a level before deleting them.
  * Returns the data needed to roll back leaderboard counters.
  */
+// Bir seviye silinmeden önce, bu seviyeden etkilenen oyuncuları ve dünya rekoru sahibini tespit eder.
 export async function getLevelDeletionImpact(
   db: D1Database,
   levelId: string,
@@ -211,6 +221,7 @@ export async function getLevelDeletionImpact(
  * Delete all played_levels rows for a level and record the tombstone.
  * Call this AFTER rolling back leaderboard counters.
  */
+// Seviyeye ait tüm oynama kayıtlarını siler ve silinme geçmişine (tombstones) ekler.
 export async function deleteLevelRecords(
   db: D1Database,
   levelId: string,

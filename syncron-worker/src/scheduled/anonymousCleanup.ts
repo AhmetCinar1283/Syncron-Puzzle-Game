@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, inaktif ve eski anonim kullanıcıların Cloudflare D1 veritabanındaki 
+ * ilişkili tüm verilerini (loglar, skorlar, arkadaşlıklar vb.) temizleyen zamanlanmış görevi içerir.
+ */
+
+/**
  * Anonymous User Cleanup — Scheduled Cron Trigger
  *
  * Runs daily at 04:00 UTC via Cloudflare Cron Triggers.
@@ -29,6 +34,7 @@ const ANONYMOUS_RETENTION_DAYS = 30;
 const BATCH_SIZE = 200; // UIDs per iteration to stay within D1 limits
 const MAX_ITERATIONS = 500; // Safety guard to prevent infinite loops
 
+// 30 günden eski inaktif anonim kullanıcıların verilerini D1 veritabanından toplu şekilde siler.
 export async function runAnonymousCleanup(env: Env): Promise<void> {
   const cutoff = new Date(Date.now() - ANONYMOUS_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 

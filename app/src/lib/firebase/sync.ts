@@ -13,14 +13,17 @@ import type { StoredLevel, StoredPlayedLevel } from '../db';
 import type { LevelOrderEntry } from './admin';
 import type { LevelEdges } from '../../games/types';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants (Sabitler) ──────────────────────────────────────────────────────
 
-const META_SYNC_COOLDOWN_MS = 5 * 60 * 1000;  // 5 minutes
-const PLAYED_SYNC_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const META_SYNC_COOLDOWN_MS = 5 * 60 * 1000;  // 5 dakika (üst veri senkronizasyon bekleme süresi)
+const PLAYED_SYNC_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 saat
 const LEVELS_META_SYNC_KEY = 'levelsMeta';
 
-// ─── Dexie syncMeta helpers ───────────────────────────────────────────────────
+// ─── Dexie syncMeta helpers (Senkronizasyon Yardımcıları) ─────────────────────────
 
+/**
+ * Belirtilen senkronizasyon anahtarının en son başarılı çalışma zaman damgasını okur.
+ */
 async function readLastSync(key: string): Promise<number> {
   try {
     const record = await getDB().syncMeta.get(key);
@@ -30,13 +33,16 @@ async function readLastSync(key: string): Promise<number> {
   }
 }
 
+/**
+ * Belirtilen senkronizasyon anahtarının en son başarılı çalışma zaman damgasını kaydeder.
+ */
 async function writeLastSync(key: string, ts: number): Promise<void> {
   try {
     await getDB().syncMeta.put({ collection: key, lastSync: ts });
-  } catch { /* ignore write failures */ }
+  } catch { /* yazma hataları yoksayılır */ }
 }
 
-// ─── Timestamp helper ─────────────────────────────────────────────────────────
+// ─── Timestamp helper (Zaman Damgası Yardımcısı) ──────────────────────────────────
 
 function toMs(v: unknown): number {
   if (v instanceof Timestamp) return v.toMillis();
@@ -44,11 +50,11 @@ function toMs(v: unknown): number {
   return 0;
 }
 
-// ─── Firestore → Dexie helpers ────────────────────────────────────────────────
+// ─── Firestore → Dexie helpers (Eşleme Yardımcıları) ──────────────────────────────
 
 /**
- * Converts a raw Firestore level document to a StoredLevel for Dexie.
- * Timestamps are converted to ms numbers.
+ * Ham Firestore bölüm dokümanını yerel Dexie StoredLevel formatına dönüştürür.
+ * Zaman damgaları ms cinsinden sayılara dönüştürülür.
  */
 function firestoreDocToStoredLevel(
   firestoreId: string,
@@ -72,27 +78,30 @@ function firestoreDocToStoredLevel(
     trampolineConfig: data.trampolineConfig,
     creatorName: data.creatorName ?? undefined,
     difficulty: data.difficulty ?? undefined,
+    version: data.version ?? 1,
     position: data.position,
     part: data.part,
     rooms: data.rooms ?? null,
     controlMode: data.controlMode ?? null,
     initialControlledRooms: data.initialControlledRooms ?? null,
+    gameNotes: data.gameNotes ?? '',
+    creatorNotes: data.creatorNotes ?? '',
     isNeedSync: false,
     createdAt: toMs(data.createdAt),
     updatedAt: toMs(data.updatedAt),
   };
 }
 
-// ─── Metadata sync (levels page) ─────────────────────────────────────────────
+// ─── Metadata sync (Bölümler Sayfası Senkronizasyonu) ────────────────────────────
 
 /**
- * Lightweight sync run on every /levels page open (5-minute cooldown).
+ * /levels sayfası her açıldığında çalışan hafif senkronizasyon (5 dakikalık bekleme süresi vardır).
+ * Son senkronizasyondan sonra güncellenen levelParts dokümanlarını okur,
+ * yeni eklenen bölümler için yerel veritabanında geçici taslaklar oluşturur
+ * veya güncellenmesi gerekenleri isNeedSync=true olarak işaretler.
+ * levels/ koleksiyonunu doğrudan okumaz (performans tasarrufu).
  *
- * Queries levelParts that changed since last sync, then for each entry in
- * their order arrays: inserts new metadata-only records or marks changed
- * records as isNeedSync=true. Does NOT read the levels/ collection.
- *
- * @param force — skips the 5-minute cooldown (used by manual ↻ button).
+ * @param force true ise 5 dakikalık bekleme süresini yoksayar.
  */
 export async function syncLevelsMeta(force = false): Promise<void> {
   const lastSyncMs = force ? 0 : await readLastSync(LEVELS_META_SYNC_KEY);
@@ -100,7 +109,7 @@ export async function syncLevelsMeta(force = false): Promise<void> {
 
   const dexie = getDB();
 
-  // Query only parts that changed since last sync (or all on first run)
+  // Yalnızca son senkronizasyondan sonra değişen paketleri (part'ları) sorgular
   const partsSnap = lastSyncMs > 0
     ? await getDocs(
         query(
@@ -127,7 +136,7 @@ export async function syncLevelsMeta(force = false): Promise<void> {
       const partNumber = partDoc.id;
 
       if (!existing) {
-        // New level — insert metadata-only placeholder; game page will lazy-fetch full data
+        // Yeni bölüm: Geçici taslak oluşturulur, tam veriler oyun oynanırken lazily getirilecektir (isNeedSync: true)
         const placeholder: Omit<StoredLevel, 'id'> = {
           firestoreId: eid,
           name: isLegacy ? '' : entry.name,
@@ -147,7 +156,7 @@ export async function syncLevelsMeta(force = false): Promise<void> {
         };
         await dexie.presetLevels.add(placeholder);
       } else {
-        // Existing record — mark as stale if the entry's updatedAt moved forward
+        // Var olan kayıt: updatedAt tarihi ilerlemişse veya eski formattaysa güncellenmek üzere isNeedSync=true yapılır
         if (entryUpdatedAt > (existing.updatedAt ?? 0) || isLegacy) {
           await dexie.presetLevels.update(existing.id!, {
             name: isLegacy ? existing.name : entry.name,
@@ -161,7 +170,7 @@ export async function syncLevelsMeta(force = false): Promise<void> {
             position: isLegacy ? existing.position : entry.position,
           });
         } else if (existing.part !== partNumber || (!isLegacy && entry.position !== existing.position)) {
-          // Part field or position missing/wrong — patch without marking stale
+          // Sadece paket no veya pozisyon değişmişse, taslağı bozmadan günceller
           await dexie.presetLevels.update(existing.id!, {
             part: partNumber,
             position: isLegacy ? existing.position : entry.position,
@@ -174,12 +183,11 @@ export async function syncLevelsMeta(force = false): Promise<void> {
   await writeLastSync(LEVELS_META_SYNC_KEY, Date.now());
 }
 
-// ─── Lazy level fetch (game page) ─────────────────────────────────────────────
+// ─── Lazy level fetch (Oyun Sayfası Lazy Yükleme) ──────────────────────────────────
 
 /**
- * Fetches full level data from Firestore and updates the Dexie presetLevels record.
- * Called by game/page.tsx when a level has isNeedSync=true or missing grid data.
- * Clears isNeedSync after a successful fetch.
+ * Firestore'dan bölümün tüm detaylı verilerini çeker ve Dexie presetLevels kaydını günceller.
+ * Bölüm ilk defa açıldığında veya güncellendiğinde tetiklenir, ardından isNeedSync temizlenir.
  */
 export async function fetchAndCacheLevel(
   firestoreId: string,
@@ -194,11 +202,11 @@ export async function fetchAndCacheLevel(
   const dexie = getDB();
   const existing = await dexie.presetLevels.get(dexieId);
   if (existing) {
-    // Preserve section/part and position as they are managed via levelParts metadata
+    // levelParts üzerinden yönetilen part ve position değerlerini korur
     level.part = existing.part;
     level.position = existing.position;
 
-    // Preserve other metadata if they are missing/undefined in the fetched levels doc
+    // Firestore dokümanında eksik olan diğer üst verileri yerel kayıttan korur
     if (level.difficulty === undefined || level.difficulty === null) {
       level.difficulty = existing.difficulty;
     }
@@ -210,18 +218,15 @@ export async function fetchAndCacheLevel(
     }
   }
 
-  await dexie.presetLevels.update(dexieId, level); // includes isNeedSync: false
+  await dexie.presetLevels.update(dexieId, level); // isNeedSync: false olarak günceller
 }
 
-// ─── Played levels sync ───────────────────────────────────────────────────────
+// ─── Played levels sync (Kullanımdan Kaldırılan Eski Senkronizasyon) ───────────────
 
 /**
- * @deprecated Firestore-based playedLevels sync removed in Dexie v10.
- *             Use `syncPlayedLevelsFromWorker` from `@/app/src/lib/sync/playedLevels`
- *             which reads from Cloudflare D1 instead.
- *
- * This function is intentionally left as a no-op to avoid import errors during
- * the migration period. It will be fully removed in a future cleanup.
+ * @deprecated Firestore tabanlı playedLevels senkronizasyonu kaldırıldı (Dexie v10).
+ *             Bunun yerine Cloudflare D1'den çeken `syncPlayedLevelsFromWorker` kullanılır.
+ *             İçe aktarma hatalarını önlemek amacıyla boş (no-op) fonksiyon olarak bırakılmıştır.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function syncPlayedLevels(_uid: string, _force = false): Promise<void> {
@@ -230,3 +235,4 @@ export async function syncPlayedLevels(_uid: string, _force = false): Promise<vo
     'playedLevels are now synced from Cloudflare D1 via syncPlayedLevelsFromWorker.',
   );
 }
+

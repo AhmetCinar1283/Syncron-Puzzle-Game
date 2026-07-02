@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, Firebase Auth kullanarak kullanıcının oturum durumunu (anonim, google, email), 
+ * rolünü ('admin', 'moderator', 'user') ve oturum açma/bağlama/çıkış fonksiyonlarını yöneten AuthContext yapısını içerir.
+ */
+
 'use client';
 
 import {
@@ -26,7 +31,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/app/src/lib/firebase';
-import { createOrUpdateUserDoc } from '@/app/src/lib/firebase/firestore';
+import { createOrUpdateUserDoc, type UserDoc } from '@/app/src/lib/firebase/firestore';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/app/src/store';
 import { setAuthUser, setFirestoreData, resetUser } from '@/app/src/store/userSlice';
@@ -39,12 +44,14 @@ export type { UserRole };
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** True when running inside a Capacitor native app (Android/iOS). */
+// Uygulamanın Capacitor (Android/iOS) üzerinde çalışıp çalışmadığını tespit eder.
 function isNativePlatform(): boolean {
   if (typeof window === 'undefined') return false;
   const cap = (window as any).Capacitor;
   return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
 }
 
+// Kullanıcının oturum açma yöntemini (anonim, google, email) çözümler.
 function resolveAuthProvider(user: User): AuthProviderType {
   if (user.isAnonymous) return 'anonymous';
   const providerIds = user.providerData.map((p) => p.providerId);
@@ -161,14 +168,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (accepted) {
           localStorage.removeItem('accepted_terms');
         }
-        // Only sync Firestore doc for real (non-anonymous) users.
-        // Anonymous users get their doc lazily created by the Worker on first level completion.
+        
+        let snap;
         if (!user.isAnonymous) {
-          await createOrUpdateUserDoc(user, accepted);
+          snap = await createOrUpdateUserDoc(user, accepted);
+        } else {
+          snap = await getDoc(doc(db, 'users', user.uid));
         }
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists()) {
-          const data = snap.data();
+
+        if (snap && snap.exists()) {
+          const data = snap.data() as UserDoc;
           const firestoreRole = (data.role as UserRole) ?? 'user';
           setRole(firestoreRole);
           dispatch(
@@ -176,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: firestoreRole,
               totalScore: data.totalScore ?? 0,
               completedCount: data.completedCount ?? 0,
+              xp: data.xp ?? 0,
               tag: data.tag ?? null,
             }),
           );
@@ -193,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 3. Google sign-in / linking
   // - user === null  → unauthenticated guest  → signInWithPopup / signInWithCredential
   // - user.isAnonymous → anonymous session     → linkWithPopup (preserves UID & data)
+  // Anonim hesabı Google hesabına bağlar (verileri korumak için) veya doğrudan Google ile giriş yapar.
   const linkWithGoogle = useCallback(async () => {
     let credential: ReturnType<typeof GoogleAuthProvider.credential> | null = null;
 
@@ -283,6 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //     user === null    → createUserWithEmailAndPassword (fresh account)
   // - mode 'signin':
   //     always signInWithEmailAndPassword regardless of current session
+  // Anonim hesabı email/şifreye bağlar (register) veya mevcut email hesabına giriş yapar (signin).
   const linkWithEmail = useCallback(
     async (email: string, password: string, mode: 'register' | 'signin') => {
       if (mode === 'register') {
@@ -317,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   // 5. Sign out → user becomes null (unauthenticated), no anonymous re-sign-in
+  // Kullanıcının oturumunu kapatır ve yerel oturum durumunu temizler.
   const signOut = useCallback(async () => {
     dispatch(resetUser());
     await firebaseSignOut(auth);
@@ -348,6 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAuthContext(): AuthContextValue {
+  // AuthContext verilerine ve durumlarına erişmek için kullanılan özel React hook'u.
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuthContext must be used inside <AuthProvider>');
   return ctx;

@@ -13,6 +13,8 @@ import { trackLevelStart, trackLevelComplete, trackLevelFail } from '../../lib/a
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useGamepad } from '@/app/src/hooks/useGamepad';
+import { useAppDispatch } from '@/app/src/store/hooks';
+import { addXpAndScore } from '@/app/src/store/userSlice';
 
 interface GameShellProps {
   level: LevelData;
@@ -28,6 +30,7 @@ const MOVES_LIMIT = 500;
 interface WorkerResult {
   stars: 1 | 2 | 3;
   scoreDelta: number;
+  xpDelta?: number;
   isFirstCompletion: boolean;
   isNewBestSolution: boolean;
   isBestSolution: boolean;
@@ -38,6 +41,7 @@ export default function GameShell({ level, onNextLevel, source }: GameShellProps
   const { state, restart, move, movesHistoryRef } = useGameEngine(level);
   const { play, muted, toggleMute } = useSoundManager();
   const { user } = useAuthContext();
+  const dispatch = useAppDispatch();
   const userRef = useRef(user);
   useEffect(() => { userRef.current = user; }, [user]);
 
@@ -136,6 +140,13 @@ export default function GameShell({ level, onNextLevel, source }: GameShellProps
             const data = await res.json() as { success: boolean } & WorkerResult;
             console.log('[Worker] Response:', data);
             if (!data.success) return;
+
+            // Update Redux state with earned XP and score delta
+            dispatch(addXpAndScore({
+              scoreDelta: data.scoreDelta ?? 0,
+              xpDelta: data.xpDelta ?? 0,
+              completedCountDelta: data.isFirstCompletion ? 1 : 0,
+            }));
 
             // ── Overwrite with server-verified result ─────────────────────────
             await db.playedLevels.put({

@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, liderlik tablosu (leaderboard) verilerini çeken
+ * API istemci fonksiyonunu barındırır.
+ */
+
 import { workerFetch } from './workerClient';
 
 export interface LeaderboardEntry {
@@ -25,6 +30,13 @@ export interface LeaderboardResponse {
   totalPlayers: number;
 }
 
+/**
+ * Belirli bir kategori ve zaman dilimi için liderlik tablosu verilerini getirir.
+ * 
+ * @param category Kategori ('stars' | 'levels' | 'records' | 'creators')
+ * @param period Dönem ('daily' | 'weekly' | 'monthly' | 'all_time')
+ * @param options Arama limit, etrafımdakiler ve sadece arkadaşlar filtreleri
+ */
 export async function getLeaderboard(
   category: 'stars' | 'levels' | 'records' | 'creators',
   period: 'daily' | 'weekly' | 'monthly' | 'all_time',
@@ -50,6 +62,7 @@ export async function getLeaderboard(
   
   return workerFetch<LeaderboardResponse>(path, {
     method: 'GET',
-    requireAuth: false, // Optional: will use auth token if present
+    requireAuth: false, // İsteğe bağlı: Oturum açıksa arka planda auth token gönderilir
   });
 }
+

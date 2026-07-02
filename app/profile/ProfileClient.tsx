@@ -287,6 +287,7 @@ export default function ProfileClient() {
       return {
         score: profileDoc?.totalScore ?? 0,
         completed: profileDoc?.completedCount ?? 0,
+        xp: profileDoc?.xp ?? 0,
       };
     }
     return null;
@@ -736,17 +737,66 @@ export default function ProfileClient() {
             </div>
           )}
 
+          {/* XP Progress Section */}
+          {stats && isOwner && (
+            <div
+              style={{
+                width: '100%',
+                marginTop: '24px',
+                borderTop: '1px solid #111827',
+                paddingTop: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                <span style={{ fontWeight: 800, color: '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  ✨ {t('profile.level')} {Math.floor((stats.xp ?? 0) / 1000) + 1}
+                </span>
+                <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 600 }}>
+                  {(stats.xp ?? 0) % 1000} / 1000 {t('profile.xp')}
+                </span>
+              </div>
+              {/* Progress Bar Container */}
+              <div
+                style={{
+                  width: '100%',
+                  height: '10px',
+                  background: '#111827',
+                  borderRadius: '999px',
+                  overflow: 'hidden',
+                  border: '1.5px solid rgba(168, 85, 247, 0.2)',
+                  boxShadow: '0 0 10px rgba(168, 85, 247, 0.05)',
+                  position: 'relative',
+                }}
+              >
+                {/* Progress Fill */}
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${Math.min(100, Math.max(0, (((stats.xp ?? 0) % 1000) / 1000) * 100))}%`,
+                    background: 'linear-gradient(90deg, #a855f7 0%, #d8b4fe 100%)',
+                    boxShadow: '0 0 8px #a855f7',
+                    borderRadius: '999px',
+                    transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Statistics Grid */}
           {stats && (
             <div
               style={{
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: isOwner ? '1fr 1fr 1fr' : '1fr 1fr',
                 gap: '16px',
-                marginTop: '28px',
-                borderTop: '1px solid #111827',
-                paddingTop: '20px',
+                marginTop: '24px',
+                borderTop: isOwner ? 'none' : '1px solid #111827',
+                paddingTop: isOwner ? '0' : '20px',
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -765,6 +815,16 @@ export default function ProfileClient() {
                   {t('levels.title')}
                 </span>
               </div>
+              {isOwner && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#a855f7', textShadow: '0 0 8px rgba(168, 85, 247, 0.4)' }}>
+                    {stats.xp}
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>
+                    {t('profile.xp')}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

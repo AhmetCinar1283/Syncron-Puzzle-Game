@@ -1,9 +1,13 @@
+/**
+ * DOSYA AMACI: Bu dosya, yönetici (admin) işlemlerini gerçekleştirmek üzere Cloudflare Worker
+ * üzerindeki korumalı API uç noktalarına yetkilendirilmiş istekler gönderen fonksiyonları barındırır.
+ */
+
 import { auth } from '@/app/src/lib/firebase';
 
 /**
- * Proactively fetches a valid Firebase ID Token for the logged-in user.
- * If the current token is close to expiry (less than 5 minutes remaining),
- * it forces a token refresh via `getIdToken(true)` as required.
+ * Giriş yapmış olan yöneticinin Firebase Kimlik Belirtecini (ID Token) getirir.
+ * Eğer belirtecin süresinin dolmasına 5 dakikadan az kaldıysa otomatik yeniler.
  */
 export async function getAdminIdToken(): Promise<string | null> {
   const user = auth.currentUser;
@@ -14,19 +18,19 @@ export async function getAdminIdToken(): Promise<string | null> {
     const expirationTime = new Date(tokenResult.expirationTime).getTime();
     const now = Date.now();
 
-    // If token expires in less than 5 minutes (300,000 ms), force-refresh it
+    // Belirtecin süresi 5 dakikadan az sürede dolacaksa yenilemeye zorla (force refresh)
     const forceRefresh = expirationTime - now < 5 * 60 * 1000;
     return await user.getIdToken(forceRefresh);
   } catch (err) {
     console.error('[adminClient] Error resolving Firebase ID Token:', err);
-    // Fallback: try standard refresh
+    // Hata durumunda alternatif olarak yenilemeye zorlayarak tekrar dener
     return await user.getIdToken(true);
   }
 }
 
 /**
- * Fetch helper for secure admin API endpoints under the Cloudflare Worker.
- * Automatically injects the Authorization: Bearer <token> header and handles baseUrl.
+ * Güvenli yönetici API uç noktalarına HTTP istekleri atmayı sağlayan yardımcı fonksiyon.
+ * İstek başlıklarına (headers) otomatik olarak Bearer token ekler.
  */
 export async function fetchAdminApi<T = any>(
   path: string,
@@ -42,7 +46,7 @@ export async function fetchAdminApi<T = any>(
     process.env.NEXT_PUBLIC_WORKER_API_URL ||
     '';
 
-  // Ensure path starts with /
+  // Yolun '/' ile başladığından emin olunur
   const sanitizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = `${baseUrl}${sanitizedPath}`;
 
@@ -65,7 +69,7 @@ export async function fetchAdminApi<T = any>(
         errorMessage = errorJson.error;
       }
     } catch {
-      // Ignored: keep default message
+      // JSON ayrıştırma hatası yoksayılır, varsayılan mesaj kalır
     }
     throw new Error(errorMessage);
   }
@@ -107,12 +111,18 @@ export interface IssueBanParams {
   expiresAt?: string;
 }
 
+/**
+ * Belirli bir kullanıcının yasaklama (ban) geçmişini getirir.
+ */
 export async function getUserBans(uid: string): Promise<UserBansResponse> {
   return fetchAdminApi<UserBansResponse>(`/admin/users/${uid}/bans`, {
     method: 'GET',
   });
 }
 
+/**
+ * Belirli bir kullanıcıya yeni bir yasaklama uygular.
+ */
 export async function issueUserBan(uid: string, params: IssueBanParams): Promise<{ success: boolean }> {
   return fetchAdminApi<{ success: boolean }>(`/admin/users/${uid}/bans`, {
     method: 'POST',
@@ -120,9 +130,13 @@ export async function issueUserBan(uid: string, params: IssueBanParams): Promise
   });
 }
 
+/**
+ * Belirli bir kullanıcının yasaklamasını kaldırır.
+ */
 export async function liftUserBan(uid: string, banId: string): Promise<{ success: boolean }> {
   return fetchAdminApi<{ success: boolean }>(`/admin/users/${uid}/bans/${banId}/lift`, {
     method: 'POST',
   });
 }
+
 

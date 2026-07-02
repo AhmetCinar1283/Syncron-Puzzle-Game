@@ -105,6 +105,9 @@ export function useGameEngine({
     const [controlledRoomIds, setControlledRoomIds] = useState<string[]>(resolvedInitialControlledRooms);
     const controlledRoomIdsRef = useRef<string[]>(resolvedInitialControlledRooms);
     
+    const historyRef = useRef<{ entities: Entity[]; rooms: Record<string, RoomState>; controlledRoomIds: string[] }[]>([]);
+    const [canUndo, setCanUndo] = useState(false);
+
     const isGameOverRef = useRef(false);
     const isAnimatingInternalRef = useRef(false);
 
@@ -128,6 +131,14 @@ export function useGameEngine({
 
     const executeTurn = useCallback((startingIntents: ActionIntent[]) => {
         if (isGameOverRef.current) return;
+
+        // Save current state to history before executing the turn
+        historyRef.current.push({
+            entities: cloneEntities(entitiesRef.current),
+            rooms: cloneRooms(roomsRef.current),
+            controlledRoomIds: [...controlledRoomIdsRef.current],
+        });
+        setCanUndo(true);
 
         // Her tur başlangıcında geçici animasyon ve durum verilerini temizle
         for (const ent of entitiesRef.current) {
@@ -366,10 +377,42 @@ export function useGameEngine({
             uiEvents: [],
             availableActions: gatherAvailableActions(resetRooms, resetEntities),
         }]);
+        historyRef.current = [];
+        setCanUndo(false);
         setUiEvents([]);
         setIsAnimating(false);
         isAnimatingInternalRef.current = false;
     }, [levelEdges]);
+
+    const undo = useCallback(() => {
+        if (isAnimating || historyRef.current.length === 0) return false;
+
+        const prevState = historyRef.current.pop();
+        if (!prevState) return false;
+
+        entitiesRef.current = prevState.entities;
+        roomsRef.current = prevState.rooms;
+        controlledRoomIdsRef.current = prevState.controlledRoomIds;
+        setControlledRoomIds(prevState.controlledRoomIds);
+
+        isGameOverRef.current = false;
+        setIsGameOver(false);
+
+        const resetRooms = cloneRooms(roomsRef.current);
+        const resetEntities = cloneEntities(entitiesRef.current);
+        setSnapshots([{
+            tickNumber: 0,
+            rooms: resetRooms,
+            entities: resetEntities,
+            vfxEvents: [],
+            uiEvents: [],
+            availableActions: gatherAvailableActions(resetRooms, resetEntities),
+        }]);
+        setUiEvents([]);
+        setCanUndo(historyRef.current.length > 0);
+
+        return true;
+    }, [isAnimating]);
 
     return {
         snapshots,
@@ -388,5 +431,7 @@ export function useGameEngine({
         clearUiEvents,
         reset,
         getEntities,
+        undo,
+        canUndo,
     };
 }

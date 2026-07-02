@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, kullanıcıların oynadığı seviye kayıtlarının senkronizasyonunu (delta sync) 
+ * ve adminlerin seviye silme (veri tabanındaki ilişkili skorların temizlenmesiyle) işlemlerini yöneten API uç noktalarını tanımlar.
+ */
+
+/**
  * Routes for user-facing played-levels sync and admin-level deletion with cascade.
  *
  * GET  /played-levels              — delta sync (returns records + deleted IDs)
@@ -30,7 +35,7 @@ export const playedLevelsRouter = new Hono<AppContext>();
 //
 // Query param:
 //   ?since=2026-06-16T10:00:00.000Z   (omit for full sync)
-
+// Kullanıcının oynadığı seviyeleri ve silinen seviyeleri zaman damgası (delta sync) bazlı senkronize eder.
 playedLevelsRouter.get('/played-levels', firebaseAuth, async (c) => {
   const uid = c.get('uid');
   const sinceRaw = new URL(c.req.url).searchParams.get('since');
@@ -85,7 +90,7 @@ playedLevelsRouter.get('/played-levels', firebaseAuth, async (c) => {
 //   6. Insert into deleted_levels (tombstone for client delta sync)
 //   7. Delete the level from Firestore (levels/{levelId} + infos/solutions subcollection)
 //   8. Write admin audit log
-
+// Seviyeyi kalıcı olarak siler ve ilgili tüm skor, rekor ve yapımcı verilerini D1 ve Firestore'dan temizler.
 playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
   if (c.get('role') !== 'admin') {
     return c.json({ success: false, error: 'Insufficient permissions' }, 403);

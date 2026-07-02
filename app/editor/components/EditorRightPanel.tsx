@@ -13,14 +13,16 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
     levelName, setLevelName, difficulty, setDifficulty,
     pendingW, setPendingW, pendingH, setPendingH, applyResize,
     trailCollision, setTrailCollision,
-    objects, setObjects, testError, handleTest,
+    showSolutionPath, setShowSolutionPath,
+    testError, handleTest,
     handleCopyBoard, handlePasteBoard, copied,
     isModerator, parts, selectedPartId, setSelectedPartId,
     firestoreEditId, setFirestoreEditId, publishStatus, doPublish,
-    generateLevelData, setGeneratorDialogOpen,
+    generateLevelData, setGeneratorDialogOpen, aiAssistantDialogOpen, setAiAssistantDialogOpen,
     optimalSolution, optimalSolutionMoves,
     rooms, edges, setEdges,
     setRooms, activeRoomId,
+    gameNotes, setGameNotes, creatorNotes, setCreatorNotes,
   } = useEditorContext();
 
   const [pasteError, setPasteError] = useState('');
@@ -135,6 +137,29 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
         </label>
       </Sec>
 
+      <Sec title={t('editor.notes_section')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div>
+            <Lbl>{t('editor.game_notes')}</Lbl>
+            <textarea
+              value={gameNotes}
+              onChange={(e) => setGameNotes(e.target.value)}
+              placeholder={t('editor.game_notes_placeholder')}
+              style={{ ...iStyle, width: '100%', minHeight: 60, fontFamily: 'inherit', resize: 'vertical' }}
+            />
+          </div>
+          <div>
+            <Lbl>{t('editor.creator_notes')}</Lbl>
+            <textarea
+              value={creatorNotes}
+              onChange={(e) => setCreatorNotes(e.target.value)}
+              placeholder={t('editor.creator_notes_placeholder')}
+              style={{ ...iStyle, width: '100%', minHeight: 60, fontFamily: 'inherit', resize: 'vertical' }}
+            />
+          </div>
+        </div>
+      </Sec>
+
       <Sec title="Room Actions">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
           {activeRoom?.customData?.staticButtons?.map((btn: any) => (
@@ -192,50 +217,29 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
 
       {/* Room boundary portals targets are configured interactively on the canvas */}
 
-      {objects.map((obj) => {
-        const color = obj.id === 1 ? '#00ff88' : '#00c4ff';
-        const emoji = obj.id === 1 ? '🟢' : '🔵';
-        return (
-          <Sec key={obj.id} title={`${emoji} ${t('editor.object', { n: obj.id })}`}>
-            <div style={{ marginBottom: 8 }}>
-              <Lbl>{t('editor.position')}</Lbl>
-              <span style={{ fontSize: 12, color: obj.row !== null ? color : '#334155' }}>
-                {obj.row !== null ? `${obj.roomId ?? 'main'} (${obj.row}, ${obj.col})` : t('editor.not_placed')}
-              </span>
-              {obj.row !== null && (
-                <button
-                  onClick={() => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, row: null, col: null } : o))}
-                  style={{ marginLeft: 8, fontSize: 10, background: 'none', border: 'none', color: '#334155', cursor: 'pointer' }}
-                >✕</button>
-              )}
-            </div>
-            <div style={{ marginBottom: 8 }}>
-              <Lbl>{t('editor.mode')}</Lbl>
-              <div style={{ display: 'flex', gap: 5 }}>
-                {(['normal', 'reversed'] as MovementMode[]).map((m) => (
-                  <NBtn key={m} onClick={() => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, mode: m } : o))} active={obj.mode === m} color={color} style={{ padding: '3px 8px', fontSize: 10 }}>
-                    {m === 'normal' ? t('editor.mode_normal') : t('editor.mode_reversed')}
-                  </NBtn>
-                ))}
-              </div>
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
-              <input
-                type="checkbox" checked={obj.lockOnTarget}
-                onChange={(e) => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, lockOnTarget: e.target.checked } : o))}
-                style={{ accentColor: color, width: 12, height: 12 }}
-              />
-              <span style={{ fontSize: 11, color: '#475569' }}>{t('editor.lock_target')}</span>
-            </label>
-          </Sec>
-        );
-      })}
-
       {optimalSolution && (
         <Sec title="⚡ BFS OPTIMAL SOLUTION">
           <div style={{ background: '#040914', border: '1px solid rgba(0,196,255,0.25)', borderRadius: 8, padding: 10, boxShadow: '0 0 10px rgba(0,196,255,0.05)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#00c4ff', marginBottom: 6 }}>
-              Solvable in: <span style={{ color: '#00ff88' }}>{optimalSolutionMoves} Moves</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#00c4ff' }}>
+                Solvable: <span style={{ color: '#00ff88' }}>{optimalSolutionMoves} Moves</span>
+              </span>
+              <button
+                onClick={() => setShowSolutionPath(!showSolutionPath)}
+                style={{
+                  background: showSolutionPath ? 'rgba(0,196,255,0.15)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${showSolutionPath ? '#00c4ff' : 'rgba(255,255,255,0.1)'}`,
+                  color: showSolutionPath ? '#00c4ff' : '#64748b',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {showSolutionPath ? '👁 Show Path' : '👁 Hide Path'}
+              </button>
             </div>
             <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.4, maxHeight: 110, overflowY: 'auto', background: '#060d1a', border: '1px solid rgba(30,58,95,0.4)', borderRadius: 5, padding: '6px 8px', fontFamily: 'monospace' }}>
               {optimalSolution.map((dir, idx) => (
@@ -251,6 +255,9 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
       <Sec title={t('editor.actions')}>
         {testError && <p style={{ fontSize: 11, color: '#ef4444', marginBottom: 8 }}>{testError}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <button onClick={() => setAiAssistantDialogOpen(true)} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.35)', color: '#a78bfa', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+            🤖 AI Assistant
+          </button>
           <button onClick={() => setGeneratorDialogOpen(true)} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(0,196,255,0.06)', border: '1px solid rgba(0,196,255,0.35)', color: '#00c4ff', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             ⚡ Generate Level
           </button>

@@ -7,21 +7,23 @@ import type { EdgeBehavior, LevelData, CellType, Position, LevelTargetDef } from
 import { useEditorContext } from '../EditorContext';
 import { Modal, NBtn, iStyle, Lbl } from './EditorUI';
 import { DIFFICULTY_COLORS } from '../editorConfig';
+import AiAssistantDialog from './AiAssistantDialog';
 import { useT } from '@/app/src/contexts/LanguageContext';
 import GameCell from '@/app/src/games/components/GameCell';
+import { getPlayerColor } from '@/app/src/game2/components/playerColors';
 
 export interface GeneratorFiltersUI {
   width: number;
   height: number;
   difficulty: 1 | 2 | 3 | 4;
-  playerCount: 1 | 2;
+  playerCount: number | string;
   edgeBehavior?: 'wall' | 'portal' | 'lava' | 'random'; // legacy
-  edgeTopAllowed?: EdgeBehavior[];
-  edgeBottomAllowed?: EdgeBehavior[];
-  edgeLeftAllowed?: EdgeBehavior[];
-  edgeRightAllowed?: EdgeBehavior[];
-  conveyorSteps?: 1 | 2 | 3 | 4 | 5 | 'random';
-  trampolineSteps?: 1 | 2 | 3 | 4 | 5 | 'random';
+  edgeTopAllowed?: (EdgeBehavior | 'random')[];
+  edgeBottomAllowed?: (EdgeBehavior | 'random')[];
+  edgeLeftAllowed?: (EdgeBehavior | 'random')[];
+  edgeRightAllowed?: (EdgeBehavior | 'random')[];
+  conveyorSteps?: number[] | number | 'random';
+  trampolineSteps?: number[] | number | 'random';
   playerMode: 'normal' | 'reversed' | 'random';
   playerLock: 'lock' | 'nolock' | 'random';
   trailCollision: 'yes' | 'no' | 'random';
@@ -33,6 +35,29 @@ export interface GeneratorFiltersUI {
   toggleDensity: number;
   teleporterCount: number;
   mutationRate?: number;
+
+  obstacleMode?: 'ratio' | 'count';
+  obstacleCount?: number;
+  iceMode?: 'ratio' | 'count';
+  iceCount?: number;
+  conveyorMode?: 'ratio' | 'count';
+  conveyorCount?: number;
+  trampolineMode?: 'ratio' | 'count';
+  trampolineCount?: number;
+  forbiddenMode?: 'ratio' | 'count';
+  forbiddenCount?: number;
+  toggleMode?: 'ratio' | 'count';
+  toggleCount?: number;
+
+  // Multi-room settings
+  numRooms?: number;
+  roomPlacementMode?: 'grid' | 'random';
+  roomFogMode?: 'all_light' | 'all_dark' | 'random';
+  roomFogVisibility?: number | string;
+  roomFogPersist?: 'yes' | 'no' | 'random';
+  roomPortalConnection?: 'connected' | 'disconnected' | 'random';
+  playerDistribution?: 'same_room' | 'random_rooms';
+  controlMode?: 'all_rooms' | 'selected_room' | 'random';
 }
 
 interface EditorDialogsProps {
@@ -66,6 +91,9 @@ interface EditorDialogsProps {
     allCandidates?: { level: LevelData; solution: string[] | null; moveCount: number }[],
     selectedIndex?: number
   ) => void;
+  // AI Assistant dialog
+  aiAssistantDialogOpen: boolean;
+  onAiAssistantClose: () => void;
 }
 
 interface StoredPreset {
@@ -92,13 +120,13 @@ function GeneratorModal({
   const [width, setWidth] = useState(grid[0]?.length ?? 6);
   const [height, setHeight] = useState(grid.length ?? 6);
   const [difficulty, setDifficulty] = useState<1 | 2 | 3 | 4>(2);
-  const [playerCount, setPlayerCount] = useState<1 | 2>(1);
-  const [edgeTopAllowed, setEdgeTopAllowed] = useState<EdgeBehavior[]>(['wall']);
-  const [edgeBottomAllowed, setEdgeBottomAllowed] = useState<EdgeBehavior[]>(['wall']);
-  const [edgeLeftAllowed, setEdgeLeftAllowed] = useState<EdgeBehavior[]>(['wall']);
-  const [edgeRightAllowed, setEdgeRightAllowed] = useState<EdgeBehavior[]>(['wall']);
-  const [conveyorSteps, setConveyorSteps] = useState<1 | 2 | 3 | 4 | 5 | 'random'>(1);
-  const [trampolineSteps, setTrampolineSteps] = useState<1 | 2 | 3 | 4 | 5 | 'random'>(3);
+  const [playerCount, setPlayerCount] = useState<number | string>(1);
+  const [edgeTopAllowed, setEdgeTopAllowed] = useState<(EdgeBehavior | 'random')[]>(['wall']);
+  const [edgeBottomAllowed, setEdgeBottomAllowed] = useState<(EdgeBehavior | 'random')[]>(['wall']);
+  const [edgeLeftAllowed, setEdgeLeftAllowed] = useState<(EdgeBehavior | 'random')[]>(['wall']);
+  const [edgeRightAllowed, setEdgeRightAllowed] = useState<(EdgeBehavior | 'random')[]>(['wall']);
+  const [conveyorSteps, setConveyorSteps] = useState<number[]>([1]);
+  const [trampolineSteps, setTrampolineSteps] = useState<number[]>([3]);
   const [playerMode, setPlayerMode] = useState<'normal' | 'reversed' | 'random'>('normal');
   const [playerLock, setPlayerLock] = useState<'lock' | 'nolock' | 'random'>('lock');
   const [trailCollision, setTrailCollision] = useState<'yes' | 'no' | 'random'>('no');
@@ -110,6 +138,91 @@ function GeneratorModal({
   const [toggleDensity, setToggleDensity] = useState(0.0);
   const [teleporterCount, setTeleporterCount] = useState(0);
 
+  // Multi-room state variables
+  const [numRooms, setNumRooms] = useState<number>(1);
+  const [roomPlacementMode, setRoomPlacementMode] = useState<'grid' | 'random'>('grid');
+  const [roomFogMode, setRoomFogMode] = useState<'all_light' | 'all_dark' | 'random'>('all_light');
+  const [roomFogVisibility, setRoomFogVisibility] = useState<number | string>(1.5);
+  const [roomFogPersist, setRoomFogPersist] = useState<'yes' | 'no' | 'random'>('yes');
+  const [roomPortalConnection, setRoomPortalConnection] = useState<'connected' | 'disconnected' | 'random'>('connected');
+  const [playerDistribution, setPlayerDistribution] = useState<'same_room' | 'random_rooms'>('same_room');
+  const [controlModeSelect, setControlModeSelect] = useState<'all_rooms' | 'selected_room' | 'random'>('all_rooms');
+
+  // Exact counts and modes
+  const [obstacleMode, setObstacleMode] = useState<'ratio' | 'count'>('ratio');
+  const [obstacleCount, setObstacleCount] = useState<number>(0);
+  const [iceMode, setIceMode] = useState<'ratio' | 'count'>('ratio');
+  const [iceCount, setIceCount] = useState<number>(0);
+  const [conveyorMode, setConveyorMode] = useState<'ratio' | 'count'>('ratio');
+  const [conveyorCount, setConveyorCount] = useState<number>(0);
+  const [trampolineMode, setTrampolineMode] = useState<'ratio' | 'count'>('ratio');
+  const [trampolineCount, setTrampolineCount] = useState<number>(0);
+  const [forbiddenMode, setForbiddenMode] = useState<'ratio' | 'count'>('ratio');
+  const [forbiddenCount, setForbiddenCount] = useState<number>(0);
+  const [toggleMode, setToggleMode] = useState<'ratio' | 'count'>('ratio');
+  const [toggleCount, setToggleCount] = useState<number>(0);
+
+  // Conversion helpers
+  const ratioToCount = (ratio: number, total: number): number => {
+    return Math.round(ratio * total);
+  };
+
+  const countToRatio = (count: number, total: number, maxRatio: number): number => {
+    const rawRatio = count / total;
+    const roundedRatio = Math.round(rawRatio * 20) / 20;
+    return Math.max(0, Math.min(maxRatio, roundedRatio));
+  };
+
+  const handleModeChange = (
+    element: 'obstacle' | 'ice' | 'conveyor' | 'trampoline' | 'forbidden' | 'toggle',
+    newMode: 'ratio' | 'count'
+  ) => {
+    const totalCells = width * height;
+    if (element === 'obstacle') {
+      setObstacleMode(newMode);
+      if (newMode === 'count') {
+        setObstacleCount(ratioToCount(obstacleDensity, totalCells));
+      } else {
+        setObstacleDensity(countToRatio(obstacleCount, totalCells, 0.50));
+      }
+    } else if (element === 'ice') {
+      setIceMode(newMode);
+      if (newMode === 'count') {
+        setIceCount(ratioToCount(iceDensity, totalCells));
+      } else {
+        setIceDensity(countToRatio(iceCount, totalCells, 0.50));
+      }
+    } else if (element === 'conveyor') {
+      setConveyorMode(newMode);
+      if (newMode === 'count') {
+        setConveyorCount(ratioToCount(conveyorDensity, totalCells));
+      } else {
+        setConveyorDensity(countToRatio(conveyorCount, totalCells, 0.30));
+      }
+    } else if (element === 'trampoline') {
+      setTrampolineMode(newMode);
+      if (newMode === 'count') {
+        setTrampolineCount(ratioToCount(trampolineDensity, totalCells));
+      } else {
+        setTrampolineDensity(countToRatio(trampolineCount, totalCells, 0.20));
+      }
+    } else if (element === 'forbidden') {
+      setForbiddenMode(newMode);
+      if (newMode === 'count') {
+        setForbiddenCount(ratioToCount(forbiddenDensity, totalCells));
+      } else {
+        setForbiddenDensity(countToRatio(forbiddenCount, totalCells, 0.30));
+      }
+    } else if (element === 'toggle') {
+      setToggleMode(newMode);
+      if (newMode === 'count') {
+        setToggleCount(ratioToCount(toggleDensity, totalCells));
+      } else {
+        setToggleDensity(countToRatio(toggleCount, totalCells, 0.20));
+      }
+    }
+  };
+
   // Enhancements
   const [mutationRate, setMutationRate] = useState(1.0);
   const [candidates, setCandidates] = useState<{ level: LevelData; solution: string[] | null; moveCount: number }[] | null>(null);
@@ -120,7 +233,27 @@ function GeneratorModal({
   const [newPresetName, setNewPresetName] = useState('');
   const [generating, setGenerating] = useState(false);
 
-  const toggleEdgeAllowed = (side: 'top' | 'bottom' | 'left' | 'right', behavior: EdgeBehavior) => {
+  const toggleConveyorStep = (val: number) => {
+    if (conveyorSteps.includes(val)) {
+      if (conveyorSteps.length > 1) {
+        setConveyorSteps(conveyorSteps.filter(x => x !== val));
+      }
+    } else {
+      setConveyorSteps([...conveyorSteps, val].sort());
+    }
+  };
+
+  const toggleTrampolineStep = (val: number) => {
+    if (trampolineSteps.includes(val)) {
+      if (trampolineSteps.length > 1) {
+        setTrampolineSteps(trampolineSteps.filter(x => x !== val));
+      }
+    } else {
+      setTrampolineSteps([...trampolineSteps, val].sort());
+    }
+  };
+
+  const toggleEdgeAllowed = (side: 'top' | 'bottom' | 'left' | 'right', behavior: EdgeBehavior | 'random') => {
     const setters = {
       top: [edgeTopAllowed, setEdgeTopAllowed],
       bottom: [edgeBottomAllowed, setEdgeBottomAllowed],
@@ -129,12 +262,21 @@ function GeneratorModal({
     } as const;
     
     const [current, set] = setters[side];
-    if (current.includes(behavior)) {
-      if (current.length > 1) {
-        set(current.filter((x) => x !== behavior));
+    if (behavior === 'random') {
+      if (current.includes('random')) {
+        set(['wall']);
+      } else {
+        set(['random']);
       }
     } else {
-      set([...current, behavior]);
+      const filtered = current.filter((x) => x !== 'random');
+      if (filtered.includes(behavior)) {
+        if (filtered.length > 1) {
+          set(filtered.filter((x) => x !== behavior));
+        }
+      } else {
+        set([...filtered, behavior] as any);
+      }
     }
   };
 
@@ -159,7 +301,7 @@ function GeneratorModal({
     if (f.edgeBehavior !== undefined) {
       const legacy = f.edgeBehavior;
       if (legacy === 'random') {
-        const all: EdgeBehavior[] = ['wall', 'portal', 'lava'];
+        const all: (EdgeBehavior | 'random')[] = ['wall', 'portal', 'lava'];
         setEdgeTopAllowed(all);
         setEdgeBottomAllowed(all);
         setEdgeLeftAllowed(all);
@@ -177,8 +319,49 @@ function GeneratorModal({
     if (f.edgeBottomAllowed !== undefined) setEdgeBottomAllowed(f.edgeBottomAllowed);
     if (f.edgeLeftAllowed !== undefined) setEdgeLeftAllowed(f.edgeLeftAllowed);
     if (f.edgeRightAllowed !== undefined) setEdgeRightAllowed(f.edgeRightAllowed);
-    if (f.conveyorSteps !== undefined) setConveyorSteps(f.conveyorSteps);
-    if (f.trampolineSteps !== undefined) setTrampolineSteps(f.trampolineSteps);
+    
+    if (f.conveyorSteps !== undefined) {
+      if (Array.isArray(f.conveyorSteps)) {
+        setConveyorSteps(f.conveyorSteps);
+      } else if (f.conveyorSteps === 'random') {
+        setConveyorSteps([1, 2, 3]);
+      } else {
+        setConveyorSteps([Number(f.conveyorSteps)]);
+      }
+    }
+    if (f.trampolineSteps !== undefined) {
+      if (Array.isArray(f.trampolineSteps)) {
+        setTrampolineSteps(f.trampolineSteps);
+      } else if (f.trampolineSteps === 'random') {
+        setTrampolineSteps([2, 3, 4]);
+      } else {
+        setTrampolineSteps([Number(f.trampolineSteps)]);
+      }
+    }
+
+    // Exact count fields
+    if (f.obstacleMode !== undefined) setObstacleMode(f.obstacleMode);
+    if (f.obstacleCount !== undefined) setObstacleCount(f.obstacleCount);
+    if (f.iceMode !== undefined) setIceMode(f.iceMode);
+    if (f.iceCount !== undefined) setIceCount(f.iceCount);
+    if (f.conveyorMode !== undefined) setConveyorMode(f.conveyorMode);
+    if (f.conveyorCount !== undefined) setConveyorCount(f.conveyorCount);
+    if (f.trampolineMode !== undefined) setTrampolineMode(f.trampolineMode);
+    if (f.trampolineCount !== undefined) setTrampolineCount(f.trampolineCount);
+    if (f.forbiddenMode !== undefined) setForbiddenMode(f.forbiddenMode);
+    if (f.forbiddenCount !== undefined) setForbiddenCount(f.forbiddenCount);
+    if (f.toggleMode !== undefined) setToggleMode(f.toggleMode);
+    if (f.toggleCount !== undefined) setToggleCount(f.toggleCount);
+
+    // Multi-room settings
+    if (f.numRooms !== undefined) setNumRooms(f.numRooms);
+    if (f.roomPlacementMode !== undefined) setRoomPlacementMode(f.roomPlacementMode);
+    if (f.roomFogMode !== undefined) setRoomFogMode(f.roomFogMode);
+    if (f.roomFogVisibility !== undefined) setRoomFogVisibility(f.roomFogVisibility);
+    if (f.roomFogPersist !== undefined) setRoomFogPersist(f.roomFogPersist);
+    if (f.roomPortalConnection !== undefined) setRoomPortalConnection(f.roomPortalConnection);
+    if (f.playerDistribution !== undefined) setPlayerDistribution(f.playerDistribution);
+    if (f.controlMode !== undefined) setControlModeSelect(f.controlMode);
   };
 
   // Load presets & last-used from localStorage
@@ -209,7 +392,16 @@ function GeneratorModal({
         playerMode, playerLock, trailCollision,
         obstacleDensity, iceDensity, conveyorDensity, trampolineDensity,
         forbiddenDensity, toggleDensity, teleporterCount,
-        conveyorSteps, trampolineSteps, mutationRate
+        conveyorSteps, trampolineSteps, mutationRate,
+        obstacleMode, obstacleCount,
+        iceMode, iceCount,
+        conveyorMode, conveyorCount,
+        trampolineMode, trampolineCount,
+        forbiddenMode, forbiddenCount,
+        toggleMode, toggleCount,
+        numRooms, roomPlacementMode, roomFogMode, roomFogVisibility,
+        roomFogPersist, roomPortalConnection, playerDistribution,
+        controlMode: controlModeSelect
       }
     };
     const updated = [...presets, newPreset];
@@ -236,8 +428,22 @@ function GeneratorModal({
     setTrailCollision('no'); setObstacleDensity(0.15); setIceDensity(0.15);
     setConveyorDensity(0); setTrampolineDensity(0); setForbiddenDensity(0);
     setToggleDensity(0); setTeleporterCount(0);
-    setConveyorSteps(1); setTrampolineSteps(3);
+    setConveyorSteps([1]); setTrampolineSteps([3]);
     setMutationRate(1.0);
+    setObstacleMode('ratio'); setObstacleCount(0);
+    setIceMode('ratio'); setIceCount(0);
+    setConveyorMode('ratio'); setConveyorCount(0);
+    setTrampolineMode('ratio'); setTrampolineCount(0);
+    setForbiddenMode('ratio'); setForbiddenCount(0);
+    setToggleMode('ratio'); setToggleCount(0);
+    setNumRooms(1);
+    setRoomPlacementMode('grid');
+    setRoomFogMode('all_light');
+    setRoomFogVisibility(1.5);
+    setRoomFogPersist('yes');
+    setRoomPortalConnection('connected');
+    setPlayerDistribution('same_room');
+    setControlModeSelect('all_rooms');
   };
 
   const handlePresetSelect = (val: string) => {
@@ -252,8 +458,22 @@ function GeneratorModal({
       setTrailCollision('no'); setObstacleDensity(0.15); setIceDensity(0.15);
       setConveyorDensity(0); setTrampolineDensity(0); setForbiddenDensity(0);
       setToggleDensity(0); setTeleporterCount(0);
-      setConveyorSteps(1); setTrampolineSteps(3);
+      setConveyorSteps([1]); setTrampolineSteps([3]);
       setMutationRate(1.0);
+      setObstacleMode('ratio'); setObstacleCount(0);
+      setIceMode('ratio'); setIceCount(0);
+      setConveyorMode('ratio'); setConveyorCount(0);
+      setTrampolineMode('ratio'); setTrampolineCount(0);
+      setForbiddenMode('ratio'); setForbiddenCount(0);
+      setToggleMode('ratio'); setToggleCount(0);
+      setNumRooms(1);
+      setRoomPlacementMode('grid');
+      setRoomFogMode('all_light');
+      setRoomFogVisibility(1.5);
+      setRoomFogPersist('yes');
+      setRoomPortalConnection('connected');
+      setPlayerDistribution('same_room');
+      setControlModeSelect('all_rooms');
     } else if (val === 'last_used') {
       setSelectedPresetIndex('last_used');
       const lastUsed = localStorage.getItem('generator_last_used');
@@ -277,7 +497,21 @@ function GeneratorModal({
       playerMode, playerLock, trailCollision,
       obstacleDensity, iceDensity, conveyorDensity, trampolineDensity,
       forbiddenDensity, toggleDensity, teleporterCount,
-      conveyorSteps, trampolineSteps, mutationRate
+      conveyorSteps, trampolineSteps, mutationRate,
+      obstacleMode, obstacleCount,
+      iceMode, iceCount,
+      conveyorMode, conveyorCount,
+      trampolineMode, trampolineCount,
+      forbiddenMode, forbiddenCount,
+      toggleMode, toggleCount,
+      numRooms,
+      roomPlacementMode,
+      roomFogMode,
+      roomFogVisibility,
+      roomFogPersist,
+      roomPortalConnection,
+      playerDistribution,
+      controlMode: controlModeSelect
     };
     
     // Persist as last-used in localStorage
@@ -291,8 +525,13 @@ function GeneratorModal({
         const originalTargets: LevelTargetDef[] = [];
         for (let r = 0; r < grid.length; r++) {
           for (let c = 0; c < grid[r].length; c++) {
-            if (grid[r]?.[c] === 'target_1') originalTargets.push({ objectId: 1, position: { row: r, col: c } });
-            if (grid[r]?.[c] === 'target_2') originalTargets.push({ objectId: 2, position: { row: r, col: c } });
+            const cell = grid[r]?.[c];
+            if (cell && cell.startsWith('target_')) {
+              const oId = parseInt(cell.substring('target_'.length), 10);
+              if (!isNaN(oId)) {
+                originalTargets.push({ objectId: oId, position: { row: r, col: c } });
+              }
+            }
           }
         }
 
@@ -300,18 +539,45 @@ function GeneratorModal({
           width, height, difficulty, playerCount,
           edgeTopAllowed, edgeBottomAllowed, edgeLeftAllowed, edgeRightAllowed,
           playerMode, playerLock, trailCollision,
-          obstacleDensity, iceDensity, conveyorDensity, trampolineDensity,
-          forbiddenDensity, toggleDensity, teleporterCount,
+          
+          obstacleDensity: obstacleMode === 'ratio' ? obstacleDensity : 0,
+          obstacleCount: obstacleMode === 'count' ? obstacleCount : undefined,
+
+          iceDensity: iceMode === 'ratio' ? iceDensity : 0,
+          iceCount: iceMode === 'count' ? iceCount : undefined,
+
+          conveyorDensity: conveyorMode === 'ratio' ? conveyorDensity : 0,
+          conveyorCount: conveyorMode === 'count' ? conveyorCount : undefined,
+
+          trampolineDensity: trampolineMode === 'ratio' ? trampolineDensity : 0,
+          trampolineCount: trampolineMode === 'count' ? trampolineCount : undefined,
+
+          forbiddenDensity: forbiddenMode === 'ratio' ? forbiddenDensity : 0,
+          forbiddenCount: forbiddenMode === 'count' ? forbiddenCount : undefined,
+
+          toggleDensity: toggleMode === 'ratio' ? toggleDensity : 0,
+          toggleCount: toggleMode === 'count' ? toggleCount : undefined,
+
+          teleporterCount,
           conveyorSteps, trampolineSteps,
 
           lockedCells,
           mutationRate,
-          originalGrid: grid,
-          originalObjects: objects.filter(o => o.row !== null).map(o => ({ id: o.id, position: { row: o.row!, col: o.col! }, mode: o.mode, lockOnTarget: o.lockOnTarget })),
-          originalTargets,
-          originalBoxes: boxes.filter(b => b.row !== null).map(b => ({ id: b.id, position: { row: b.row!, col: b.col! }, requiresPower: b.requiresPower })),
-          originalConveyorConfig: conveyorConfig,
-          originalTrampolineConfig: trampolineConfig,
+          originalGrid: numRooms > 1 ? undefined : grid,
+          originalObjects: numRooms > 1 ? undefined : objects.filter(o => o.row !== null).map(o => ({ id: o.id, position: { row: o.row!, col: o.col! }, mode: o.mode, lockOnTarget: o.lockOnTarget })),
+          originalTargets: numRooms > 1 ? undefined : originalTargets,
+          originalBoxes: numRooms > 1 ? undefined : boxes.filter(b => b.row !== null).map(b => ({ id: b.id, position: { row: b.row!, col: b.col! }, requiresPower: b.requiresPower })),
+          originalConveyorConfig: numRooms > 1 ? undefined : conveyorConfig,
+          originalTrampolineConfig: numRooms > 1 ? undefined : trampolineConfig,
+
+          numRooms,
+          roomPlacementMode,
+          roomFogMode,
+          roomFogVisibility,
+          roomFogPersist,
+          roomPortalConnection,
+          playerDistribution,
+          controlMode: controlModeSelect
         };
 
         const results = [];
@@ -329,6 +595,127 @@ function GeneratorModal({
   };
 
   const MiniPreview = ({ level }: { level: LevelData }) => {
+    const isMultiRoom = level.rooms && level.rooms.length > 0;
+    
+    if (isMultiRoom) {
+      const rooms = level.rooms!;
+      const minX = Math.min(...rooms.map(r => r.x));
+      const maxX = Math.max(...rooms.map(r => r.x));
+      const minY = Math.min(...rooms.map(r => r.y));
+      const maxY = Math.max(...rooms.map(r => r.y));
+      const layoutCols = maxX - minX + 1;
+      const layoutRows = maxY - minY + 1;
+
+      // Keep cell size compact so multi-room preview fits card container (width ~110px max)
+      const miniCellSize = Math.max(3, Math.min(8, Math.floor(65 / Math.max(level.width, level.height) / Math.max(layoutCols, layoutRows))));
+      const roomGap = 3;
+      const boardWidth = layoutCols * (level.width * miniCellSize) + (layoutCols - 1) * roomGap;
+      const boardHeight = layoutRows * (level.height * miniCellSize) + (layoutRows - 1) * roomGap;
+
+      return (
+        <div style={{
+          position: 'relative',
+          width: boardWidth,
+          height: boardHeight,
+          background: '#040914',
+          borderRadius: 4,
+          alignSelf: 'center',
+          boxSizing: 'content-box',
+          minHeight: 50,
+          minWidth: 50,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          {rooms.map((room) => {
+            const roomLeft = (room.x - minX) * (room.width * miniCellSize + roomGap);
+            const roomTop = (room.y - minY) * (room.height * miniCellSize + roomGap);
+
+            return (
+              <div
+                key={room.id}
+                style={{
+                  position: 'absolute',
+                  left: roomLeft,
+                  top: roomTop,
+                  width: room.width * miniCellSize,
+                  height: room.height * miniCellSize,
+                  background: '#040914',
+                  border: '1.2px solid rgba(0,196,255,0.2)',
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Cells Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${room.width}, ${miniCellSize}px)`,
+                  gridTemplateRows: `repeat(${room.height}, ${miniCellSize}px)`,
+                }}>
+                  {room.grid.map((row: CellType[], r: number) =>
+                    row.map((cell: CellType, c: number) => (
+                      <GameCell key={`${r}-${c}`} cellType={cell} cellSize={miniCellSize} />
+                    ))
+                  )}
+                </div>
+
+                {/* Boxes */}
+                {(level.initialBoxes || []).filter(b => (b.position.roomId ?? 'main') === room.id).map((box) => {
+                  const pad = Math.round(miniCellSize * 0.1);
+                  const size = miniCellSize - pad * 2;
+                  const isPowered = false;
+                  const isUnpowered = box.requiresPower && !isPowered;
+
+                  return (
+                    <div
+                      key={`box-${box.id}`}
+                      style={{
+                        position: 'absolute',
+                        top: box.position.row * miniCellSize + pad,
+                        left: box.position.col * miniCellSize + pad,
+                        width: size,
+                        height: size,
+                        borderRadius: 1,
+                        background: isUnpowered ? 'rgba(30, 40, 55, 0.9)' : 'rgba(15, 23, 35, 0.95)',
+                        border: `${Math.max(1, Math.round(miniCellSize * 0.06))}px solid ${isUnpowered ? 'rgba(71, 85, 105, 0.5)' : '#f97316'}`,
+                        zIndex: 10,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Players */}
+                {level.initialObjects.filter(o => (o.position.roomId ?? 'main') === room.id).map((obj) => {
+                  const pad = Math.round(miniCellSize * 0.12);
+                  const size = miniCellSize - pad * 2;
+                  const { hex: bg } = getPlayerColor(obj.id - 1);
+
+                  return (
+                    <div
+                      key={`player-${obj.id}`}
+                      style={{
+                        position: 'absolute',
+                        top: obj.position.row * miniCellSize + pad,
+                        left: obj.position.col * miniCellSize + pad,
+                        width: size,
+                        height: size,
+                        borderRadius: '50%',
+                        backgroundColor: bg,
+                        zIndex: 10,
+                        pointerEvents: 'none',
+                        boxShadow: `0 0 ${Math.max(1, Math.round(miniCellSize * 0.2))}px ${bg}aa`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     const miniCellSize = Math.max(12, Math.min(20, Math.floor(100 / Math.max(level.width, level.height))));
     const boardWidth = level.width * miniCellSize;
     const boardHeight = level.height * miniCellSize;
@@ -395,9 +782,8 @@ function GeneratorModal({
         {level.initialObjects.map((obj) => {
           const pad = Math.round(miniCellSize * 0.12);
           const size = miniCellSize - pad * 2;
-          const isPlayer1 = obj.id === 1;
-          const bg = isPlayer1 ? '#00ff88' : '#00c4ff';
-          const textColor = isPlayer1 ? '#003320' : '#002233';
+          const { hex: bg } = getPlayerColor(obj.id - 1);
+          const textColor = '#060d1a';
 
           return (
             <div
@@ -516,94 +902,70 @@ function GeneratorModal({
             {/* Scrollable contents */}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: 6, display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14 }}>
               
-              {/* Presets Management section */}
-              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#1e3a5f', textTransform: 'uppercase' }}>Presettings & Presets</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select 
-                    value={selectedPresetIndex} 
-                    onChange={(e) => handlePresetSelect(e.target.value)} 
-                    style={{ ...iStyle, flex: 1, background: '#060d1a', border: '1px solid rgba(30,58,95,0.5)', height: 30 }}
-                  >
-                    <option value="default">Default Configuration</option>
-                    <option value="last_used">Last Used Settings</option>
-                    {presets.map((p, idx) => (
-                      <option key={idx} value={idx}>{p.name}</option>
-                    ))}
-                  </select>
-                  {typeof selectedPresetIndex === 'number' && (
-                    <button 
-                      onClick={handleDeletePreset} 
-                      style={{ padding: '0 12px', fontSize: 11, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
+              {/* GROUP 1: METADATA & GENERAL SETTINGS */}
+              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>1. Metadata & General Settings</span>
                 
-                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                  <input
-                    type="text" placeholder="Preset Name..."
-                    value={newPresetName} onChange={(e) => setNewPresetName(e.target.value)}
-                    style={{ ...iStyle, flex: 1, height: 28 }}
-                  />
-                  <button
-                    onClick={handleSavePreset}
-                    disabled={!newPresetName.trim()}
-                    style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, background: newPresetName.trim() ? 'rgba(0,196,255,0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${newPresetName.trim() ? 'rgba(0,196,255,0.4)' : 'rgba(255,255,255,0.08)'}`, color: newPresetName.trim() ? '#00c4ff' : '#475569', borderRadius: 6, cursor: newPresetName.trim() ? 'pointer' : 'not-allowed' }}
-                  >
-                    Save Current
-                  </button>
-                </div>
-              </div>
-
-              {/* Mutation Rate / Fine-Tuning */}
-              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>Fine-Tuning / Mutation</span>
-                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 'bold' }}>{Math.round(mutationRate * 100)}%</span>
-                </div>
-                <p style={{ fontSize: 9, color: '#475569', margin: '0 0 4px', lineHeight: 1.3 }}>
-                  Lower rates mutate fewer cells from the current grid, keeping the layout mostly intact.
-                </p>
-                <input
-                  type="range" min={10} max={100} step={10}
-                  value={mutationRate * 100}
-                  onChange={(e) => setMutationRate(Number(e.target.value) / 100)}
-                  style={{ width: '100%', accentColor: '#00c4ff' }}
-                />
-              </div>
-
-              {/* Grid Dimensions */}
-              <div style={{ display: 'flex', gap: 14 }}>
-                <div style={{ flex: 1 }}>
-                  <Lbl>Width: {width}</Lbl>
-                  <input type="range" min={3} max={12} value={width} onChange={(e) => setWidth(Number(e.target.value))} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Lbl>Height: {height}</Lbl>
-                  <input type="range" min={3} max={12} value={height} onChange={(e) => setHeight(Number(e.target.value))} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
-              </div>
-
-              {/* Player Count & Difficulty */}
-              <div style={{ display: 'flex', gap: 14 }}>
-                <div style={{ flex: 1 }}>
-                  <Lbl>Players</Lbl>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {([1, 2] as const).map((n) => (
-                      <NBtn key={n} onClick={() => setPlayerCount(n)} active={playerCount === n} color="#00c4ff" style={{ flex: 1, padding: '5px 2px', fontSize: 10 }}>
-                        {n === 1 ? '1 Player' : '2 Players'}
-                      </NBtn>
-                    ))}
+                {/* Presets Management */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid rgba(30,58,95,0.15)', paddingBottom: 10 }}>
+                  <Lbl style={{ fontSize: 8 }}>Preset Management</Lbl>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select 
+                      value={selectedPresetIndex} 
+                      onChange={(e) => handlePresetSelect(e.target.value)} 
+                      style={{ ...iStyle, flex: 1, background: '#060d1a', border: '1px solid rgba(30,58,95,0.5)', height: 30, fontSize: 10 }}
+                    >
+                      <option value="default">Default Configuration</option>
+                      <option value="last_used">Last Used Settings</option>
+                      {presets.map((p, idx) => (
+                        <option key={idx} value={idx}>{p.name}</option>
+                      ))}
+                    </select>
+                    {typeof selectedPresetIndex === 'number' && (
+                      <button 
+                        onClick={handleDeletePreset} 
+                        style={{ padding: '0 12px', fontSize: 11, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    <input
+                      type="text" placeholder="Preset Name..."
+                      value={newPresetName} onChange={(e) => setNewPresetName(e.target.value)}
+                      style={{ ...iStyle, flex: 1, height: 28, fontSize: 10 }}
+                    />
+                    <button
+                      onClick={handleSavePreset}
+                      disabled={!newPresetName.trim()}
+                      style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, background: newPresetName.trim() ? 'rgba(0,196,255,0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${newPresetName.trim() ? 'rgba(0,196,255,0.4)' : 'rgba(255,255,255,0.08)'}`, color: newPresetName.trim() ? '#00c4ff' : '#475569', borderRadius: 6, cursor: newPresetName.trim() ? 'pointer' : 'not-allowed' }}
+                    >
+                      Save Preset
+                    </button>
                   </div>
                 </div>
-                <div style={{ flex: 1 }}>
+
+                {/* Grid Dimensions */}
+                <div style={{ display: 'flex', gap: 14 }}>
+                  <div style={{ flex: 1 }}>
+                    <Lbl>Width: {width}</Lbl>
+                    <input type="range" min={3} max={12} value={width} onChange={(e) => setWidth(Number(e.target.value))} style={{ width: '100%', accentColor: '#00c4ff' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Lbl>Height: {height}</Lbl>
+                    <input type="range" min={3} max={12} value={height} onChange={(e) => setHeight(Number(e.target.value))} style={{ width: '100%', accentColor: '#00c4ff' }} />
+                  </div>
+                </div>
+
+                {/* Difficulty */}
+                <div>
                   <Lbl>Difficulty</Lbl>
                   <div style={{ display: 'flex', gap: 3 }}>
                     {([1, 2, 3, 4] as const).map((d) => {
                       const colors = { 1: '#00ff88', 2: '#00c4ff', 3: '#fbbf24', 4: '#ef4444' };
-                      const labels = { 1: 'Easy', 2: 'Med', 3: 'Hard', 4: 'Exp' };
+                      const labels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Expert' };
                       return (
                         <NBtn key={d} onClick={() => setDifficulty(d)} active={difficulty === d} color={colors[d]} style={{ flex: 1, padding: '5px 1px', fontSize: 9 }}>
                           {labels[d]}
@@ -612,225 +974,410 @@ function GeneratorModal({
                     })}
                   </div>
                 </div>
-              </div>
 
-              {/* Granular Edge Behaviors */}
-              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>Granular Edge Behaviors</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  
-                  {/* Top Edge */}
-                  <div>
-                    <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Top Edge</Lbl>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {(['wall', 'portal', 'lava'] as const).map((b) => (
-                        <NBtn
-                          key={b}
-                          onClick={() => toggleEdgeAllowed('top', b)}
-                          active={edgeTopAllowed.includes(b)}
-                          color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : '#ef4444'}
-                          style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
-                        >
-                          {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : 'Lava'}
-                        </NBtn>
-                      ))}
-                    </div>
+                {/* Mutation Rate / Fine-Tuning */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Lbl style={{ margin: 0 }}>Mutation Rate (Fine-Tuning)</Lbl>
+                    <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 'bold' }}>{Math.round(mutationRate * 100)}%</span>
                   </div>
-
-                  {/* Right Edge */}
-                  <div>
-                    <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Right Edge</Lbl>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {(['wall', 'portal', 'lava'] as const).map((b) => (
-                        <NBtn
-                          key={b}
-                          onClick={() => toggleEdgeAllowed('right', b)}
-                          active={edgeRightAllowed.includes(b)}
-                          color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : '#ef4444'}
-                          style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
-                        >
-                          {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : 'Lava'}
-                        </NBtn>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bottom Edge */}
-                  <div>
-                    <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Bottom Edge</Lbl>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {(['wall', 'portal', 'lava'] as const).map((b) => (
-                        <NBtn
-                          key={b}
-                          onClick={() => toggleEdgeAllowed('bottom', b)}
-                          active={edgeBottomAllowed.includes(b)}
-                          color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : '#ef4444'}
-                          style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
-                        >
-                          {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : 'Lava'}
-                        </NBtn>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Left Edge */}
-                  <div>
-                    <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Left Edge</Lbl>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {(['wall', 'portal', 'lava'] as const).map((b) => (
-                        <NBtn
-                          key={b}
-                          onClick={() => toggleEdgeAllowed('left', b)}
-                          active={edgeLeftAllowed.includes(b)}
-                          color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : '#ef4444'}
-                          style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
-                        >
-                          {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : 'Lava'}
-                        </NBtn>
-                      ))}
-                    </div>
-                  </div>
-
+                  <p style={{ fontSize: 9, color: '#475569', margin: '0 0 2px', lineHeight: 1.3 }}>
+                    Lower rates preserve more cells from the current canvas grid.
+                  </p>
+                  <input
+                    type="range" min={10} max={100} step={10}
+                    value={mutationRate * 100}
+                    onChange={(e) => setMutationRate(Number(e.target.value) / 100)}
+                    style={{ width: '100%', accentColor: '#00c4ff' }}
+                  />
                 </div>
               </div>
 
-              {/* Conveyor & Trampoline Custom Steps Settings */}
-              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>Conveyor & Trampoline Steps</span>
+              {/* GROUP 1.5: MULTIPLE ROOMS SETTINGS */}
+              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>1.5. Multiple Rooms Settings</span>
                 
+                {/* Number of Rooms */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Lbl style={{ margin: 0 }}>Room Count</Lbl>
+                    <span style={{ fontSize: 10, color: '#00c4ff', fontWeight: 'bold' }}>{numRooms} {numRooms === 1 ? 'Room' : 'Rooms'}</span>
+                  </div>
+                  <input
+                    type="range" min={1} max={4} step={1}
+                    value={numRooms}
+                    onChange={(e) => setNumRooms(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: '#00c4ff' }}
+                  />
+                </div>
+
+                {numRooms > 1 && (
+                  <>
+                    {/* Room Placement & Portal Connections */}
+                    <div style={{ display: 'flex', gap: 14 }}>
+                      <div style={{ flex: 1 }}>
+                        <Lbl>Placement Mode</Lbl>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                          {(['grid', 'random'] as const).map((mode) => (
+                            <NBtn key={mode} onClick={() => setRoomPlacementMode(mode)} active={roomPlacementMode === mode} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 8, textTransform: 'uppercase' }}>
+                              {mode}
+                            </NBtn>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <Lbl>Portal Connections</Lbl>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                          {(['connected', 'disconnected', 'random'] as const).map((mode) => (
+                            <NBtn key={mode} onClick={() => setRoomPortalConnection(mode)} active={roomPortalConnection === mode} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 7, textTransform: 'uppercase' }}>
+                              {mode === 'disconnected' ? 'None' : mode}
+                            </NBtn>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Player Distribution & Control Mode */}
+                    <div style={{ display: 'flex', gap: 14 }}>
+                      <div style={{ flex: 1 }}>
+                        <Lbl>Player Distribution</Lbl>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                          {(['same_room', 'random_rooms'] as const).map((dist) => (
+                            <NBtn key={dist} onClick={() => setPlayerDistribution(dist)} active={playerDistribution === dist} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 8, textTransform: 'uppercase' }}>
+                              {dist === 'same_room' ? 'Same' : 'Random'}
+                            </NBtn>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <Lbl>Movement Sync Mode</Lbl>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                          {(['all_rooms', 'selected_room', 'random'] as const).map((mode) => (
+                            <NBtn key={mode} onClick={() => setControlModeSelect(mode)} active={controlModeSelect === mode} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 7, textTransform: 'uppercase' }}>
+                              {mode === 'all_rooms' ? 'Sync' : mode === 'selected_room' ? 'Single' : 'Rand'}
+                            </NBtn>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fog of War Mode & Visibility Distance */}
+                    <div style={{ display: 'flex', gap: 14 }}>
+                      <div style={{ flex: 1 }}>
+                        <Lbl>Fog of War Mode</Lbl>
+                        <select
+                          value={roomFogMode}
+                          onChange={(e) => setRoomFogMode(e.target.value as any)}
+                          style={{ ...iStyle, width: '100%', background: '#060d1a', border: '1px solid rgba(30,58,95,0.5)', height: 28, fontSize: 10 }}
+                        >
+                          <option value="all_light">All Light</option>
+                          <option value="all_dark">All Dark</option>
+                          <option value="random">Random Per Room</option>
+                        </select>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <Lbl>Visibility Distance</Lbl>
+                        <select
+                          value={roomFogVisibility}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setRoomFogVisibility(isNaN(Number(val)) ? val : Number(val));
+                          }}
+                          style={{ ...iStyle, width: '100%', background: '#060d1a', border: '1px solid rgba(30,58,95,0.5)', height: 28, fontSize: 10 }}
+                        >
+                          <option value={1.0}>1.0 cells</option>
+                          <option value={1.5}>1.5 cells (Default)</option>
+                          <option value={2.0}>2.0 cells</option>
+                          <option value={2.5}>2.5 cells</option>
+                          <option value={3.0}>3.0 cells</option>
+                          <option value="random">Random</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Fog Persistence */}
+                    <div>
+                      <Lbl>Keep Revealed (Fog Persistence)</Lbl>
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {(['yes', 'no', 'random'] as const).map((persist) => (
+                          <NBtn key={persist} onClick={() => setRoomFogPersist(persist)} active={roomFogPersist === persist} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 8, textTransform: 'uppercase' }}>
+                            {persist === 'yes' ? 'Persistent' : persist === 'no' ? 'Temporary' : 'Random'}
+                          </NBtn>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* GROUP 2: PLAYER & OBJECT SETTINGS */}
+              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>2. Player & Entity Settings</span>
+                
+                {/* Players Count Dropdown */}
+                <div>
+                  <Lbl>Player Count (Specific count or random range)</Lbl>
+                  <select
+                    value={playerCount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!isNaN(Number(val))) {
+                        setPlayerCount(Number(val));
+                      } else {
+                        setPlayerCount(val);
+                      }
+                    }}
+                    style={{ ...iStyle, width: '100%', background: '#060d1a', border: '1px solid rgba(30,58,95,0.5)', height: 28, fontSize: 10 }}
+                  >
+                    <option value={1}>1 Player</option>
+                    <option value={2}>2 Players</option>
+                    <option value={3}>3 Players</option>
+                    <option value={4}>4 Players</option>
+                    <option value="1-2">Random 1-2 Players</option>
+                    <option value="2-3">Random 2-3 Players</option>
+                    <option value="2-4">Random 2-4 Players</option>
+                    <option value="3-4">Random 3-4 Players</option>
+                    <option value="1-4">Random 1-4 Players</option>
+                  </select>
+                </div>
+
+                {/* Player Behaviors: Directions & Locks */}
                 <div style={{ display: 'flex', gap: 14 }}>
-                  {/* Conveyor Steps Selection */}
                   <div style={{ flex: 1 }}>
-                    <Lbl style={{ marginBottom: 4 }}>Conveyor Steps</Lbl>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {([1, 2, 3, 4, 5, 'random'] as const).map((s) => (
-                        <NBtn
-                          key={s}
-                          onClick={() => setConveyorSteps(s)}
-                          active={conveyorSteps === s}
-                          color="#00c4ff"
-                          style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
-                        >
-                          {s === 'random' ? 'Rand' : s}
+                    <Lbl>Player Movement Mode</Lbl>
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {(['normal', 'reversed', 'random'] as const).map((mode) => (
+                        <NBtn key={mode} onClick={() => setPlayerMode(mode)} active={playerMode === mode} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 8, textTransform: 'uppercase' }}>
+                          {mode === 'reversed' ? 'Rev' : mode}
                         </NBtn>
                       ))}
                     </div>
                   </div>
-
-                  {/* Trampoline Steps Selection */}
                   <div style={{ flex: 1 }}>
-                    <Lbl style={{ marginBottom: 4 }}>Trampoline Steps</Lbl>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {([1, 2, 3, 4, 5, 'random'] as const).map((s) => (
-                        <NBtn
-                          key={s}
-                          onClick={() => setTrampolineSteps(s)}
-                          active={trampolineSteps === s}
-                          color="#00c4ff"
-                          style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
-                        >
-                          {s === 'random' ? 'Rand' : s}
+                    <Lbl>Lock Target On Reach</Lbl>
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {(['lock', 'nolock', 'random'] as const).map((lock) => (
+                        <NBtn key={lock} onClick={() => setPlayerLock(lock)} active={playerLock === lock} color="#00c4ff" style={{ flex: 1, padding: '5px 1px', fontSize: 8, textTransform: 'uppercase' }}>
+                          {lock === 'nolock' ? 'NoLock' : lock}
                         </NBtn>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Trail Collision Row */}
-              <div>
-                <Lbl>Trail Collision</Lbl>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {(['yes', 'no', 'random'] as const).map((tc) => (
-                    <NBtn key={tc} onClick={() => setTrailCollision(tc)} active={trailCollision === tc} color="#00c4ff" style={{ flex: 1, padding: '4px 2px', fontSize: 9, textTransform: 'capitalize' }}>
-                      {tc}
-                    </NBtn>
-                  ))}
-                </div>
-              </div>
-
-              {/* Player Behaviors */}
-              <div style={{ display: 'flex', gap: 14 }}>
-                <div style={{ flex: 1 }}>
-                  <Lbl>Player Move Direction</Lbl>
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    {(['normal', 'reversed', 'random'] as const).map((mode) => (
-                      <NBtn key={mode} onClick={() => setPlayerMode(mode)} active={playerMode === mode} color="#00c4ff" style={{ flex: 1, padding: '4px 1px', fontSize: 8, textTransform: 'uppercase' }}>
-                        {mode === 'reversed' ? 'Rev' : mode}
-                      </NBtn>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Lbl>Lock Target On Reach</Lbl>
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    {(['lock', 'nolock', 'random'] as const).map((lock) => (
-                      <NBtn key={lock} onClick={() => setPlayerLock(lock)} active={playerLock === lock} color="#00c4ff" style={{ flex: 1, padding: '4px 1px', fontSize: 8, textTransform: 'uppercase' }}>
-                        {lock === 'nolock' ? 'NoLock' : lock}
+                {/* Trail Collision Row */}
+                <div>
+                  <Lbl>Trail Collision</Lbl>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {(['yes', 'no', 'random'] as const).map((tc) => (
+                      <NBtn key={tc} onClick={() => setTrailCollision(tc)} active={trailCollision === tc} color="#00c4ff" style={{ flex: 1, padding: '4px 2px', fontSize: 9, textTransform: 'capitalize' }}>
+                        {tc}
                       </NBtn>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Granular Sliders for Densities */}
-              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#1e3a5f', textTransform: 'uppercase' }}>Special Element Densities & Ratios</span>
+              {/* GROUP 3: CELL & ELEMENT SETTINGS */}
+              <div style={{ background: '#040914', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00c4ff', textTransform: 'uppercase' }}>3. Cell & Element Settings</span>
                 
+                {/* Granular Edge Behaviors */}
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Obstacles Ratio</span>
-                    <span>{Math.round(obstacleDensity * 100)}%</span>
+                  <Lbl style={{ marginBottom: 4 }}>Granular Edge Behaviors</Lbl>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, background: '#020617', padding: 8, borderRadius: 8, border: '1px solid rgba(30,58,95,0.2)' }}>
+                    
+                    {/* Top Edge */}
+                    <div>
+                      <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Top Edge</Lbl>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {(['wall', 'portal', 'lava', 'random'] as const).map((b) => (
+                          <NBtn
+                            key={b}
+                            onClick={() => toggleEdgeAllowed('top', b)}
+                            active={edgeTopAllowed.includes(b)}
+                            color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : b === 'lava' ? '#ef4444' : '#f59e0b'}
+                            style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
+                          >
+                            {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : b === 'lava' ? 'Lava' : 'Rand'}
+                          </NBtn>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Right Edge */}
+                    <div>
+                      <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Right Edge</Lbl>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {(['wall', 'portal', 'lava', 'random'] as const).map((b) => (
+                          <NBtn
+                            key={b}
+                            onClick={() => toggleEdgeAllowed('right', b)}
+                            active={edgeRightAllowed.includes(b)}
+                            color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : b === 'lava' ? '#ef4444' : '#f59e0b'}
+                            style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
+                          >
+                            {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : b === 'lava' ? 'Lava' : 'Rand'}
+                          </NBtn>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bottom Edge */}
+                    <div>
+                      <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Bottom Edge</Lbl>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {(['wall', 'portal', 'lava', 'random'] as const).map((b) => (
+                          <NBtn
+                            key={b}
+                            onClick={() => toggleEdgeAllowed('bottom', b)}
+                            active={edgeBottomAllowed.includes(b)}
+                            color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : b === 'lava' ? '#ef4444' : '#f59e0b'}
+                            style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
+                          >
+                            {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : b === 'lava' ? 'Lava' : 'Rand'}
+                          </NBtn>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Left Edge */}
+                    <div>
+                      <Lbl style={{ margin: '0 0 3px', fontSize: 8 }}>Left Edge</Lbl>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {(['wall', 'portal', 'lava', 'random'] as const).map((b) => (
+                          <NBtn
+                            key={b}
+                            onClick={() => toggleEdgeAllowed('left', b)}
+                            active={edgeLeftAllowed.includes(b)}
+                            color={b === 'wall' ? '#00c4ff' : b === 'portal' ? '#a78bfa' : b === 'lava' ? '#ef4444' : '#f59e0b'}
+                            style={{ flex: 1, padding: '4px 0', fontSize: 8 }}
+                          >
+                            {b === 'wall' ? 'Wall' : b === 'portal' ? 'Port' : b === 'lava' ? 'Lava' : 'Rand'}
+                          </NBtn>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <input type="range" min={0} max={50} step={5} value={obstacleDensity * 100} onChange={(e) => setObstacleDensity(Number(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c4ff' }} />
                 </div>
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Ice cells Ratio</span>
-                    <span>{Math.round(iceDensity * 100)}%</span>
-                  </div>
-                  <input type="range" min={0} max={50} step={5} value={iceDensity * 100} onChange={(e) => setIceDensity(Number(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
+                {/* Granular Sliders for Densities/Exact Counts */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid rgba(30,58,95,0.15)', paddingTop: 10 }}>
+                  <Lbl style={{ margin: 0 }}>Special Element Densities & Ratios</Lbl>
+                  
+                  {/* helper to render sliders with toggle */}
+                  {(Object.entries({
+                    Obstacles: { key: 'obstacle', mode: obstacleMode, setMode: (m: any) => handleModeChange('obstacle', m), ratio: obstacleDensity, setRatio: setObstacleDensity, count: obstacleCount, setCount: setObstacleCount, maxRatio: 50 },
+                    'Ice cells': { key: 'ice', mode: iceMode, setMode: (m: any) => handleModeChange('ice', m), ratio: iceDensity, setRatio: setIceDensity, count: iceCount, setCount: setIceCount, maxRatio: 50 },
+                    Conveyors: { key: 'conveyor', mode: conveyorMode, setMode: (m: any) => handleModeChange('conveyor', m), ratio: conveyorDensity, setRatio: setConveyorDensity, count: conveyorCount, setCount: setConveyorCount, maxRatio: 30 },
+                    Trampolines: { key: 'trampoline', mode: trampolineMode, setMode: (m: any) => handleModeChange('trampoline', m), ratio: trampolineDensity, setRatio: setTrampolineDensity, count: trampolineCount, setCount: setTrampolineCount, maxRatio: 20 },
+                    'Forbidden tiles': { key: 'forbidden', mode: forbiddenMode, setMode: (m: any) => handleModeChange('forbidden', m), ratio: forbiddenDensity, setRatio: setForbiddenDensity, count: forbiddenCount, setCount: setForbiddenCount, maxRatio: 30 },
+                    'Direction Toggles': { key: 'toggle', mode: toggleMode, setMode: (m: any) => handleModeChange('toggle', m), ratio: toggleDensity, setRatio: setToggleDensity, count: toggleCount, setCount: setToggleCount, maxRatio: 20 },
+                  }) as any).map(([label, cfg]: any) => {
+                    const maxCount = width * height;
+                    const isActive = cfg.mode === 'ratio' ? cfg.ratio > 0 : cfg.count > 0;
+                    return (
+                      <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 9, color: '#94a3b8' }}>{label}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {/* Toggle buttons for Ratio / Count */}
+                            <div style={{ display: 'flex', background: '#020617', borderRadius: 4, padding: 1, border: '1px solid rgba(30,58,95,0.4)' }}>
+                              {(['ratio', 'count'] as const).map((m) => (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => cfg.setMode(m)}
+                                  style={{
+                                    padding: '1px 5px',
+                                    fontSize: 8,
+                                    fontWeight: 600,
+                                    border: 'none',
+                                    borderRadius: 3,
+                                    background: cfg.mode === m ? 'rgba(0,196,255,0.2)' : 'transparent',
+                                    color: cfg.mode === m ? '#00c4ff' : '#475569',
+                                    cursor: 'pointer',
+                                    textTransform: 'uppercase',
+                                    lineHeight: 1
+                                  }}
+                                >
+                                  {m === 'ratio' ? '%' : '#'}
+                                </button>
+                              ))}
+                            </div>
+                            <span style={{ fontSize: 9, color: '#e2e8f0', minWidth: 28, textAlign: 'right', fontWeight: 'bold' }}>
+                              {cfg.mode === 'ratio' ? `${Math.round(cfg.ratio * 100)}%` : `${cfg.count} pcs`}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {cfg.mode === 'ratio' ? (
+                          <input
+                            type="range"
+                            min={0}
+                            max={cfg.maxRatio}
+                            step={5}
+                            value={cfg.ratio * 100}
+                            onChange={(e) => cfg.setRatio(Number(e.target.value) / 100)}
+                            style={{ width: '100%', accentColor: '#00c4ff' }}
+                          />
+                        ) : (
+                          <input
+                            type="range"
+                            min={0}
+                            max={maxCount}
+                            step={1}
+                            value={cfg.count}
+                            onChange={(e) => cfg.setCount(Number(e.target.value))}
+                            style={{ width: '100%', accentColor: '#00c4ff' }}
+                          />
+                        )}
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Conveyors Ratio</span>
-                    <span>{Math.round(conveyorDensity * 100)}%</span>
-                  </div>
-                  <input type="range" min={0} max={30} step={5} value={conveyorDensity * 100} onChange={(e) => setConveyorDensity(Number(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
+                        {/* Conveyor steps expand dynamically */}
+                        {cfg.key === 'conveyor' && isActive && (
+                          <div style={{ marginTop: 4, paddingLeft: 8, borderLeft: '2px solid rgba(0,196,255,0.3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 8, color: '#00c4ff' }}>Conveyor Steps (Select multiple for random):</span>
+                            <div style={{ display: 'flex', gap: 2 }}>
+                              {([1, 2, 3, 4, 5] as const).map((s) => {
+                                const active = conveyorSteps.includes(s);
+                                return (
+                                  <NBtn key={s} onClick={() => toggleConveyorStep(s)} active={active} color="#00c4ff" style={{ flex: 1, padding: '3px 0', fontSize: 8 }}>
+                                    {s}
+                                  </NBtn>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Trampolines Ratio</span>
-                    <span>{Math.round(trampolineDensity * 100)}%</span>
-                  </div>
-                  <input type="range" min={0} max={20} step={5} value={trampolineDensity * 100} onChange={(e) => setTrampolineDensity(Number(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
+                        {/* Trampoline steps expand dynamically */}
+                        {cfg.key === 'trampoline' && isActive && (
+                          <div style={{ marginTop: 4, paddingLeft: 8, borderLeft: '2px solid rgba(0,196,255,0.3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 8, color: '#00c4ff' }}>Trampoline Steps (Select multiple for random):</span>
+                            <div style={{ display: 'flex', gap: 2 }}>
+                              {([1, 2, 3, 4, 5] as const).map((s) => {
+                                const active = trampolineSteps.includes(s);
+                                return (
+                                  <NBtn key={s} onClick={() => toggleTrampolineStep(s)} active={active} color="#00c4ff" style={{ flex: 1, padding: '3px 0', fontSize: 8 }}>
+                                    {s}
+                                  </NBtn>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Forbidden tiles Ratio</span>
-                    <span>{Math.round(forbiddenDensity * 100)}%</span>
+                  {/* Teleporter pairs slider (always count) */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#94a3b8', marginBottom: 2 }}>
+                      <span>Teleporter pairs (A, B, C)</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 'bold' }}>{teleporterCount} Pairs</span>
+                    </div>
+                    <input type="range" min={0} max={3} step={1} value={teleporterCount} onChange={(e) => setTeleporterCount(Number(e.target.value))} style={{ width: '100%', accentColor: '#00c4ff' }} />
                   </div>
-                  <input type="range" min={0} max={30} step={5} value={forbiddenDensity * 100} onChange={(e) => setForbiddenDensity(Number(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Direction Toggles Ratio</span>
-                    <span>{Math.round(toggleDensity * 100)}%</span>
-                  </div>
-                  <input type="range" min={0} max={20} step={5} value={toggleDensity * 100} onChange={(e) => setToggleDensity(Number(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c4ff' }} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 2 }}>
-                    <span>Teleporter pairs (A, B, C)</span>
-                    <span>{teleporterCount} Pairs</span>
-                  </div>
-                  <input type="range" min={0} max={3} step={1} value={teleporterCount} onChange={(e) => setTeleporterCount(Number(e.target.value))} style={{ width: '100%', accentColor: '#00c4ff' }} />
                 </div>
               </div>
             </div>
@@ -856,6 +1403,7 @@ export default function EditorDialogs({
   submitDialogOpen, onSubmitClose, submitNote, setSubmitNote,
   submitError, submitStatus, savedRequestId, levelName, difficulty, user, userTag, onSubmit,
   generatorDialogOpen, onGeneratorClose, onGenerate,
+  aiAssistantDialogOpen, onAiAssistantClose,
 }: EditorDialogsProps) {
   const t = useT();
   return (
@@ -923,6 +1471,9 @@ export default function EditorDialogs({
       )}
       {generatorDialogOpen && (
         <GeneratorModal onClose={onGeneratorClose} onGenerate={onGenerate} />
+      )}
+      {aiAssistantDialogOpen && (
+        <AiAssistantDialog open={aiAssistantDialogOpen} onClose={onAiAssistantClose} />
       )}
     </>
   );

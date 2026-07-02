@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, Google Firestore REST API ile doğrudan iletişim kurarak veri okuma, 
+ * yazma, silme, güncelleme ve toplu işlem (batch commit) işlevlerini gerçekleştiren istemci modülünü içerir.
+ */
+
+/**
  * Minimal Firestore REST API client.
  * All writes use the Admin access token (bypasses Firestore security rules).
  */
@@ -33,6 +38,7 @@ export interface FsDocument {
 
 // ─── Deserialize ─────────────────────────────────────────────────────────────
 
+// Firestore REST API'den gelen ham tip nesnelerini Javascript değerlerine dönüştürür.
 function fromValue(v: FsValue): unknown {
   if ('stringValue' in v) return v.stringValue;
   if ('integerValue' in v) return Number(v.integerValue);
@@ -50,6 +56,7 @@ function fromValue(v: FsValue): unknown {
   return null;
 }
 
+// Firestore REST API döküman nesnesini standart bir Javascript nesnesine dönüştürür.
 export function fromDoc(doc: FsDocument): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(doc.fields)) out[k] = fromValue(v);
@@ -58,6 +65,7 @@ export function fromDoc(doc: FsDocument): Record<string, unknown> {
 
 // ─── Serialize ───────────────────────────────────────────────────────────────
 
+// Javascript değerlerini Firestore REST API'nin beklediği tip nesnelerine dönüştürür.
 function toValue(v: unknown): FsValue {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'string') return { stringValue: v };
@@ -74,6 +82,7 @@ function toValue(v: unknown): FsValue {
   return { nullValue: null };
 }
 
+// Standart bir Javascript nesnesini Firestore alanlar (fields) yapısına dönüştürür.
 function toFields(obj: Record<string, unknown>): FsFields {
   const fields: FsFields = {};
   for (const [k, v] of Object.entries(obj)) fields[k] = toValue(v);
@@ -91,6 +100,7 @@ function authHeader(accessToken: string): Record<string, string> {
 }
 
 /** GET a document. Returns null if 404. */
+// Belirtilen yoldaki Firestore dökümanını GET isteği ile çeker.
 export async function fsGet(
   projectId: string,
   path: string,
@@ -105,6 +115,7 @@ export async function fsGet(
 }
 
 /** PATCH (upsert) a document — replaces all fields. */
+// Belirtilen yoldaki dökümanı günceller (tüm alanları sıfırlayarak yazar).
 export async function fsSet(
   projectId: string,
   path: string,
@@ -123,6 +134,7 @@ export async function fsSet(
  * Commit a batch of writes atomically.
  * Supports regular `update` writes and `transform` writes (e.g., field increments).
  */
+// Birden fazla veri yazma ve dönüştürme işlemini tek bir atomik istek (commit) olarak Firestore'a iletir.
 export async function fsCommit(
   projectId: string,
   writes: unknown[],
@@ -137,6 +149,7 @@ export async function fsCommit(
 }
 
 /** PATCH (update) specific fields of a document. */
+// Firestore dökümanının sadece belirli alanlarını (updateMask kullanarak) günceller.
 export async function fsPatch(
   projectId: string,
   path: string,
@@ -155,6 +168,7 @@ export async function fsPatch(
 }
 
 /** DELETE a document. */
+// Belirtilen yoldaki Firestore dökümanını siler.
 export async function fsDelete(
   projectId: string,
   path: string,
@@ -177,6 +191,7 @@ export function docPath(projectId: string, path: string): string {
 // ─── Level data parser ────────────────────────────────────────────────────────
 
 /** Convert a Firestore levels/{id} document to LevelData for game engine replay. */
+// Firestore'dan çekilen seviye dökümanını oyun motorunun doğrulayabileceği formata dönüştürür.
 export function parseLevelDoc(doc: FsDocument, firestoreId: string): any {
   const d = fromDoc(doc) as Record<string, unknown>;
   return {

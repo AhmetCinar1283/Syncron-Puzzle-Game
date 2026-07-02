@@ -1,3 +1,8 @@
+/**
+ * DOSYA AMACI: Bu dosya, arkadaş listesi, gelen istekler, arama sonuçları ve engelleme işlemlerini 
+ * yöneten ve API istemcisini sarmalayan useFriends hook'unu içerir.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import {
@@ -20,6 +25,7 @@ import {
 const cache: Record<string, { friends: Friend[]; requests: FriendRequest[]; timestamp: number }> = {};
 const CACHE_DURATION = 60 * 1000; // 1 minute in-memory cache
 
+// Arkadaşlık ilişkileri ve sosyal özellikler için durumları, yüklenme durumlarını ve eylemleri yöneten React hook'u.
 export function useFriends() {
   const { user, isAnonymous } = useAuthContext();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -38,6 +44,7 @@ export function useFriends() {
 
   const cacheKey = user?.uid || 'anonymous';
 
+  // Arkadaş listesini API'den çeker ve 1 dakikalık önbelleğe yazar.
   const fetchFriendsList = useCallback(
     async (force = false) => {
       if (!user || isAnonymous) return;
@@ -71,6 +78,7 @@ export function useFriends() {
     [user, isAnonymous, cacheKey]
   );
 
+  // Gelen ve giden bekleyen arkadaşlık isteklerini API'den çeker ve önbelleğe yazar.
   const fetchIncomingRequests = useCallback(
     async (force = false) => {
       if (!user || isAnonymous) return;
@@ -104,6 +112,7 @@ export function useFriends() {
     [user, isAnonymous, cacheKey]
   );
 
+  // Engellenmiş kullanıcıların listesini API'den yükler.
   const fetchBlockedList = useCallback(
     async (force = false) => {
       if (!user || isAnonymous) return;
@@ -125,6 +134,7 @@ export function useFriends() {
     [user, isAnonymous]
   );
 
+  // Arkadaş listesini, istekleri ve engelli listesini paralel olarak yükler.
   const loadAll = useCallback(
     async (force = false) => {
       if (!user || isAnonymous) return;
@@ -141,6 +151,7 @@ export function useFriends() {
     loadAll();
   }, [loadAll]);
 
+  // Oyuncuları tag (etiket) bilgisine göre arar.
   const search = useCallback(
     async (tag: string) => {
       if (!user || isAnonymous) return;
@@ -169,6 +180,7 @@ export function useFriends() {
     setActionBusy((prev) => ({ ...prev, [uid]: busy }));
   };
 
+  // Belirtilen kullanıcıya arkadaşlık isteği gönderir.
   const sendRequest = useCallback(
     async (targetUid: string) => {
       if (!user || isAnonymous) return;
@@ -197,6 +209,7 @@ export function useFriends() {
     [user, isAnonymous]
   );
 
+  // Gelen arkadaşlık isteğini onaylar ve listeleri yeniler.
   const acceptRequest = useCallback(
     async (requesterUid: string) => {
       if (!user || isAnonymous) return;

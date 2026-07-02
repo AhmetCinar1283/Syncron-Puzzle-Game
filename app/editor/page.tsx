@@ -6,6 +6,7 @@ import { PlayScreen } from '@/app/src/game2/components/PlayScreen';
 import { convertToGame2State } from '@/app/src/game2/logic/converter';
 import { NBtn } from './components/EditorUI';
 import EditorLeftPanel from './components/EditorLeftPanel';
+import LevelsManagerDialog from './components/LevelsManagerDialog';
 import ToolPalette from './components/ToolPalette';
 import EditorCanvas from './components/EditorCanvas';
 import BottomSettingsPanel from './components/BottomSettingsPanel';
@@ -17,6 +18,7 @@ import { EditorContextProvider } from './EditorContext';
 import type { EditorContextValue } from './EditorContext';
 import type { SelectionRect } from './useGridOperations';
 import { useT } from '@/app/src/contexts/LanguageContext';
+import { useGamepad } from '@/app/src/hooks/useGamepad';
 
 function EditorInner() {
   const t = useT();
@@ -27,11 +29,28 @@ function EditorInner() {
   const s = useEditorState(editId, firestoreIdParam);
 
   const [isMobile, setIsMobile] = useState(false);
-  const [activeTab, setActiveTab] = useState<'levels' | 'grid' | 'settings'>('grid');
+  const [activeTab, setActiveTab] = useState<'alternatives' | 'grid' | 'settings'>('grid');
   const [cellSize, setCellSize] = useState(44);
 
+  // Sync activeTab when candidates list becomes empty
   useEffect(() => {
-    function check() { setIsMobile(window.innerWidth < 900); }
+    if (s.generatedCandidates.length === 0 && activeTab === 'alternatives') {
+      setActiveTab('grid');
+    }
+  }, [s.generatedCandidates.length, activeTab]);
+
+  // Dynamically calculate mobile tabs: show "Alternatifler" tab only if there are generated candidates
+  const tabs = s.generatedCandidates.length > 0
+    ? (['grid', 'settings', 'alternatives'] as const)
+    : (['grid', 'settings'] as const);
+
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+    function check() {
+      setIsMobile(window.innerWidth < 900);
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    }
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -42,16 +61,21 @@ function EditorInner() {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const mob = vw < 900;
-      // Subtract: left panel, right panel, row/col controls (34px), edge strips (20px), padding (20px)
-      const availW = mob ? vw - 76 : vw - 170 - 220 - 80;
+      const hasLeftPanel = !mob && s.generatedCandidates.length > 0;
+      const leftPanelWidth = hasLeftPanel ? 170 : 0;
+      const paletteWidth = isLandscape ? 48 : 0;
+      // Subtract: left panel, right panel, palette, row/col controls (34px), edge strips (20px), padding (20px)
+      const availW = mob ? vw - 76 : vw - leftPanelWidth - paletteWidth - 220 - 80;
+
+      const paletteHeight = isLandscape ? 0 : 52;
       // Subtract: top bar, tab bar (mob), tool palette, bottom panel, col controls, edge, padding
-      const availH = vh - (mob ? 130 : 44) - 52 - 40 - 22 - 28;
+      const availH = vh - (mob ? 130 : 44) - paletteHeight - 40 - 22 - 28;
       setCellSize(Math.max(24, Math.min(56, Math.floor(availW / s.width), Math.floor(availH / s.height))));
     }
     compute();
     window.addEventListener('resize', compute);
     return () => window.removeEventListener('resize', compute);
-  }, [s.width, s.height]);
+  }, [s.width, s.height, s.generatedCandidates.length, isLandscape]);
 
   const gridOps = useGridOperations({
     grid: s.grid, setGrid: s.setGrid,
@@ -78,6 +102,56 @@ function EditorInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [s.undo]);
 
+  // Arrow keys/WASD movement trigger for Test Mode
+  useEffect(() => {
+    function handleMovementKeyDown(e: KeyboardEvent) {
+      if (s.testLevel) return;
+
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+         activeEl.tagName === 'TEXTAREA' ||
+         activeEl.tagName === 'SELECT')
+      ) {
+        return;
+      }
+
+      const isMovement = [
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+        'w', 'a', 's', 'd',
+        'W', 'A', 'S', 'D'
+      ].includes(e.key);
+
+      if (isMovement) {
+        e.preventDefault();
+        s.handleTest();
+      }
+    }
+    window.addEventListener('keydown', handleMovementKeyDown);
+    return () => window.removeEventListener('keydown', handleMovementKeyDown);
+  }, [s.testLevel, s.handleTest]);
+
+  // Gamepad controls trigger for Test Mode
+  useGamepad({
+    onMove: () => {
+      if (s.testLevel) return;
+      
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+         activeEl.tagName === 'TEXTAREA' ||
+         activeEl.tagName === 'SELECT')
+      ) {
+        return;
+      }
+      
+      s.handleTest();
+    },
+    enabled: !s.testLevel,
+  });
+
   const ctxValue: EditorContextValue = {
     ...s,
     cellSize,
@@ -95,6 +169,9 @@ function EditorInner() {
             {t('editor.title')} {editId !== null ? <span style={{ color: '#1e3a5f', fontWeight: 400 }}>{t('editor.editing', { id: editId })}</span> : t('editor.new')}
           </h1>
           <div style={{ display: 'flex', gap: 8 }}>
+            <NBtn onClick={() => s.setLevelsDialogOpen(true)} color="#00c4ff" active style={{ padding: '5px 16px' }}>
+              📂 {isMobile ? 'Bölümler' : t('editor.saved_levels')}
+            </NBtn>
             {!s.isAnonymous && !s.isModerator && (
               <>
                 <NBtn onClick={s.handleSaveClick} color="#a78bfa" active style={{ padding: '5px 16px' }}>
@@ -116,12 +193,16 @@ function EditorInner() {
         {/* Mobile tab bar */}
         {isMobile && (
           <div style={{ flexShrink: 0, display: 'flex', borderBottom: '1px solid rgba(30,58,95,0.4)', background: 'rgba(3,7,18,0.97)' }}>
-            {(['levels', 'grid', 'settings'] as const).map((tab) => (
+            {tabs.map((tab) => (
               <button
-                key={tab} onClick={() => setActiveTab(tab)}
+                key={tab} onClick={() => setActiveTab(tab as any)}
                 style={{ flex: 1, padding: '8px 4px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === tab ? '#00c4ff' : 'transparent'}`, color: activeTab === tab ? '#00c4ff' : '#334155', cursor: 'pointer', transition: 'all 0.15s' }}
               >
-                {tab === 'levels' ? t('editor.tab_levels') : tab === 'grid' ? t('editor.tab_grid') : t('editor.tab_settings')}
+                {tab === 'grid'
+                  ? t('editor.tab_grid')
+                  : tab === 'settings'
+                  ? t('editor.tab_settings')
+                  : '✨ ' + (t('editor.alternatives') || 'Seçenekler')}
               </button>
             ))}
           </div>
@@ -130,19 +211,16 @@ function EditorInner() {
         {/* Body */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           <EditorLeftPanel
-            editId={editId} levelsLoading={s.levelsLoading} savedLevels={s.savedLevels}
-            isModerator={s.isModerator} showFirestoreLevels={s.showFirestoreLevels}
-            setShowFirestoreLevels={s.setShowFirestoreLevels} firestoreLevels={s.firestoreLevels}
-            firestoreEditId={s.firestoreEditId} selectedPartId={s.selectedPartId}
-            onLoadLevel={s.handleLoadLevel} onNewLevel={s.handleNewLevel}
-            onLoadFirestoreLevel={s.loadFirestoreLevel}
-            isMobile={isMobile} visible={activeTab === 'levels'}
+            isMobile={isMobile} visible={activeTab === 'alternatives'}
           />
 
           {/* Center column: palette + grid + bottom panel */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-            <ToolPalette isMobile={isMobile} />
-            <EditorCanvas isMobile={isMobile} visible={activeTab === 'grid'} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: isLandscape ? 'row' : 'column', overflow: 'hidden' }}>
+              {!isLandscape && <ToolPalette isMobile={isMobile} isLandscape={false} />}
+              <EditorCanvas isMobile={isMobile} visible={activeTab === 'grid'} />
+              {isLandscape && <ToolPalette isMobile={isMobile} isLandscape={true} />}
+            </div>
             <BottomSettingsPanel isMobile={isMobile} visible={activeTab === 'grid'} />
           </div>
 
@@ -164,37 +242,39 @@ function EditorInner() {
           generatorDialogOpen={s.generatorDialogOpen}
           onGeneratorClose={() => s.setGeneratorDialogOpen(false)}
           onGenerate={s.doGenerateLevel}
+          aiAssistantDialogOpen={s.aiAssistantDialogOpen}
+          onAiAssistantClose={() => s.setAiAssistantDialogOpen(false)}
+        />
+
+        <LevelsManagerDialog
+          open={s.levelsDialogOpen}
+          onClose={() => s.setLevelsDialogOpen(false)}
         />
 
         {s.testLevel && (
           <div style={{ position: 'fixed', inset: 0, background: '#030712', zIndex: 100, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'rgba(3,7,18,0.97)', borderBottom: '1px solid rgba(0,196,255,0.15)' }}>
-              <span style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#00ff88', textShadow: '0 0 8px rgba(0,255,136,0.5)', fontWeight: 700 }}>Test Mode (Game2 Physics)</span>
-              <button onClick={() => s.setTestLevel(null)} style={{ fontSize: 12, padding: '6px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', borderRadius: 7, cursor: 'pointer', fontWeight: 600 }}>✕ Close Test</button>
-            </div>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <PlayScreen
-                key={s.testLevel.id}
-                levelName={s.testLevel.name}
-                initialEntities={convertToGame2State(s.testLevel as any).entities}
-                initialRooms={convertToGame2State(s.testLevel as any).rooms}
-                controlMode={convertToGame2State(s.testLevel as any).controlMode}
-                initialControlledRooms={convertToGame2State(s.testLevel as any).initialControlledRooms}
-                levelEdges={s.testLevel.edges as any}
-                trailCollision={!!s.testLevel.trailCollision}
-                onMoveExecuted={() => {}}
-                isTestMode={true}
-                onButtonPressed={(btn) => {
-                  if (btn === 'menu' || btn === 'next_level') {
-                    s.setTestLevel(null);
-                  } else if (btn === 'restart') {
-                    const temp = s.testLevel;
-                    s.setTestLevel(null);
-                    setTimeout(() => s.setTestLevel(temp), 50);
-                  }
-                }}
-              />
-            </div>
+            <PlayScreen
+              key={s.testLevel.id}
+              levelName={s.testLevel.name}
+              initialEntities={convertToGame2State(s.testLevel as any).entities}
+              initialRooms={convertToGame2State(s.testLevel as any).rooms}
+              controlMode={convertToGame2State(s.testLevel as any).controlMode}
+              initialControlledRooms={convertToGame2State(s.testLevel as any).initialControlledRooms}
+              levelEdges={s.testLevel.edges as any}
+              trailCollision={!!s.testLevel.trailCollision}
+              onMoveExecuted={() => {}}
+              isTestMode={true}
+              solutionSteps={s.showSolutionPath ? s.optimalSolution : null}
+              onButtonPressed={(btn) => {
+                if (btn === 'menu' || btn === 'next_level') {
+                  s.setTestLevel(null);
+                } else if (btn === 'restart') {
+                  const temp = s.testLevel;
+                  s.setTestLevel(null);
+                  setTimeout(() => s.setTestLevel(temp), 50);
+                }
+              }}
+            />
           </div>
         )}
       </div>

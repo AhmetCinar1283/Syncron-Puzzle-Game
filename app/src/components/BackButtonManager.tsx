@@ -1,20 +1,21 @@
 'use client';
 
+/**
+ * DOSYA AMACI: Bu dosya, web tarayıcıları (popstate geçmiş yakalama) ve
+ * Capacitor mobil platformlar (fiziksel geri tuşu dinleyicisi) için
+ * özel hiyerarşik geri tuşu yönlendirme kurallarını yönetir.
+ */
+
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 
-/**
- * Global component that handles back button navigation rules for both
- * Web browsers (via popstate history interception) and Capacitor Mobile
- * (via native hardware backButton listeners).
- */
 export default function BackButtonManager() {
   const router = useRouter();
   const pathname = usePathname();
   const lastPathnameRef = useRef(pathname);
 
-  // Keep the pathname reference updated for async event listeners
+  // Eş zamanlı olmayan olay dinleyicileri için pathname referansını güncel tutar
   useEffect(() => {
     lastPathnameRef.current = pathname;
   }, [pathname]);
@@ -23,8 +24,8 @@ export default function BackButtonManager() {
     const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
 
     /**
-     * Custom hierarchical back navigation rules.
-     * Returns true if handled, false otherwise.
+     * Özel hiyerarşik geri yönlendirme kuralları.
+     * Yönlendirme yapıldıysa true, yapılmadıysa false döner.
      */
     const handleBackNavigation = (currentPath: string): boolean => {
       if (currentPath === '/play') {
@@ -49,7 +50,7 @@ export default function BackButtonManager() {
       return false;
     };
 
-    // --- 1. Capacitor Native Mobile Platform ---
+    // --- 1. Capacitor Yerel Mobil Platformu ---
     if (isNative) {
       let active = true;
       let appListener: any = null;
@@ -59,16 +60,17 @@ export default function BackButtonManager() {
           const { App } = await import('@capacitor/app');
           if (!active) return;
 
+          // Donanım geri tuşuna basıldığında tetiklenir
           appListener = await App.addListener('backButton', async () => {
             const currentPath = lastPathnameRef.current;
             const handled = handleBackNavigation(currentPath);
             
             if (!handled) {
               if (currentPath === '/') {
-                // Exit app if we are on the homepage
+                // Ana sayfadaysak uygulamadan çıkış yap
                 await App.exitApp();
               } else {
-                // Default back logic: try browser history, otherwise go home
+                // Varsayılan geri mantığı: Tarayıcı geçmişi varsa geri git, yoksa ana sayfaya dön
                 if (window.history.length > 1) {
                   router.back();
                 } else {
@@ -92,7 +94,7 @@ export default function BackButtonManager() {
       };
     }
 
-    // --- 2. Web Browser Platform ---
+    // --- 2. Web Tarayıcı Platformu ---
     const currentPath = pathname;
     const shouldIntercept =
       currentPath === '/play' ||
@@ -106,16 +108,15 @@ export default function BackButtonManager() {
 
     if (!shouldIntercept) return;
 
-    // Push a dummy state to browser history.
-    // When the user clicks the browser back button, the browser pops this state,
-    // firing the popstate event but leaving the page URL unchanged, allowing us to redirect.
+    // Tarayıcı geçmişine sanal bir durum ekler.
+    // Kullanıcı geri tuşuna bastığında popstate olayı tetiklenir ama sayfa değişmez.
     window.history.pushState({ intercepted: true }, '');
 
     const handlePopState = (event: PopStateEvent) => {
-      // Execute custom routing
+      // Özel yönlendirme kurallarını çalıştırır
       handleBackNavigation(currentPath);
       
-      // Re-push dummy state for subsequent back clicks
+      // Sonraki geri tıklamaları için sanal durumu tekrar ekler
       window.history.pushState({ intercepted: true }, '');
     };
 

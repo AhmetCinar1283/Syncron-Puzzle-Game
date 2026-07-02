@@ -7,6 +7,7 @@ import {
   updateDoc,
   writeBatch,
   deleteField,
+  increment,
 } from 'firebase/firestore';
 import { db } from './config';
 import type { AdminLevelInput, FirestoreLevel, LevelOrderEntry } from './adminTypes';
@@ -15,13 +16,10 @@ import { getPart } from './adminParts';
 export type { AdminLevelInput, FirestoreLevel };
 
 /**
- * Publishes a new level to Firestore and appends it to the end of the
- * specified part's order map (as a LevelOrderEntry object).
- *
- * Uses a field-path update for the order entry — so concurrent publishes to
- * the same part from different admins won't overwrite each other's additions.
- *
- * Returns the new Firestore document ID.
+ * Yeni bir bölümü Firestore'da yayınlar ve onu belirtilen bölüm paketinin (part) order haritasının sonuna ekler.
+ * Eş zamanlı yayınlar için field-path güncellemesi kullanır, böylece çakışmaları önler.
+ * 
+ * Yeni oluşturulan Firestore doküman ID'sini döndürür.
  */
 export async function publishLevel(
   data: AdminLevelInput,
@@ -37,10 +35,10 @@ export async function publishLevel(
   }
   const batch = writeBatch(db);
 
-  // 1. Create the level document ref (set after computing prevLevelId below)
+  // 1. Yeni bölüm doküman referansını oluşturur
   const levelRef = doc(collection(db, 'levels'));
 
-  // 2. Determine position (max existing + 1)
+  // 2. Sıralama konumunu belirler (mevcut en büyük pozisyon + 1)
   const partRef = doc(db, 'levelParts', partId);
   const partSnap = await getDoc(partRef);
   const currentOrder: Record<string, LevelOrderEntry> = partSnap.exists()
@@ -51,23 +49,24 @@ export async function publishLevel(
     -1,
   );
 
-  // Find the current last-position level (becomes prevLevelId for the new level)
+  // Mevcut en son pozisyondaki bölümü bulur (yeni bölümün prevLevelId değeri olacaktır)
   const prevEntry = Object.values(currentOrder).find(
     (e) => (e.position ?? -1) === maxPos,
   );
   const prevLevelId: string | null = prevEntry?.id ?? null;
 
-  // 1a. Set prevLevelId on the new level document
+  // 1a. Yeni bölüm dokümanı verilerini yazar
   batch.set(levelRef, {
     ...cleanData,
     grid: JSON.stringify(cleanData.grid),
     publishedBy,
     prevLevelId,
+    version: 1,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
-  // 3. Build the order entry
+  // 3. Sıralama girdisini hazırlar
   const entry: Omit<LevelOrderEntry, 'updatedAt'> & { updatedAt: ReturnType<typeof serverTimestamp> } = {
     id: levelRef.id,
     name: cleanData.name,
@@ -79,7 +78,7 @@ export async function publishLevel(
     updatedAt: serverTimestamp(),
   };
 
-  // 4. Write to part — field-path update (concurrent-safe)
+  // 4. Pakete field-path ile eş zamanlı güvenli şekilde yazar
   if (partSnap.exists()) {
     batch.update(partRef, {
       [`order.${entry.id}`]: entry,
@@ -99,11 +98,7 @@ export async function publishLevel(
 }
 
 /**
- * Updates an existing Firestore level's content and bumps its metadata entry
- * in the part's order map.
- *
- * Uses field-path updates for the order entry so position and other fields
- * set by concurrent admins are not overwritten.
+ * Mevcut bir hazır bölümün içeriğini günceller ve paket sıralama haritasındaki üst verilerini yeniler.
  */
 export async function updateFirestoreLevel(
   firestoreId: string,
@@ -120,15 +115,16 @@ export async function updateFirestoreLevel(
   }
   const batch = writeBatch(db);
 
-  // 1. Update the level document
+  // 1. Bölüm dokümanını günceller
   batch.update(doc(db, 'levels', firestoreId), {
     ...cleanData,
     grid: JSON.stringify(cleanData.grid),
     publishedBy,
+    version: increment(1),
     updatedAt: serverTimestamp(),
   });
 
-  // 2. Update only the metadata fields in the order entry (field-path, concurrent-safe)
+  // 2. Paket içindeki özet sıralama verilerini günceller (field-path, eş zamanlı güvenli)
   const entryUpdate: Record<string, unknown> = {
     [`order.${firestoreId}.name`]: cleanData.name,
     [`order.${firestoreId}.width`]: cleanData.width,
@@ -145,17 +141,14 @@ export async function updateFirestoreLevel(
 }
 
 /**
- * Deletes a level from Firestore and removes its entry from the part's order map.
- * Also repairs the prevLevelId chain: the successor level (if any) gets its
- * prevLevelId patched to point to the deleted level's predecessor.
- *
- * Uses deleteField() on the specific order key — no stale-read risk.
+ * Bir bölümü Firestore'dan siler ve paket sıralama haritasından kaldırır.
+ * Ayrıca prevLevelId zincirini onarır (ardıl bölümün prevLevelId değeri silinen bölümün öncülü yapılır).
  */
 export async function deleteFirestoreLevel(
   firestoreId: string,
   partId: string,
 ): Promise<void> {
-  // Read the deleted level's own prevLevelId and the part order before deleting
+  // Silinen bölümün ve paketin mevcut bilgilerini okur
   const [deletedLevelSnap, partSnap] = await Promise.all([
     getDoc(doc(db, 'levels', firestoreId)),
     partId ? getDoc(doc(db, 'levelParts', partId)) : Promise.resolve(null),
@@ -165,8 +158,7 @@ export async function deleteFirestoreLevel(
     ? (deletedLevelSnap.data().prevLevelId as string | null) ?? null
     : null;
 
-  // Find the successor (the level whose prevLevelId was firestoreId)
-  // by finding the order entry with position === deleted level's position + 1
+  // Silinenden sonra gelen ardıl bölümü pozisyona göre bulur
   let successorFirestoreId: string | null = null;
   if (partSnap && partSnap.exists()) {
     const order: Record<string, LevelOrderEntry> = partSnap.data().order ?? {};
@@ -191,7 +183,7 @@ export async function deleteFirestoreLevel(
 
   await batch.commit();
 
-  // Patch successor's prevLevelId to point to deleted level's predecessor (non-fatal)
+  // Ardıl bölümün prevLevelId değerini silinenin öncülüne bağlar
   if (successorFirestoreId !== null) {
     try {
       await updateDoc(doc(db, 'levels', successorFirestoreId), {
@@ -205,8 +197,7 @@ export async function deleteFirestoreLevel(
 }
 
 /**
- * Returns all levels in a part, sorted by their position field.
- * Fetches all level documents referenced by the part's order map.
+ * Bir paketteki tüm bölümleri pozisyon alanına göre sıralanmış olarak getirir.
  */
 export async function getPartLevels(partId: string): Promise<FirestoreLevel[]> {
   const part = await getPart(partId);
@@ -228,3 +219,4 @@ export async function getPartLevels(partId: string): Promise<FirestoreLevel[]> {
       return posA - posB;
     });
 }
+

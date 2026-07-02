@@ -1,4 +1,9 @@
 /**
+ * DOSYA AMACI: Bu dosya, sadece Firebase Functions'ın (sunucular arası) denetim günlüklerini (audit logs) 
+ * D1 veritabanına yazmak için çağırdığı güvenli iç loglama (internal logging) API ucunu tanımlar.
+ */
+
+/**
  * POST /internal/log
  *
  * Internal endpoint called exclusively by Firebase Functions to write audit
@@ -36,6 +41,7 @@ const internalLogSchema = z.object({
 
 export const internalLogRouter = new Hono<AppContext>();
 
+// Firebase Functions'tan gelen imzalı log verilerini doğrular, hız limitini kontrol eder ve D1 veritabanına kaydeder.
 internalLogRouter.post('/internal/log', hmacAuth, async (c) => {
   // Body was already parsed and stored by hmacAuth middleware
   const rawBody = c.get('parsedBody');
@@ -89,13 +95,14 @@ internalLogRouter.post('/internal/log', hmacAuth, async (c) => {
             const userData = fromDoc(userDoc);
             const displayName = typeof userData.displayName === 'string' ? userData.displayName : 'Player';
             const tag = typeof userData.tag === 'string' ? userData.tag : null;
+            const xp = typeof userData.xp === 'number' ? userData.xp : null;
             let showcaseBadges: any[] = [];
             if (Array.isArray(userData.showcaseBadges)) {
               showcaseBadges = userData.showcaseBadges;
             }
             const jsonBadges = JSON.stringify(showcaseBadges);
 
-            await upsertUserProfile(c.env.AUDIT_DB, uid, displayName, tag, showcaseBadges);
+            await upsertUserProfile(c.env.AUDIT_DB, uid, displayName, tag, showcaseBadges, xp);
           }
         } catch (syncErr) {
           console.error('[InternalLog] Background profile sync failed:', syncErr);
