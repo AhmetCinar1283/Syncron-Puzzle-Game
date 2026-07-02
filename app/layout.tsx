@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "./src/contexts/AuthContext";
 import { LanguageProvider } from "./src/contexts/LanguageContext";
+import { ToastProvider } from "./src/contexts/ToastContext";
 import FirestoreSync from "./src/components/FirestoreSync";
 import UserBadge from "./src/components/UserBadge";
 import BackButtonManager from "./src/components/BackButtonManager";
@@ -142,10 +143,12 @@ export default function RootLayout({
         <LanguageProvider>
           <StoreProvider>
             <AuthProvider>
-              <FirestoreSync />
-              <UserBadge />
-              <BackButtonManager />
-              {children}
+              <ToastProvider>
+                <FirestoreSync />
+                <UserBadge />
+                <BackButtonManager />
+                {children}
+              </ToastProvider>
             </AuthProvider>
           </StoreProvider>
         </LanguageProvider>

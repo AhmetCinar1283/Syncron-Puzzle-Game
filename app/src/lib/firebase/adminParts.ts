@@ -7,6 +7,7 @@ import {
   addDoc,
   deleteDoc,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './config';
 import type { LevelPart, LevelOrderEntry } from './adminTypes';
@@ -106,6 +107,47 @@ export async function updatePartMapLayout(
   }
 
   await updateDoc(doc(db, 'levelParts', partId), update);
+}
+
+/**
+ * Saves batch changes (deletes levels, updates part order maps, and updates prevLevelId chains).
+ * 
+ * @param deletedLevels List of levels to delete: { levelId, partId }
+ * @param partsToUpdate List of parts whose level order needs updating: { partId, order }
+ */
+export async function saveBatchChanges(
+  deletedLevels: { levelId: string; partId: string }[],
+  partsToUpdate: { partId: string; order: Record<string, LevelOrderEntry> }[]
+): Promise<void> {
+  const batch = writeBatch(db);
+
+  // 1. Delete level documents
+  for (const { levelId } of deletedLevels) {
+    batch.delete(doc(db, 'levels', levelId));
+  }
+
+  // 2. Update levelPart orders and repair prevLevelId chains
+  for (const { partId, order } of partsToUpdate) {
+    const partRef = doc(db, 'levelParts', partId);
+    batch.update(partRef, {
+      order,
+      updatedAt: serverTimestamp(),
+    });
+
+    const sorted = Object.values(order).sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0)
+    );
+    for (let idx = 0; idx < sorted.length; idx++) {
+      const lvl = sorted[idx];
+      const expectedPrev = idx === 0 ? null : sorted[idx - 1].id;
+      batch.update(doc(db, 'levels', lvl.id), {
+        prevLevelId: expectedPrev,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+
+  await batch.commit();
 }
 
 

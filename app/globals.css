@@ -121,3 +121,33 @@ input, textarea {
   color: #fff !important;
 }
 
+/* ── Toast Notifications ─────────────────────────────────────────────────── */
+@keyframes toast-slide-in {
+  from {
+    transform: translateY(12px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(8px) scale(0.94);
+    opacity: 0;
+  }
+}
+
+.toast-animate-in {
+  animation: toast-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-animate-out {
+  animation: toast-slide-out 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

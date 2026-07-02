@@ -6,6 +6,7 @@ import { useAuth } from '@/app/src/hooks/useAuth';
 import type { LevelPart, LevelOrderEntry } from '@/app/src/lib/firebase/admin';
 import { DIFFICULTY_COLORS, DIFFICULTY_LABELS } from '@/app/editor/editorConfig';
 import { useT } from '@/app/src/contexts/LanguageContext';
+import { useToast } from '@/app/src/contexts/ToastContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -362,10 +363,13 @@ export default function AdminLevelPartsPage() {
   const router = useRouter();
   const { role, loading } = useAuth();
   const t = useT();
+  const { showToast, hideToast } = useToast();
 
+  const [initialParts, setInitialParts] = useState<LevelPart[]>([]);
   const [parts, setParts] = useState<LevelPart[]>([]);
+  const [deletedLevels, setDeletedLevels] = useState<Array<{ levelId: string; partId: string }>>([]);
   const [dataLoading, setDataLoading] = useState(true);
-  const [toast, setToast] = useState('');
+  const [savingAll, setSavingAll] = useState(false);
 
   // Map Designer state
   const [designerPart, setDesignerPart] = useState<LevelPart | null>(null);
@@ -376,10 +380,23 @@ export default function AdminLevelPartsPage() {
   const [newUnlock, setNewUnlock] = useState('0');
   const [creating, setCreating] = useState(false);
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3000);
-  }, []);
+  const isDirty = useMemo(() => {
+    if (deletedLevels.length > 0) return true;
+    if (parts.length !== initialParts.length) return true;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      const ip = initialParts[i];
+      if (p.partId !== ip.partId) return true;
+      const pKeys = Object.keys(p.order);
+      const ipKeys = Object.keys(ip.order);
+      if (pKeys.length !== ipKeys.length) return true;
+      for (const key of pKeys) {
+        if (!ip.order[key]) return true;
+        if (p.order[key].position !== ip.order[key].position) return true;
+      }
+    }
+    return false;
+  }, [parts, initialParts, deletedLevels]);
 
   const handleSaveMapLayout = useCallback((
     partId: string,
@@ -387,33 +404,34 @@ export default function AdminLevelPartsPage() {
     portalCoords: { portalX: number; portalY: number; portalStartX: number; portalStartY: number },
     theme: string
   ) => {
-    setParts((prev) =>
-      prev.map((p) => {
-        if (p.partId !== partId) return p;
+    const updatePartLayout = (p: LevelPart) => {
+      if (p.partId !== partId) return p;
 
-        const newOrder = { ...p.order };
-        Object.entries(levelCoords).forEach(([levelId, c]) => {
-          if (newOrder[levelId]) {
-            newOrder[levelId] = {
-              ...newOrder[levelId],
-              mapX: c.mapX,
-              mapY: c.mapY
-            };
-          }
-        });
+      const newOrder = { ...p.order };
+      Object.entries(levelCoords).forEach(([levelId, c]) => {
+        if (newOrder[levelId]) {
+          newOrder[levelId] = {
+            ...newOrder[levelId],
+            mapX: c.mapX,
+            mapY: c.mapY
+          };
+        }
+      });
 
-        return {
-          ...p,
-          order: newOrder,
-          portalX: portalCoords.portalX,
-          portalY: portalCoords.portalY,
-          portalStartX: portalCoords.portalStartX,
-          portalStartY: portalCoords.portalStartY,
-          mapTheme: theme
-        };
-      })
-    );
-    showToast('Map layout updated successfully');
+      return {
+        ...p,
+        order: newOrder,
+        portalX: portalCoords.portalX,
+        portalY: portalCoords.portalY,
+        portalStartX: portalCoords.portalStartX,
+        portalStartY: portalCoords.portalStartY,
+        mapTheme: theme
+      };
+    };
+
+    setParts((prev) => prev.map(updatePartLayout));
+    setInitialParts((prev) => prev.map(updatePartLayout));
+    showToast('Map layout updated successfully', 'success');
   }, [showToast]);
 
   // Redirect non-admins
@@ -428,6 +446,7 @@ export default function AdminLevelPartsPage() {
       const { getAllParts } = await import('@/app/src/lib/firebase/admin');
       const fetched = await getAllParts();
       setParts(fetched);
+      setInitialParts(JSON.parse(JSON.stringify(fetched)));
       setDataLoading(false);
     })();
   }, [role]);
@@ -440,11 +459,12 @@ export default function AdminLevelPartsPage() {
     const { setPart } = await import('@/app/src/lib/firebase/admin');
     const created = await setPart(newName.trim(), Math.max(0, Number(newUnlock) || 0));
     setParts((prev) => [...prev, created]);
+    setInitialParts((prev) => [...prev, JSON.parse(JSON.stringify(created))]);
     setNewName('');
     setNewUnlock('0');
     setCreating(false);
     setShowCreate(false);
-    showToast(`Part "${created.name}" created`);
+    showToast(`Part "${created.name}" created`, 'success');
   };
 
   // ── Part metadata update (local state only — Firebase called inside PartCard) ─
@@ -453,24 +473,31 @@ export default function AdminLevelPartsPage() {
     setParts((prev) =>
       prev.map((p) => p.partId === partId ? { ...p, name } : p),
     );
-    showToast('Part updated');
+    setInitialParts((prev) =>
+      prev.map((p) => p.partId === partId ? { ...p, name } : p),
+    );
+    showToast('Part updated', 'success');
   }, [showToast]);
 
   const handleUpdatePartUnlock = useCallback((partId: string, unlockRequirement: number) => {
     setParts((prev) =>
       prev.map((p) => p.partId === partId ? { ...p, unlockRequirement } : p),
     );
-  }, []);
+    setInitialParts((prev) =>
+      prev.map((p) => p.partId === partId ? { ...p, unlockRequirement } : p),
+    );
+    showToast('Part unlock requirement updated', 'success');
+  }, [showToast]);
 
   const handleDeletePart = useCallback((partId: string, name: string) => {
     setParts((prev) => prev.filter((p) => p.partId !== partId));
-    showToast(`Part "${name}" deleted`);
+    setInitialParts((prev) => prev.filter((p) => p.partId !== partId));
+    showToast(`Part "${name}" deleted`, 'info');
   }, [showToast]);
 
   // ── Level operations ────────────────────────────────────────────────────────
 
   const handleReorderLevel = useCallback(async (partId: string, levelId: string, dir: 'up' | 'down') => {
-    // Compute new positions then update state + Firebase
     setParts((prev) => {
       const partIdx = prev.findIndex((p) => p.partId === partId);
       if (partIdx === -1) return prev;
@@ -485,14 +512,6 @@ export default function AdminLevelPartsPage() {
       const posA = levelA.position ?? idx;
       const posB = levelB.position ?? swapIdx;
 
-      // Persist concurrently (fire-and-forget)
-      import('@/app/src/lib/firebase/admin').then(({ moveLevelsInPart }) => {
-        moveLevelsInPart(partId, [
-          { levelId: levelA.id, position: posB },
-          { levelId: levelB.id, position: posA },
-        ]).catch(console.error);
-      });
-
       const newOrder = {
         ...part.order,
         [levelA.id]: { ...levelA, position: posB },
@@ -505,7 +524,6 @@ export default function AdminLevelPartsPage() {
   }, []);
 
   const handleDeleteLevel = useCallback(async (partId: string, levelId: string) => {
-    // Optimistic update
     setParts((prev) => {
       const partIdx = prev.findIndex((p) => p.partId === partId);
       if (partIdx === -1) return prev;
@@ -517,10 +535,64 @@ export default function AdminLevelPartsPage() {
       return newParts;
     });
 
-    const { deleteFirestoreLevel } = await import('@/app/src/lib/firebase/admin');
-    await deleteFirestoreLevel(levelId, partId).catch(console.error);
-    showToast('Level deleted');
+    setDeletedLevels((prev) => [...prev, { levelId, partId }]);
+    showToast('Level removed locally. Click "Save Changes" to apply.', 'warning', 4000);
   }, [showToast]);
+
+  const handleReset = useCallback(() => {
+    setParts(JSON.parse(JSON.stringify(initialParts)));
+    setDeletedLevels([]);
+    showToast('Changes discarded.', 'info', 3000);
+  }, [initialParts, showToast]);
+
+  const handleSaveChanges = async () => {
+    setSavingAll(true);
+    const savingToastId = showToast('Saving changes...', 'info', 0);
+    try {
+      const partsToUpdate: Array<{ partId: string; order: Record<string, LevelOrderEntry> }> = [];
+      for (const part of parts) {
+        const initialPart = initialParts.find((ip) => ip.partId === part.partId);
+        if (!initialPart) continue;
+        
+        let hasChanged = false;
+        const initialKeys = Object.keys(initialPart.order);
+        const currentKeys = Object.keys(part.order);
+        
+        if (initialKeys.length !== currentKeys.length) {
+          hasChanged = true;
+        } else {
+          for (const key of currentKeys) {
+            if (!initialPart.order[key] || part.order[key].position !== initialPart.order[key].position) {
+              hasChanged = true;
+              break;
+            }
+          }
+        }
+        
+        if (hasChanged) {
+          partsToUpdate.push({
+            partId: part.partId,
+            order: part.order,
+          });
+        }
+      }
+
+      const { saveBatchChanges } = await import('@/app/src/lib/firebase/admin');
+      await saveBatchChanges(deletedLevels, partsToUpdate);
+
+      setInitialParts(JSON.parse(JSON.stringify(parts)));
+      setDeletedLevels([]);
+      
+      hideToast(savingToastId);
+      showToast('Changes saved successfully!', 'success', 4000);
+    } catch (err) {
+      console.error('[SaveChanges]', err);
+      hideToast(savingToastId);
+      showToast('Failed to save changes!', 'error', 5000);
+    } finally {
+      setSavingAll(false);
+    }
+  };
 
   const handleEditLevel = useCallback((firestoreId: string) => {
     if (firestoreId) {
@@ -529,8 +601,6 @@ export default function AdminLevelPartsPage() {
       router.push('/editor');
     }
   }, [router]);
-
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loading || role !== 'admin') {
     return (
@@ -553,9 +623,21 @@ export default function AdminLevelPartsPage() {
         <h1 style={{ margin: 0, fontSize: 14, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00c4ff', textShadow: '0 0 10px rgba(0,196,255,0.5)' }}>
           Level Parts
         </h1>
-        <NeonBtn color="#00ff88" onClick={() => setShowCreate(true)} small>
-          + New Part
-        </NeonBtn>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {isDirty && (
+            <>
+              <NeonBtn color="#ef4444" onClick={handleReset} disabled={savingAll} small>
+                Discard
+              </NeonBtn>
+              <NeonBtn color="#00ff88" onClick={handleSaveChanges} disabled={savingAll} small>
+                {savingAll ? 'Saving...' : 'Save Changes'}
+              </NeonBtn>
+            </>
+          )}
+          <NeonBtn color="#00c4ff" onClick={() => setShowCreate(true)} small>
+            + New Part
+          </NeonBtn>
+        </div>
       </div>
 
       {/* Content */}
@@ -631,13 +713,6 @@ export default function AdminLevelPartsPage() {
           onClose={() => setDesignerPart(null)}
           onSave={handleSaveMapLayout}
         />
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'rgba(6,13,26,0.96)', border: '1px solid rgba(0,196,255,0.4)', borderRadius: 10, padding: '10px 20px', fontSize: 13, color: '#00c4ff', zIndex: 200, boxShadow: '0 0 20px rgba(0,196,255,0.2)', pointerEvents: 'none' }}>
-          {toast}
-        </div>
       )}
     </div>
   );
