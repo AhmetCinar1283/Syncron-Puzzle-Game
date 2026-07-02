@@ -8,6 +8,7 @@ import { DIFFICULTY_COLORS, DIFFICULTY_LABELS } from '@/app/editor/editorConfig'
 import { useT } from '@/app/src/contexts/LanguageContext';
 import { useToast } from '@/app/src/contexts/ToastContext';
 
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Returns entries sorted by position ascending, with index fallback for legacy data. */
