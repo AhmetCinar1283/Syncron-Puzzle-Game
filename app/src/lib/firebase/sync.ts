@@ -6,12 +6,40 @@ import {
   query,
   where,
   Timestamp,
+  setDoc,
+  serverTimestamp,
+  type WriteBatch,
 } from 'firebase/firestore';
 import { db } from './config';
 import { getDB } from '../db';
 import type { StoredLevel, StoredPlayedLevel } from '../db';
 import type { LevelOrderEntry } from './admin';
 import type { LevelEdges } from '../../games/types';
+
+// ─── Levels State Sync Helpers (Admin Senkronizasyon Yardımcıları) ───────────────
+
+/**
+ * Firestore'daki `/metadata/levelsState` belgesinin güncellenme zamanını günceller.
+ * Böylece kullanıcılar bir değişiklik olduğunu anlayıp Dexie önbelleklerini tazeleyebilir.
+ */
+export async function touchLevelsState(): Promise<void> {
+  try {
+    await setDoc(doc(db, 'metadata', 'levelsState'), {
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (e) {
+    console.error('[touchLevelsState] Failed to touch levels state:', e);
+  }
+}
+
+/**
+ * Toplu Firestore yazma işlemi (batch) içine levelsState güncellemesini ekler.
+ */
+export function touchLevelsStateInBatch(batch: WriteBatch): void {
+  batch.set(doc(db, 'metadata', 'levelsState'), {
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
 
 // ─── Constants (Sabitler) ──────────────────────────────────────────────────────
 
@@ -95,48 +123,72 @@ function firestoreDocToStoredLevel(
 // ─── Metadata sync (Bölümler Sayfası Senkronizasyonu) ────────────────────────────
 
 /**
- * /levels sayfası her açıldığında çalışan hafif senkronizasyon (5 dakikalık bekleme süresi vardır).
- * Son senkronizasyondan sonra güncellenen levelParts dokümanlarını okur,
- * yeni eklenen bölümler için yerel veritabanında geçici taslaklar oluşturur
- * veya güncellenmesi gerekenleri isNeedSync=true olarak işaretler.
- * levels/ koleksiyonunu doğrudan okumaz (performans tasarrufu).
+ * /levels sayfası her açıldığında çalışan hafif senkronizasyon.
+ * 1. Önce Firestore'dan `/metadata/levelsState` belgesini okuyarak son güncelleme tarihini denetler.
+ * 2. Eğer yerel `lastSync` tarihi bu tarihten büyük veya eşitse, herhangi bir değişiklik olmadığını
+ *    garanti eder ve senkronizasyon işlemini hemen sonlandırır (bu sayede 1 read ile işlem tamamlanır).
+ * 3. Eğer değişiklik varsa, tüm `levelParts` belgelerini çeker, yerel Dexie önbelleğindeki (presetLevels)
+ *    bölümleri ekler, günceller ya da silinmiş olanları (artık Firestore order haritasında bulunmayanları) temizler.
  *
- * @param force true ise 5 dakikalık bekleme süresini yoksayar.
+ * @param force true ise levelsState kontrolünü atlar ve tam senkronizasyon yapar.
  */
 export async function syncLevelsMeta(force = false): Promise<void> {
-  const lastSyncMs = force ? 0 : await readLastSync(LEVELS_META_SYNC_KEY);
-  if (!force && Date.now() - lastSyncMs < META_SYNC_COOLDOWN_MS) return;
-
   const dexie = getDB();
 
-  // Yalnızca son senkronizasyondan sonra değişen paketleri (part'ları) sorgular
-  const partsSnap = lastSyncMs > 0
-    ? await getDocs(
-        query(
-          collection(db, 'levelParts'),
-          where('updatedAt', '>', Timestamp.fromMillis(lastSyncMs)),
-        ),
-      )
-    : await getDocs(collection(db, 'levelParts'));
+  // 1. Yerel veritabanındaki en son senkronizasyon zamanını oku
+  const lastSyncMs = force ? 0 : await readLastSync(LEVELS_META_SYNC_KEY);
 
+  let serverUpdatedAt = 0;
+  if (!force) {
+    try {
+      // 2. Global düzey güncelliğini kontrol etmek için metadata dokümanını oku (Sadece 1 Firestore Read)
+      const stateSnap = await getDoc(doc(db, 'metadata', 'levelsState'));
+      if (stateSnap.exists()) {
+        const stateData = stateSnap.data();
+        serverUpdatedAt = toMs(stateData.updatedAt);
+      }
+    } catch (e) {
+      console.warn('[Sync] Failed to fetch levelsState metadata, falling back to full sync check:', e);
+    }
+
+    // Eğer veritabanı en güncel durumdaysa, senkronizasyonu atla (minimum masraf)
+    if (serverUpdatedAt > 0 && lastSyncMs >= serverUpdatedAt) {
+      return;
+    }
+  }
+
+  // 3. Değişiklik varsa veya force edilirse tüm levelParts dokümanlarını çek
+  let partsSnap;
+  try {
+    partsSnap = await getDocs(collection(db, 'levelParts'));
+  } catch (err) {
+    console.error('[Sync] Failed to fetch levelParts from Firestore:', err);
+    return; // Hata durumunda yerel veriyi silmemek için burada duruyoruz
+  }
+
+  const activeLevelIds = new Set<string>();
+
+  // Firestore'daki tüm paketleri ve içlerindeki seviyeleri işle
   for (const partDoc of partsSnap.docs) {
     const partData = partDoc.data();
     const order: Record<string, LevelOrderEntry> = partData.order ?? {};
+    const partNumber = partDoc.id;
 
     for (const entry of Object.values(order)) {
       const isLegacy = typeof entry === 'string';
       const eid = isLegacy ? entry : entry.id;
       const entryUpdatedAt = isLegacy ? 0 : toMs(entry.updatedAt);
 
+      // Aktif seviye ID'sini kaydet
+      activeLevelIds.add(eid);
+
       const existing = await dexie.presetLevels
         .where('firestoreId')
         .equals(eid)
         .first();
 
-      const partNumber = partDoc.id;
-
       if (!existing) {
-        // Yeni bölüm: Geçici taslak oluşturulur, tam veriler oyun oynanırken lazily getirilecektir (isNeedSync: true)
+        // Yeni bölüm: Geçici taslak (placeholder) oluşturulur
         const placeholder: Omit<StoredLevel, 'id'> = {
           firestoreId: eid,
           name: isLegacy ? '' : entry.name,
@@ -156,7 +208,7 @@ export async function syncLevelsMeta(force = false): Promise<void> {
         };
         await dexie.presetLevels.add(placeholder);
       } else {
-        // Var olan kayıt: updatedAt tarihi ilerlemişse veya eski formattaysa güncellenmek üzere isNeedSync=true yapılır
+        // Var olan bölüm: Güncellenme zamanına göre isNeedSync bayrağı ayarlanır
         if (entryUpdatedAt > (existing.updatedAt ?? 0) || isLegacy) {
           await dexie.presetLevels.update(existing.id!, {
             name: isLegacy ? existing.name : entry.name,
@@ -170,7 +222,7 @@ export async function syncLevelsMeta(force = false): Promise<void> {
             position: isLegacy ? existing.position : entry.position,
           });
         } else if (existing.part !== partNumber || (!isLegacy && entry.position !== existing.position)) {
-          // Sadece paket no veya pozisyon değişmişse, taslağı bozmadan günceller
+          // Sadece paket no veya pozisyon değişmişse taslağı bozmadan günceller
           await dexie.presetLevels.update(existing.id!, {
             part: partNumber,
             position: isLegacy ? existing.position : entry.position,
@@ -180,7 +232,29 @@ export async function syncLevelsMeta(force = false): Promise<void> {
     }
   }
 
-  await writeLastSync(LEVELS_META_SYNC_KEY, Date.now());
+  // 4. Kendi Kendine İyileşme / Temizlik: Firestore'da artık bulunmayan (silinmiş) seviyeleri Dexie'den sil
+  try {
+    const allLocalLevels = await dexie.presetLevels.toArray();
+    const obsoleteIds: number[] = [];
+
+    for (const local of allLocalLevels) {
+      if (!local.firestoreId || !activeLevelIds.has(local.firestoreId)) {
+        obsoleteIds.push(local.id!);
+      }
+    }
+
+    if (obsoleteIds.length > 0) {
+      await dexie.presetLevels.bulkDelete(obsoleteIds);
+      console.log(`[Sync] Cleaned up ${obsoleteIds.length} obsolete/deleted levels from Dexie.`);
+    }
+  } catch (cleanupErr) {
+    console.warn('[Sync] Cleanup of obsolete levels failed:', cleanupErr);
+  }
+
+  // En son başarılı senkronizasyon zaman damgasını güncelle
+  // serverUpdatedAt 0 ise (veya force durumunda okunamadıysa) şimdiki zamanı baz al
+  const finalSyncTime = serverUpdatedAt > 0 ? serverUpdatedAt : Date.now();
+  await writeLastSync(LEVELS_META_SYNC_KEY, finalSyncTime);
 }
 
 // ─── Lazy level fetch (Oyun Sayfası Lazy Yükleme) ──────────────────────────────────

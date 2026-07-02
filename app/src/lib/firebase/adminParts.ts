@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import type { LevelPart, LevelOrderEntry } from './adminTypes';
+import { touchLevelsState, touchLevelsStateInBatch } from './sync';
 
 export type { LevelPart, LevelOrderEntry };
 
@@ -39,6 +40,7 @@ export async function setPart(name: string, unlockRequirement = 0): Promise<Leve
     order: {},
     updatedAt: serverTimestamp(),
   });
+  await touchLevelsState();
   return {
     partId: ref.id,
     name,
@@ -57,11 +59,13 @@ export async function updatePart(
     ...data,
     updatedAt: serverTimestamp(),
   });
+  await touchLevelsState();
 }
 
 /** Bir bölüm paketi dokümanını siler (ilişkili bölümler silinmez). */
 export async function deletePart(partId: string): Promise<void> {
   await deleteDoc(doc(db, 'levelParts', partId));
+  await touchLevelsState();
 }
 
 /**
@@ -79,6 +83,7 @@ export async function moveLevelsInPart(
     update[`order.${levelId}.position`] = position;
   }
   await updateDoc(doc(db, 'levelParts', partId), update);
+  await touchLevelsState();
 }
 
 /** Bir paketteki tüm bölümlerin harita koordinatlarını ve portal koordinatları ile harita temasını günceller. */
@@ -107,6 +112,7 @@ export async function updatePartMapLayout(
   }
 
   await updateDoc(doc(db, 'levelParts', partId), update);
+  await touchLevelsState();
 }
 
 /**
@@ -147,6 +153,7 @@ export async function saveBatchChanges(
     }
   }
 
+  touchLevelsStateInBatch(batch);
   await batch.commit();
 }
 

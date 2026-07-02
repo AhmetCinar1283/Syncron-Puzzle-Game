@@ -12,6 +12,7 @@ import {
 import { db } from './config';
 import type { AdminLevelInput, FirestoreLevel, LevelOrderEntry } from './adminTypes';
 import { getPart } from './adminParts';
+import { touchLevelsStateInBatch } from './sync';
 
 export type { AdminLevelInput, FirestoreLevel };
 
@@ -93,6 +94,7 @@ export async function publishLevel(
     });
   }
 
+  touchLevelsStateInBatch(batch);
   await batch.commit();
   return levelRef.id;
 }
@@ -137,6 +139,7 @@ export async function updateFirestoreLevel(
 
   batch.update(doc(db, 'levelParts', partId), entryUpdate);
 
+  touchLevelsStateInBatch(batch);
   await batch.commit();
 }
 
@@ -181,6 +184,7 @@ export async function deleteFirestoreLevel(
     });
   }
 
+  touchLevelsStateInBatch(batch);
   await batch.commit();
 
   // Ardıl bölümün prevLevelId değerini silinenin öncülüne bağlar

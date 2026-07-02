@@ -9,6 +9,7 @@ import {
 import { db } from './config';
 import type { LevelRequest } from './firestore';
 import type { LevelOrderEntry } from './adminTypes';
+import { touchLevelsStateInBatch } from './sync';
 
 /**
  * Topluluk tarafından gönderilen bir bölüm oluşturma isteğini onaylar:
@@ -101,6 +102,7 @@ export async function approveLevelRequest(
     });
   }
 
+  touchLevelsStateInBatch(batch);
   await batch.commit();
 
   // 3. İstek durumunu onaylandı olarak işaretler (batch dışındadır, kritik değildir)
