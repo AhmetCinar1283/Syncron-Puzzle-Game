@@ -340,13 +340,30 @@ export default function Home() {
   const [activeMenuIndex, setActiveMenuIndex] = useState(0);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handlePlayClick = useCallback(() => {
+  const handlePlayClick = useCallback(async () => {
     const id = storageGet('lastPlayedLevelId');
     const src = storageGet('lastPlayedSource');
     if (id) {
       router.push(src === 'preset' ? `/play?id=${id}&source=preset` : `/play?id=${id}`);
       return;
     }
+
+    try {
+      const { getPresetLevels } = await import('@/app/src/lib/db');
+      let presets = await getPresetLevels();
+      if (!presets || presets.length === 0) {
+        const { syncLevelsMeta } = await import('@/app/src/lib/firebase/sync');
+        await syncLevelsMeta();
+        presets = await getPresetLevels();
+      }
+      if (presets && presets.length > 0) {
+        router.push(`/play?id=${presets[0].id}&source=preset`);
+        return;
+      }
+    } catch (err) {
+      console.warn('[PlayClick] Failed to fetch first level:', err);
+    }
+
     router.push('/levels');
   }, [router, storageGet]);
 

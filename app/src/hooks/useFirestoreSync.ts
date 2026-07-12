@@ -64,6 +64,11 @@ export function useFirestoreSync() {
     };
 
     const runSync = () => {
+      // Sync level metadata for all users (guests & authenticated) into Dexie
+      import('@/app/src/lib/firebase/sync').then(({ syncLevelsMeta }) => {
+        syncLevelsMeta().catch((err) => console.warn('[Sync] LevelsMeta sync failed:', err));
+      });
+
       if (user) {
         syncPlayedLevelsFromWorker(user).catch((err) =>
           console.warn('[Sync] PlayedLevels sync failed:', err),

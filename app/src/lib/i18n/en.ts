@@ -239,6 +239,8 @@ const en: Record<string, string> = {
   'win.next_level': 'NEXT LEVEL →',
   'win.end_test': 'End Test',
   'win.test_success': 'Test Successful!',
+  'win.login_to_save': 'SIGN IN / SAVE',
+  'win.login_failed': 'Login failed',
 
   // Lost overlay
   'lost.forbidden_title': 'Forbidden Zone',

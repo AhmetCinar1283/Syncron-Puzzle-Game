@@ -23,13 +23,23 @@ import { donorApiRouter } from './routes/donorApi';
 
 const app = new Hono<AppContext>();
 
+// Helper function to check and resolve CORS origin when multiple domains are allowed
+function getAllowedOrigin(origin: string | undefined, allowedOriginVar: string | undefined): string {
+  const allowed = allowedOriginVar || '';
+  const list = allowed.split(',').map((x) => x.trim());
+  if (origin && list.includes(origin)) {
+    return origin;
+  }
+  return list[0] || 'http://localhost:3000';
+}
+
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 // GET is required for admin read endpoints (/admin/users/:uid/logs, etc.)
 // /internal/log is server-to-server only but still benefits from CORS config
 // CORS politikalarını ayarlar ve belirtilen kök adrese (ALLOWED_ORIGIN) izin verir.
 app.use('*', (c, next) => {
   return cors({
-    origin: c.env.ALLOWED_ORIGIN,
+    origin: (origin) => getAllowedOrigin(origin, c.env.ALLOWED_ORIGIN),
     allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Timestamp', 'X-Signature'],
     maxAge: 86400,
@@ -52,7 +62,9 @@ app.route('/', donorApiRouter);
 // Worker içerisinde yakalanamayan genel hataları (500) yönetir ve JSON yanıtı döner.
 app.onError((err, c) => {
   console.error('Unhandled worker error:', err);
-  c.header('Access-Control-Allow-Origin', c.env.ALLOWED_ORIGIN);
+  const originHeader = c.req.header('Origin');
+  const allowedOrigin = getAllowedOrigin(originHeader, c.env.ALLOWED_ORIGIN);
+  c.header('Access-Control-Allow-Origin', allowedOrigin);
   c.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   return c.json({ success: false, error: 'Internal error' }, 500);

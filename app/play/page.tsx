@@ -170,6 +170,16 @@ function PlayContent() {
                     const db = getDB();
                     let raw = await db.presetLevels.get(levelId!);
                     if (cancelled) return;
+                    if (!raw) {
+                        try {
+                            const { syncLevelsMeta } = await import('@/app/src/lib/firebase/sync');
+                            await syncLevelsMeta();
+                            raw = await db.presetLevels.get(levelId!);
+                        } catch (err) {
+                            console.warn('[Play] syncLevelsMeta fallback failed:', err);
+                        }
+                        if (cancelled) return;
+                    }
                     if (!raw) { setError(true); setLoading(false); return; }
                     
                     if ((raw.isNeedSync || !raw.grid?.length || raw.rooms === undefined) && raw.firestoreId) {
@@ -271,11 +281,33 @@ function PlayContent() {
 
     // ── Worker çağrısı (kazanma) ──────────────────────────────
     const callWorker = useCallback(async () => {
+        const levelKey = firestoreId || (levelId !== null ? String(levelId) : null);
+        const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+
+        // ── 1. Optimistic write: save immediately to local Dexie so UI updates without lag ──
+        if (levelKey) {
+            try {
+                const { getDB } = await import('@/app/src/lib/db');
+                const db = getDB();
+                const existing = await db.playedLevels.get(levelKey);
+                const provisionalStars = (existing?.stars ?? 0) >= 1 ? existing!.stars! : 1;
+                await db.playedLevels.put({
+                    levelId: levelKey,
+                    score: provisionalStars,
+                    timeSpent,
+                    completedAt: existing?.completedAt ?? Date.now(),
+                    updatedAt: Date.now(),
+                    stars: provisionalStars as 1 | 2 | 3,
+                    moveCount: moveHistoryRef.current.length,
+                });
+            } catch (e) {
+                console.warn('[Play] Immediate optimistic Dexie save failed:', e);
+            }
+        }
+
         if (!firestoreId) return; // Kullanıcı seviyelerinde worker yok
         const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
         if (!WORKER_URL) return;
-
-        const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
 
         try {
             // Get Firebase ID Token for authorization.
@@ -332,17 +364,16 @@ function PlayContent() {
                     }));
                 }
 
-                // Dexie'ye de kaydet (anlık — sync beklemeden)
+                // Dexie'ye de kaydet (sunucu tarafından onaylanmış yıldızlarla güncelle)
                 if (data.success && data.stars) {
                     try {
                         const { getDB } = await import('@/app/src/lib/db');
                         const db = getDB();
-                        const levelKey = String(levelId!);
-                        const existing = await db.playedLevels.get(levelKey);
+                        const existing = await db.playedLevels.get(levelKey!);
                         await db.playedLevels.put({
-                            levelId: levelKey,
+                            levelId: levelKey!,
                             score: data.stars,
-                            timeSpent: Math.round((Date.now() - startTimeRef.current) / 1000),
+                            timeSpent,
                             completedAt: existing?.completedAt ?? Date.now(),
                             updatedAt: Date.now(),
                             stars: data.stars,
@@ -362,7 +393,7 @@ function PlayContent() {
             // Worker olmadan da oyun devam eder — sonuç overlay'i gösterilir
             setWorkerResult({ success: false });
         }
-    }, [firestoreId, levelId, isPreset]);
+    }, [firestoreId, levelId, submitTelemetry, dispatch]);
 
     // ── UI button handler ─────────────────────────────────────
     const handleButtonPressed = useCallback((buttonType: UIButtonType, details?: { isDeath?: boolean }) => {

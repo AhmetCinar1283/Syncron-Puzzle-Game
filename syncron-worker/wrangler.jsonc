@@ -16,7 +16,7 @@
 	],
 	"vars": {
 		"FIREBASE_PROJECT_ID": "syncron-1923",
-		"ALLOWED_ORIGIN": "http://localhost:3000"
+		"ALLOWED_ORIGIN": "http://localhost:3000, http://localhost, capacitor://localhost, https://syncron-1923.web.app, https://syncron-1923.firebaseapp.com, https://know-and-conquer.web.app, https://know-and-conquer.firebaseapp.com, https://syncron.polimelo.com"
 		// FIREBASE_API_KEY is provisioned as a secret — NOT a plain var (git-leak risk).
 		// Set once with: wrangler secret put FIREBASE_API_KEY
 	},

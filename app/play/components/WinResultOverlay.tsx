@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useT } from '@/app/src/contexts/LanguageContext';
 import { useGamepad } from '@/app/src/hooks/useGamepad';
+import { useAuthContext } from '@/app/src/contexts/AuthContext';
+import AuthModal from '@/app/src/components/AuthModal';
 
 interface WorkerResult {
     success: boolean;
@@ -80,6 +82,7 @@ function Star({ n, loading, stars }: { n: 1 | 2 | 3; loading: boolean; stars: nu
 
 export function WinResultOverlay({ result, moveCount, levelId, version, onRestart, onNextLevel, onMenu }: WinResultOverlayProps) {
     const t = useT();
+    const { user, isAnonymous } = useAuthContext();
     const loading = result === null;
     const stars = result?.stars ?? 0;
 
@@ -87,6 +90,30 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
     const [selectedDiff, setSelectedDiff] = useState<'easy' | 'normal' | 'hard' | null>(null);
     const [submitted, setSubmitted] = useState(false);
     const [alreadyFeedback, setAlreadyFeedback] = useState(false);
+
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authAttempted, setAuthAttempted] = useState(false);
+    const [loginFailed, setLoginFailed] = useState(false);
+
+    const isUserAnonymous = !user || isAnonymous;
+
+    // Check auth status after AuthModal is closed
+    useEffect(() => {
+        if (authAttempted && !showAuthModal) {
+            if (!user || isAnonymous) {
+                setLoginFailed(true);
+            } else {
+                setLoginFailed(false);
+                setAuthAttempted(false);
+            }
+        }
+    }, [showAuthModal, user, isAnonymous, authAttempted]);
+
+    const handleOpenAuth = () => {
+        setAuthAttempted(true);
+        setLoginFailed(false);
+        setShowAuthModal(true);
+    };
 
     // Check if user has already submitted feedback for this level version locally
     useEffect(() => {
@@ -460,70 +487,135 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                         transition={{ delay: 0.34 }}
                         style={{
                             display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
                             gap: 10,
                             marginTop: 4,
                             width: '100%',
-                            justifyContent: 'center',
-                            flexWrap: 'wrap',
                         }}
                     >
-                        <button
-                            onClick={onRestart}
-                            style={{
-                                fontSize: 'clamp(11px, 3vw, 13px)',
-                                padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
-                                background: 'rgba(148, 163, 184, 0.06)',
-                                border: '1px solid rgba(148, 163, 184, 0.25)',
-                                color: '#94a3b8',
-                                borderRadius: 10,
-                                cursor: 'pointer',
-                                letterSpacing: '0.04em',
-                                fontWeight: 600,
-                                transition: 'all 0.15s',
-                                touchAction: 'manipulation',
-                                flexShrink: 0,
-                            }}
-                            onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148, 163, 184, 0.12)';
-                            }}
-                            onMouseLeave={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148, 163, 184, 0.06)';
-                            }}
-                        >
-                            {t('win.restart')}
-                        </button>
-                        {onNextLevel && (
+                        {isUserAnonymous && (
+                            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                <button
+                                    onClick={handleOpenAuth}
+                                    style={{
+                                        width: '100%',
+                                        fontSize: 'clamp(11px, 3vw, 13px)',
+                                        padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
+                                        background: 'rgba(0, 196, 255, 0.12)',
+                                        border: '1px solid rgba(0, 196, 255, 0.55)',
+                                        color: '#00c4ff',
+                                        borderRadius: 10,
+                                        cursor: 'pointer',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.04em',
+                                        boxShadow: '0 0 14px rgba(0, 196, 255, 0.2)',
+                                        transition: 'all 0.15s',
+                                        touchAction: 'manipulation',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 6,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 196, 255, 0.22)';
+                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 18px rgba(0, 196, 255, 0.4)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 196, 255, 0.12)';
+                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 14px rgba(0, 196, 255, 0.2)';
+                                    }}
+                                >
+                                    🔑 {t('win.login_to_save')}
+                                </button>
+                                {loginFailed && (
+                                    <motion.p
+                                        initial={{ opacity: 0, y: -4 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        style={{
+                                            color: '#ef4444',
+                                            fontSize: 'clamp(10px, 2.8vw, 11px)',
+                                            fontWeight: 600,
+                                            margin: 0,
+                                            textAlign: 'center',
+                                            letterSpacing: '0.03em',
+                                        }}
+                                    >
+                                        ⚠️ {t('win.login_failed')}
+                                    </motion.p>
+                                )}
+                            </div>
+                        )}
+
+                        <div style={{
+                            display: 'flex',
+                            gap: 10,
+                            width: '100%',
+                            justifyContent: 'center',
+                            flexWrap: 'wrap',
+                        }}>
                             <button
-                                onClick={onNextLevel}
+                                onClick={onRestart}
                                 style={{
                                     fontSize: 'clamp(11px, 3vw, 13px)',
                                     padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
-                                    background: 'rgba(0, 255, 136, 0.08)',
-                                    border: '1px solid rgba(0, 255, 136, 0.45)',
-                                    color: '#00ff88',
+                                    background: 'rgba(148, 163, 184, 0.06)',
+                                    border: '1px solid rgba(148, 163, 184, 0.25)',
+                                    color: '#94a3b8',
                                     borderRadius: 10,
                                     cursor: 'pointer',
-                                    fontWeight: 600,
                                     letterSpacing: '0.04em',
-                                    boxShadow: '0 0 12px rgba(0,255,136,0.15)',
+                                    fontWeight: 600,
                                     transition: 'all 0.15s',
                                     touchAction: 'manipulation',
                                     flexShrink: 0,
                                 }}
                                 onMouseEnter={(e) => {
-                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 255, 136, 0.15)';
-                                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 16px rgba(0,255,136,0.3)';
+                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148, 163, 184, 0.12)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 255, 136, 0.08)';
-                                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.15)';
+                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148, 163, 184, 0.06)';
                                 }}
                             >
-                                {t('win.next_level')}
+                                {t('win.restart')}
                             </button>
-                        )}
+                            {onNextLevel && (
+                                <button
+                                    onClick={onNextLevel}
+                                    style={{
+                                        fontSize: 'clamp(11px, 3vw, 13px)',
+                                        padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
+                                        background: 'rgba(0, 255, 136, 0.08)',
+                                        border: '1px solid rgba(0, 255, 136, 0.45)',
+                                        color: '#00ff88',
+                                        borderRadius: 10,
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        letterSpacing: '0.04em',
+                                        boxShadow: '0 0 12px rgba(0,255,136,0.15)',
+                                        transition: 'all 0.15s',
+                                        touchAction: 'manipulation',
+                                        flexShrink: 0,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 255, 136, 0.15)';
+                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 16px rgba(0,255,136,0.3)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 255, 136, 0.08)';
+                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.15)';
+                                    }}
+                                >
+                                    {t('win.next_level')}
+                                </button>
+                            )}
+                        </div>
                     </motion.div>
                 </motion.div>
+
+                {showAuthModal && (
+                    <AuthModal onClose={() => setShowAuthModal(false)} />
+                )}
             </motion.div>
         </AnimatePresence>
     );

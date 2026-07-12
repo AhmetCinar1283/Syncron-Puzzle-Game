@@ -153,7 +153,34 @@ function LevelsPageContent() {
 
   useEffect(() => {
     reload();
+
+    const handleFocusOrVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        reload();
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
   }, [reload]);
+
+  // Sync played levels from worker when user is logged in
+  useEffect(() => {
+    if (!user) return;
+    import('@/app/src/lib/sync/playedLevels').then(({ syncPlayedLevelsFromWorker }) => {
+      syncPlayedLevelsFromWorker(user)
+        .then((res) => {
+          if (res.upserted > 0 || res.deleted > 0) {
+            reload();
+          }
+        })
+        .catch((err) => console.warn('[Sync] PlayedLevels sync failed:', err));
+    });
+  }, [user, reload]);
 
   // Load part names and full part data from Firestore (for lock computation)
   useEffect(() => {

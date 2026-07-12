@@ -239,6 +239,8 @@ const tr: Record<string, string> = {
   'win.next_level': 'SONRAKI LEVEL →',
   'win.end_test': 'Testi Sonlandır',
   'win.test_success': 'Test Başarılı!',
+  'win.login_to_save': 'GİRİŞ YAP / KAYDET',
+  'win.login_failed': 'Giriş başarısız',
 
   // Lost overlay
   'lost.forbidden_title': 'Yasak Bölge',

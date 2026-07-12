@@ -99,22 +99,16 @@ export default function GameShell({ level, onNextLevel, source }: GameShellProps
       const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
       trackLevelComplete(state.level.id, state.level.name, state.moveCount, timeSpent);
 
-      // Report completion to worker for verified scoring
-      if (WORKER_URL && state.level.firestoreId && userRef.current) {
+      // Record completion locally in Dexie immediately
+      if (state.level.firestoreId) {
         const firestoreId = state.level.firestoreId;
         const moves = [...movesHistoryRef.current];
         void (async () => {
           try {
-            if (moves.length === 0 || moves.length > MOVES_LIMIT) return;
-
-            // ── Optimistic write: record in Dexie immediately ─────────────────
-            // This gives instant feedback in the levels list while we wait for
-            // the Worker to verify the solution. If the Worker fails, the
-            // provisional record stays and D1 will correct it on next sync.
             const { getDB } = await import('@/app/src/lib/db');
             const db = getDB();
             const existing = await db.playedLevels.get(firestoreId);
-            const provisionalStars = (existing?.stars ?? 0) === 3 ? 3 : 1; // conservative estimate
+            const provisionalStars = (existing?.stars ?? 0) >= 1 ? existing!.stars! : 1;
             await db.playedLevels.put({
               levelId: firestoreId,
               score: provisionalStars,
@@ -125,7 +119,9 @@ export default function GameShell({ level, onNextLevel, source }: GameShellProps
               moveCount: moves.length,
             });
 
-            const token = await userRef.current!.getIdToken();
+            if (!WORKER_URL || !userRef.current || moves.length === 0 || moves.length > MOVES_LIMIT) return;
+
+            const token = await userRef.current.getIdToken();
             const res = await fetch(`${WORKER_URL}/complete-level`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -133,7 +129,6 @@ export default function GameShell({ level, onNextLevel, source }: GameShellProps
             });
             if (!res.ok) {
               console.error('[Worker] HTTP error:', res.status, await res.text());
-              // Provisional Dexie record stays — D1 sync will correct on next open
               return;
             }
 
