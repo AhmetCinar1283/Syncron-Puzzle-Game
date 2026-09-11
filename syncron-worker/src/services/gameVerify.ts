@@ -3,13 +3,13 @@
  * oyun motorunu sunucu tarafında simüle ederek (replay) test eden doğrulama servisini içerir.
  */
 
-import type { Cell } from '../../../app/src/game2/logic/cellTypes';
-import type { Entity } from '../../../app/src/game2/logic/entityTypes';
-import type { Direction, ActionIntent } from '../../../app/src/game2/logic/types';
-import type { LevelBounds } from '../../../app/src/game2/logic/engine/getNextTopologyPosition';
-import { processSingleTick } from '../../../app/src/game2/logic/engine/intentLoop';
-import { checkWinCondition } from '../../../app/src/game2/logic/winCondition';
-import { convertToGame2State } from '../../../app/src/game2/logic/converter';
+import type { Cell } from '../../../src/game-engine/logic/cellTypes';
+import type { Entity } from '../../../src/game-engine/logic/entityTypes';
+import type { Direction, ActionIntent } from '../../../src/game-engine/logic/types';
+import type { LevelBounds } from '../../../src/game-engine/logic/engine/getNextTopologyPosition';
+import { processSingleTick } from '../../../src/game-engine/logic/engine/intentLoop';
+import { checkWinCondition } from '../../../src/game-engine/logic/winCondition';
+import { convertToGame2State } from '../../../src/game-engine/logic/converter';
 
 // We map both short-hand and long-form directions to Direction, plus 's' to switch_room
 const MOVES_MAP: Record<string, Direction | 'switch_room'> = {

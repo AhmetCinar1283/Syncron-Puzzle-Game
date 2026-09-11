@@ -16,7 +16,7 @@ import type {
   BoxDef,
   Position,
   CellType,
-} from '../../../app/src/games/types';
+} from '../../../src/game-engine/level-format';
 
 // ─── Firestore value types ────────────────────────────────────────────────────
 

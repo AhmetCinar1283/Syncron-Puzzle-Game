@@ -1,0 +1,26 @@
+/**
+ * DOSYA AMACI: Bu dosya, AuthContext verilerine erişimi kolaylaştıran useAuth hook'unu dışa aktarır.
+ */
+
+'use client';
+
+/**
+ * useAuth — access auth state from any client component.
+ *
+ * Returns { user, loading, isAnonymous, linkWithGoogle }.
+ *
+ * Example — Google linking button:
+ *
+ *   const { isAnonymous, linkWithGoogle } = useAuth();
+ *
+ *   async function handleSaveProgress() {
+ *     try {
+ *       await linkWithGoogle();
+ *     } catch (err: unknown) {
+ *       if ((err as { code?: string }).code === 'auth/credential-already-in-use') {
+ *         alert('This Google account is already linked to another profile.');
+ *       }
+ *     }
+ *   }
+ */
+export { useAuthContext as useAuth } from '@/contexts/AuthContext';
