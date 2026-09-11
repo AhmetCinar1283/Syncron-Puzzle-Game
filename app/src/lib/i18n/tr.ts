@@ -236,11 +236,23 @@ const tr: Record<string, string> = {
   'win.title': 'Level Tamamlandı',
   'win.solved_in': '{n} hamlede çözüldü',
   'win.restart': 'YENİDEN',
-  'win.next_level': 'SONRAKI LEVEL →',
+  'win.next_level': 'SONRAKİ LEVEL →',
+  'win.menu': 'Leveller',
+  'win.new_record': 'Yeni Rekor',
+  'win.record': 'En İyi Çözüm',
+  'win.good_solution': 'İyi Çözüm',
   'win.end_test': 'Testi Sonlandır',
   'win.test_success': 'Test Başarılı!',
   'win.login_to_save': 'GİRİŞ YAP / KAYDET',
   'win.login_failed': 'Giriş başarısız',
+
+  // Feedback
+  'feedback.rate_title': 'Bölümü Değerlendir',
+  'feedback.difficulty': 'Zorluk',
+  'feedback.easy': 'Kolay',
+  'feedback.normal': 'Normal',
+  'feedback.hard': 'Zor',
+  'feedback.thank_you': 'Geri bildiriminiz için teşekkürler!',
 
   // Lost overlay
   'lost.forbidden_title': 'Yasak Bölge',

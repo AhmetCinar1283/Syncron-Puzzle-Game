@@ -3,14 +3,9 @@
 import { useState, useRef, useCallback, type MouseEvent, type PointerEvent } from 'react';
 import type { StoredLevel, StoredPlayedLevel } from '@/app/src/lib/db';
 import { useT } from '@/app/src/contexts/LanguageContext';
+import { DIFFICULTY_COLORS } from '../mapThemes';
 
 type LevelEntry = StoredLevel & { id: number };
-
-const DIFF_COLOR: Record<number, string> = { 1: '#00ff88', 2: '#fbbf24', 3: '#f97316', 4: '#ef4444' };
-const DIFF_BG: Record<number, string> = {
-  1: 'rgba(0,255,136,0.08)', 2: 'rgba(251,191,36,0.08)',
-  3: 'rgba(249,115,22,0.08)', 4: 'rgba(239,68,68,0.08)',
-};
 
 function formatTime(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -19,21 +14,17 @@ function formatTime(seconds: number): string {
 
 function StarDisplay({ stars }: { stars: 1 | 2 | 3 }) {
   return (
-    <span style={{ fontSize: 11, letterSpacing: 2 }}>
+    <span className="text-[11px] tracking-widest">
       {[1, 2, 3].map((n) => (
-        <span
-          key={n}
-          style={{
-            color: n <= stars ? '#ffd700' : '#1e3a5f',
-            textShadow: n <= stars ? '0 0 6px rgba(255,215,0,0.5)' : 'none',
-          }}
-        >★</span>
+        <span key={n} style={{ color: n <= stars ? '#ffd700' : '#1e3a5f', textShadow: n <= stars ? '0 0 6px rgba(255,215,0,0.5)' : undefined }}>
+          ★
+        </span>
       ))}
     </span>
   );
 }
 
-// ─── Context menu ─────────────────────────────────────────────────────────────
+// ─── Bağlam menüsü ──────────────────────────────────────────────────────────
 
 interface MenuProps {
   x: number;
@@ -52,23 +43,10 @@ interface MenuProps {
 function ContextMenu({ x, y, isPreset, index, total, onEdit, onDelete, onMoveUp, onMoveDown, onClose, t }: MenuProps) {
   return (
     <>
-      {/* Backdrop */}
+      <div className="fixed inset-0 z-[300]" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 300 }}
-        onClick={onClose}
-        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
-      />
-      {/* Menu */}
-      <div
-        style={{
-          position: 'fixed', left: x, top: y, zIndex: 301,
-          background: 'rgba(13, 20, 37, 0.85)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(0,196,255,0.25)',
-          borderRadius: 10, padding: '5px 0', minWidth: 170,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 24px rgba(0,196,255,0.06)',
-        }}
+        className="fixed z-[301] min-w-[170px] rounded-[10px] border border-cyan-400/25 bg-[#0d1425]/85 py-[5px] shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_24px_rgba(0,196,255,0.06)] backdrop-blur-md"
+        style={{ left: x, top: y }}
       >
         <MenuItem color="#00c4ff" icon="✎" label={t('list.edit')} onClick={() => { onEdit(); onClose(); }} />
         {!isPreset && (
@@ -77,41 +55,28 @@ function ContextMenu({ x, y, isPreset, index, total, onEdit, onDelete, onMoveUp,
             <MenuItem color="#9333ea" icon="↓" label="Aşağı taşı" onClick={() => { onMoveDown(); onClose(); }} disabled={index >= total - 1} />
           </>
         )}
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
+        <div className="my-1 h-px bg-white/[0.06]" />
         <MenuItem color="#ef4444" icon="✕" label={t('list.delete')} onClick={() => { onDelete(); onClose(); }} />
       </div>
     </>
   );
 }
 
-function MenuItem({
-  color, icon, label, onClick, disabled,
-}: {
-  color: string; icon: string; label: string; onClick: () => void; disabled?: boolean;
-}) {
-  const [hov, setHov] = useState(false);
+function MenuItem({ color, icon, label, onClick, disabled }: { color: string; icon: string; label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        width: '100%', padding: '8px 16px',
-        background: hov && !disabled ? `${color}10` : 'none',
-        border: 'none', color: disabled ? '#334155' : color,
-        fontSize: 13, cursor: disabled ? 'default' : 'pointer',
-        letterSpacing: '0.04em', opacity: disabled ? 0.4 : 1,
-        transition: 'background 0.1s',
-      }}
+      className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] tracking-wide transition-colors hover:enabled:bg-white/[0.05]"
+      style={{ color: disabled ? '#334155' : color, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1 }}
+      disabled={disabled}
     >
-      <span style={{ width: 14, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <span className="w-3.5 shrink-0 text-center">{icon}</span>
       <span>{label}</span>
     </button>
   );
 }
 
-// ─── Row ──────────────────────────────────────────────────────────────────────
+// ─── Kart ───────────────────────────────────────────────────────────────────
 
 export interface RowProps {
   level: LevelEntry;
@@ -120,7 +85,7 @@ export interface RowProps {
   isPreset: boolean;
   isAdmin?: boolean;
   isMobile: boolean;
-  cols: string; // kept for API compat, not used internally
+  cols: string; // API uyumluluğu için, kullanılmıyor
   playedLevel?: StoredPlayedLevel;
   isLocked?: boolean;
   onPlay: () => void;
@@ -142,18 +107,13 @@ export function LevelRow({
   const suppressClick = useRef(false);
 
   const locked = isLocked ?? false;
-  const canAct = !isPreset || isAdmin; // can edit/delete
-
-  // ── Context menu helpers ──
+  const canAct = !isPreset || isAdmin;
 
   const openCtx = useCallback((clientX: number, clientY: number) => {
     if (!canAct) return;
     suppressClick.current = true;
     const menuW = 170, menuH = 160;
-    setCtxMenu({
-      x: Math.min(clientX, window.innerWidth - menuW - 8),
-      y: Math.min(clientY, window.innerHeight - menuH - 8),
-    });
+    setCtxMenu({ x: Math.min(clientX, window.innerWidth - menuW - 8), y: Math.min(clientY, window.innerHeight - menuH - 8) });
   }, [canAct]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
@@ -176,10 +136,9 @@ export function LevelRow({
     if (!locked) onPlay();
   }, [locked, onPlay]);
 
-  // ── Styles ──
-
-  const diffColor = level.difficulty ? DIFF_COLOR[level.difficulty] : undefined;
-  const diffBg = level.difficulty ? DIFF_BG[level.difficulty] : undefined;
+  const diffColor = level.difficulty ? DIFFICULTY_COLORS[level.difficulty] : undefined;
+  const accent = diffColor || '#00c4ff';
+  const active = hovered || gamepadSelected;
 
   return (
     <>
@@ -192,142 +151,84 @@ export function LevelRow({
         onClick={handleClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        className="relative flex h-36 select-none flex-col justify-between rounded-xl p-3 outline-none transition-all duration-200"
         style={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: 144,
-          padding: '12px 14px',
-          background: hovered || gamepadSelected
-            ? 'rgba(17, 24, 39, 0.9)'
-            : 'rgba(13, 20, 37, 0.45)',
-          backdropFilter: 'blur(12px)',
-          border: `1px solid ${hovered || gamepadSelected
-            ? (diffColor || '#00c4ff')
-            : 'rgba(255, 255, 255, 0.08)'}`,
-          borderRadius: 12,
+          background: active ? 'rgba(17,24,39,0.9)' : 'rgba(13,20,37,0.45)',
+          border: `1px solid ${active ? accent : 'rgba(255,255,255,0.08)'}`,
           cursor: locked ? 'not-allowed' : 'pointer',
-          boxShadow: hovered || gamepadSelected
-            ? `0 0 15px ${(diffColor || '#00c4ff')}40, inset 0 0 10px ${(diffColor || '#00c4ff')}20`
-            : '0 8px 24px rgba(0, 0, 0, 0.35)',
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          userSelect: 'none',
-          outline: 'none',
+          boxShadow: active ? `0 0 15px ${accent}40, inset 0 0 10px ${accent}20` : '0 8px 24px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Top Row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
-          {/* Left: Index tag and Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-            <span style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: diffColor || '#00c4ff',
-              background: diffColor ? `${diffColor}15` : 'rgba(0, 196, 255, 0.15)',
-              border: `1px solid ${diffColor ? `${diffColor}40` : 'rgba(0, 196, 255, 0.3)'}`,
-              borderRadius: 4,
-              padding: '2px 5px',
-              fontFamily: 'monospace',
-              flexShrink: 0,
-            }}>
+        {/* Üst satır */}
+        <div className="flex w-full items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-extrabold"
+              style={{ color: accent, background: `${accent}15`, border: `1px solid ${accent}40` }}
+            >
               {String(index + 1).padStart(2, '0')}
             </span>
-            <span style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: locked ? '#475569' : '#f1f5f9',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
+            <span className="truncate text-[13px] font-bold" style={{ color: locked ? '#475569' : '#f1f5f9' }}>
               {locked ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#475569' }}>
+                <span className="flex items-center gap-1" style={{ color: '#475569' }}>
                   🔒 {t('levels.locked') || 'Kilitli'}
                 </span>
               ) : level.name}
             </span>
           </div>
-          
-          {/* Right: Difficulty Pill */}
+
           {level.difficulty && (
-            <span style={{
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-              color: diffColor,
-              background: `${diffColor}12`,
-              border: `1px solid ${diffColor}30`,
-              borderRadius: 4,
-              padding: '1px 5px',
-              flexShrink: 0,
-            }}>
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide"
+              style={{ color: diffColor, background: `${diffColor}12`, border: `1px solid ${diffColor}30` }}
+            >
               {t(`difficulty.${level.difficulty}`)}
             </span>
           )}
         </div>
 
-        {/* Middle Row */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>
-              {level.width}×{level.height} Grid
-            </span>
+        {/* Orta satır */}
+        <div className="flex w-full flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-medium text-slate-500">{level.width}×{level.height} Grid</span>
             {level.creatorName && (
               <>
-                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}>•</span>
-                <span style={{ fontSize: 11, color: '#00c4ff', fontWeight: 600, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={level.creatorName}>
+                <span className="text-[10px] text-white/15">•</span>
+                <span className="max-w-[100px] truncate text-[11px] font-semibold text-cyan-400" title={level.creatorName}>
                   by {level.creatorName}
                 </span>
               </>
             )}
           </div>
-          
           {level.trailCollision && (
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 1 }}>
-              <span style={{
-                fontSize: 9,
-                fontWeight: 800,
-                color: '#ef4444',
-                background: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.25)',
-                borderRadius: 3,
-                padding: '1px 4px',
-                letterSpacing: '0.05em',
-              }}>
+            <div className="mt-0.5 flex items-center">
+              <span className="rounded border border-red-500/25 bg-red-500/[0.08] px-1 py-0.5 text-[9px] font-extrabold tracking-wide text-red-500">
                 ⚡ {t('editor.trail_collision') || 'TRAIL'}
               </span>
             </div>
           )}
         </div>
 
-        {/* Bottom Row */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', width: '100%', marginTop: 'auto' }}>
-          {/* Left: StarDisplay & Played Stats */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Alt satır */}
+        <div className="mt-auto flex w-full items-end justify-between">
+          <div className="flex flex-col gap-0.5">
             {playedLevel ? (
               <>
                 <StarDisplay stars={playedLevel.stars || 1} />
-                <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500, marginTop: 1 }}>
+                <span className="mt-0.5 text-[10px] font-medium text-slate-400">
                   {playedLevel.moveCount} {t('hud.moves')?.replace(':', '') || 'Hamle'} · {formatTime(playedLevel.timeSpent)}
                 </span>
               </>
             ) : (
-              <span style={{ fontSize: 10, color: '#475569', fontStyle: 'italic' }}>
-                {t('levels.not_played') || 'Oynanmadı'}
-              </span>
+              <span className="text-[10px] italic text-slate-600">{t('levels.not_played') || 'Oynanmadı'}</span>
             )}
           </div>
 
-          {/* Right: Quick Action Buttons & Play Trigger */}
-          <div 
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-            onClick={(e) => e.stopPropagation()} // Prevent card play click when clicking small control buttons
-          >
-            {canAct && !isMobile && (hovered || gamepadSelected) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {canAct && !isMobile && active && (
+              <div className="flex items-center gap-1">
                 {!isPreset && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div className="flex flex-col gap-0.5">
                     <ArrowBtn onClick={onMoveUp} disabled={index === 0} label="▲" />
                     <ArrowBtn onClick={onMoveDown} disabled={index >= total - 1} label="▼" />
                   </div>
@@ -344,47 +245,25 @@ export function LevelRow({
                   const rect = e.currentTarget.getBoundingClientRect();
                   openCtx(rect.left, rect.bottom);
                 }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 14,
-                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-slate-400"
               >
                 ⋮
               </button>
             )}
 
-            {/* Main Action Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 if (!locked) onPlay();
               }}
               disabled={locked}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-all"
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: locked
-                  ? 'rgba(71, 85, 105, 0.1)'
-                  : `linear-gradient(135deg, ${(diffColor || '#00c4ff')}15 0%, ${(diffColor || '#00c4ff')}30 100%)`,
-                border: `1px solid ${locked ? 'rgba(71, 85, 105, 0.2)' : `${(diffColor || '#00c4ff')}60`}`,
+                background: locked ? 'rgba(71,85,105,0.1)' : `linear-gradient(135deg, ${accent}15 0%, ${accent}30 100%)`,
+                border: `1px solid ${locked ? 'rgba(71,85,105,0.2)' : `${accent}60`}`,
                 color: locked ? '#475569' : '#fff',
+                boxShadow: locked ? 'none' : `0 0 10px ${accent}20`,
                 cursor: locked ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: locked ? 'none' : `0 0 10px ${(diffColor || '#00c4ff')}20`,
-                fontSize: 12,
-                transition: 'all 0.2s ease',
               }}
             >
               {locked ? '🔒' : '▶'}
@@ -395,62 +274,35 @@ export function LevelRow({
 
       {ctxMenu && (
         <ContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          isPreset={isPreset}
-          index={index}
-          total={total}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
-          onClose={() => setCtxMenu(null)}
-          t={t}
+          x={ctxMenu.x} y={ctxMenu.y} isPreset={isPreset} index={index} total={total}
+          onEdit={onEdit} onDelete={onDelete} onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+          onClose={() => setCtxMenu(null)} t={t}
         />
       )}
     </>
   );
 }
 
-// ─── Small helper buttons ─────────────────────────────────────────────────────
-
 function ArrowBtn({ onClick, disabled, label }: { onClick: () => void; disabled: boolean; label: string }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{
-        width: 22, height: 20, fontSize: 11,
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        color: disabled ? '#1e3a5f' : '#475569',
-        borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
+      className="flex h-5 w-[22px] items-center justify-center rounded border border-white/[0.07] bg-white/[0.02] text-[11px]"
+      style={{ color: disabled ? '#1e3a5f' : '#475569', cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       {label}
     </button>
   );
 }
 
-function SmallBtn({ onClick, color, label, title }: {
-  onClick: () => void; color: string; label: string; title: string;
-}) {
-  const [hov, setHov] = useState(false);
+function SmallBtn({ onClick, color, label, title }: { onClick: () => void; color: string; label: string; title: string }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        width: 32, height: 32, fontSize: 13,
-        background: hov ? `${color}20` : `${color}0d`,
-        border: `1px solid ${hov ? `${color}60` : `${color}30`}`,
-        color, borderRadius: 7, cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.12s',
-      }}
+      className="flex h-8 w-8 items-center justify-center rounded-[7px] text-[13px] transition-all"
+      style={{ background: `${color}0d`, border: `1px solid ${color}30`, color }}
     >
       {label}
     </button>

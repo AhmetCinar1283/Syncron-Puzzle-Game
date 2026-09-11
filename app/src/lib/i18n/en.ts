@@ -237,10 +237,22 @@ const en: Record<string, string> = {
   'win.solved_in': 'Solved in {n} moves',
   'win.restart': 'RESTART',
   'win.next_level': 'NEXT LEVEL →',
+  'win.menu': 'Levels',
+  'win.new_record': 'New Record',
+  'win.record': 'Best Solution',
+  'win.good_solution': 'Good Solution',
   'win.end_test': 'End Test',
   'win.test_success': 'Test Successful!',
   'win.login_to_save': 'SIGN IN / SAVE',
   'win.login_failed': 'Login failed',
+
+  // Feedback
+  'feedback.rate_title': 'Rate Level',
+  'feedback.difficulty': 'Difficulty',
+  'feedback.easy': 'Easy',
+  'feedback.normal': 'Normal',
+  'feedback.hard': 'Hard',
+  'feedback.thank_you': 'Thanks for your feedback!',
 
   // Lost overlay
   'lost.forbidden_title': 'Forbidden Zone',

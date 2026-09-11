@@ -97,6 +97,42 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
 
     const isUserAnonymous = !user || isAnonymous;
 
+    const getDiffLabel = (diff: 'easy' | 'normal' | 'hard') => {
+        const val = t(`feedback.${diff}`);
+        if (val && val !== `feedback.${diff}`) return val;
+        return diff === 'easy' ? 'Kolay' : diff === 'normal' ? 'Normal' : 'Zor';
+    };
+
+    const getBadgeInfo = () => {
+        if (!result) return null;
+        if (result.isNewBestSolution) {
+            return {
+                text: t('win.new_record'),
+                color: '#00ff88',
+                bg: 'rgba(0, 255, 136, 0.12)',
+                border: 'rgba(0, 255, 136, 0.35)',
+            };
+        }
+        if (result.isBestSolution) {
+            return {
+                text: t('win.record'),
+                color: '#00c4ff',
+                bg: 'rgba(0, 196, 255, 0.12)',
+                border: 'rgba(0, 196, 255, 0.35)',
+            };
+        }
+        if (result.isGoodSolution) {
+            return {
+                text: t('win.good_solution'),
+                color: '#c084fc',
+                bg: 'rgba(147, 51, 234, 0.12)',
+                border: 'rgba(147, 51, 234, 0.35)',
+            };
+        }
+        return null;
+    };
+    const badgeInfo = getBadgeInfo();
+
     // Check auth status after AuthModal is closed
     useEffect(() => {
         if (authAttempted && !showAuthModal) {
@@ -211,73 +247,30 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                 }}
             >
                 <motion.div
-                    initial={{ scale: 0.85, opacity: 0, y: 24 }}
+                    initial={{ scale: 0.88, opacity: 0, y: 16 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.85, opacity: 0, y: 24 }}
-                    transition={{ type: 'spring', stiffness: 340, damping: 26, delay: 0.04 }}
+                    exit={{ scale: 0.88, opacity: 0, y: 16 }}
+                    transition={{ type: 'spring', stiffness: 360, damping: 28, delay: 0.04 }}
                     style={{
-                        background: 'rgba(3, 7, 18, 0.97)',
-                        border: '1px solid rgba(0, 255, 136, 0.4)',
-                        boxShadow: '0 0 40px rgba(0, 255, 136, 0.15), 0 0 80px rgba(0, 255, 136, 0.05)',
+                        background: 'rgba(4, 9, 20, 0.96)',
+                        border: '1px solid rgba(0, 255, 136, 0.35)',
+                        boxShadow: '0 0 35px rgba(0, 255, 136, 0.12), 0 20px 40px rgba(0, 0, 0, 0.7)',
                         borderRadius: 20,
-                        // Responsive padding: compact on small screens
-                        padding: 'clamp(20px, 5vw, 40px) clamp(24px, 6vw, 52px)',
+                        padding: 'clamp(20px, 4vw, 26px) clamp(16px, 4vw, 22px)',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 'clamp(10px, 3vw, 16px)',
-                        // Genişlik: ekranın %88'i ama max 340px
-                        width: 'min(88vw, 340px)',
+                        gap: 12,
+                        width: 'min(90vw, 340px)',
+                        maxWidth: 340,
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
                         boxSizing: 'border-box',
                     }}
                 >
-                    {/* Pulsing glow crown */}
-                    <motion.div
-                        animate={loading
-                            ? { opacity: [0.35, 1, 0.35], scale: [0.9, 1.1, 0.9] }
-                            : { opacity: 1, scale: 1 }
-                        }
-                        transition={loading
-                            ? { repeat: Infinity, duration: 1.6, ease: 'easeInOut' }
-                            : { duration: 0.3 }
-                        }
-                        style={{ fontSize: 'clamp(28px, 8vw, 40px)', lineHeight: 1 }}
-                    >
-                        ✦
-                    </motion.div>
-
-                    {/* Level Completed Title */}
-                    <motion.h2
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.16 }}
-                        style={{
-                            fontSize: 'clamp(16px, 5vw, 22px)',
-                            fontWeight: 800,
-                            color: '#00ff88',
-                            textShadow: '0 0 16px rgba(0,255,136,0.6)',
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                            margin: 0,
-                            textAlign: 'center',
-                        }}
-                    >
-                        {t('win.title')}
-                    </motion.h2>
-
-                    {/* Solved in Moves */}
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.26 }}
-                        style={{ color: '#475569', fontSize: 'clamp(11px, 3vw, 13px)', margin: 0, textAlign: 'center' }}
-                    >
-                        {t('win.solved_in', { n: moveCount })}
-                    </motion.p>
-
                     {/* Stars Container */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <div style={{ display: 'flex', gap: 'clamp(4px, 2vw, 10px)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <div style={{ display: 'flex', gap: 'clamp(4px, 2vw, 8px)', alignItems: 'center', justifyContent: 'center' }}>
                             <Star n={1} loading={loading} stars={stars} />
                             <Star n={2} loading={loading} stars={stars} />
                             <Star n={3} loading={loading} stars={stars} />
@@ -292,172 +285,201 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0, scale: 0.7 }}
                                     transition={{ duration: 0.18 }}
-                                    style={{ display: 'flex', gap: 5, alignItems: 'center', height: 14 }}
+                                    style={{ display: 'flex', gap: 5, alignItems: 'center', height: 12 }}
                                 >
                                     {[0, 1, 2].map((i) => (
                                         <motion.span
                                             key={i}
-                                            animate={{ y: [0, -5, 0], opacity: [0.25, 1, 0.25] }}
+                                            animate={{ y: [0, -4, 0], opacity: [0.25, 1, 0.25] }}
                                             transition={{ repeat: Infinity, duration: 0.85, delay: i * 0.17, ease: 'easeInOut' }}
-                                            style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#1e3a5f' }}
+                                            style={{ display: 'inline-block', width: 4, height: 4, borderRadius: '50%', background: '#00c4ff' }}
                                         />
                                     ))}
                                 </motion.div>
                             )}
                         </AnimatePresence>
-
-                        {/* Point Change (+PTS) */}
-                        <AnimatePresence>
-                            {!loading && result && result.scoreDelta !== undefined && result.scoreDelta > 0 && (
-                                <motion.p
-                                    key="pts"
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0, opacity: 0 }}
-                                    transition={{ type: 'spring', stiffness: 450, damping: 14, delay: 0.65 + 2 * 0.22 }}
-                                    style={{
-                                        color: '#ffd700',
-                                        textShadow: '0 0 10px rgba(255,215,0,0.6)',
-                                        fontSize: 'clamp(11px, 3vw, 13px)',
-                                        fontWeight: 700,
-                                        margin: 0,
-                                        letterSpacing: '0.08em',
-                                    }}
-                                >
-                                    +{result.scoreDelta} PTS
-                                </motion.p>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Badge */}
-                        <AnimatePresence>
-                            {!loading && result && (result.isNewBestSolution || result.isBestSolution || result.isGoodSolution) && (
-                                <motion.p
-                                    key="best-badge"
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ delay: 0.82, duration: 0.3 }}
-                                    style={{
-                                        color: result.isNewBestSolution ? '#00ff88'
-                                            : result.isBestSolution ? '#00c4ff'
-                                            : '#9333ea',
-                                        textShadow: result.isNewBestSolution
-                                            ? '0 0 8px rgba(0,255,136,0.6)'
-                                            : result.isBestSolution
-                                                ? '0 0 8px rgba(0,196,255,0.6)'
-                                                : '0 0 8px rgba(147,51,234,0.6)',
-                                        fontSize: 'clamp(9px, 2.5vw, 11px)',
-                                        margin: 0,
-                                        letterSpacing: '0.1em',
-                                        textTransform: 'uppercase',
-                                        fontWeight: 700,
-                                    }}
-                                >
-                                    {result.isNewBestSolution ? 'Yeni Rekor'
-                                        : result.isBestSolution ? 'Rekor'
-                                        : 'İyi Çözüm'}
-                                </motion.p>
-                            )}
-                        </AnimatePresence>
                     </div>
+
+                    {/* Level Completed Title */}
+                    <motion.h2
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.14 }}
+                        style={{
+                            fontSize: 'clamp(17px, 4.5vw, 21px)',
+                            fontWeight: 800,
+                            color: '#00ff88',
+                            textShadow: '0 0 16px rgba(0,255,136,0.5)',
+                            letterSpacing: '0.04em',
+                            margin: 0,
+                            textAlign: 'center',
+                        }}
+                    >
+                        {t('win.title')}
+                    </motion.h2>
+
+                    {/* Solved in Moves & Points & Badges in one clean row */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.22 }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            margin: 0,
+                        }}
+                    >
+                        <span style={{ color: '#94a3b8', fontSize: 'clamp(11px, 3vw, 13px)', fontWeight: 500 }}>
+                            {t('win.solved_in', { n: moveCount })}
+                        </span>
+                        {!loading && result?.scoreDelta !== undefined && result.scoreDelta > 0 && (
+                            <motion.span
+                                key="pts"
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ type: 'spring', stiffness: 450, damping: 14 }}
+                                style={{
+                                    color: '#ffd700',
+                                    background: 'rgba(255, 215, 0, 0.12)',
+                                    border: '1px solid rgba(255, 215, 0, 0.35)',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: '1px 7px',
+                                    borderRadius: 999,
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                +{result.scoreDelta} PTS
+                            </motion.span>
+                        )}
+                        {badgeInfo && (
+                            <motion.span
+                                key="best-badge"
+                                initial={{ opacity: 0, y: 3 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{
+                                    color: badgeInfo.color,
+                                    background: badgeInfo.bg,
+                                    border: `1px solid ${badgeInfo.border}`,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '1px 7px',
+                                    borderRadius: 999,
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                {badgeInfo.text}
+                            </motion.span>
+                        )}
+                    </motion.div>
 
                     {/* Optional Feedback Widget */}
                     {!alreadyFeedback && !submitted && levelId && version && (
                         <motion.div
-                            initial={{ opacity: 0, y: 8 }}
+                            initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5, duration: 0.3 }}
+                            transition={{ delay: 0.3, duration: 0.25 }}
                             style={{
                                 width: '100%',
-                                background: 'rgba(30, 41, 59, 0.25)',
-                                border: '1px solid rgba(148, 163, 184, 0.1)',
+                                background: 'rgba(255, 255, 255, 0.025)',
+                                border: '1px solid rgba(255, 255, 255, 0.07)',
                                 borderRadius: 12,
-                                padding: 12,
+                                padding: '10px 12px',
                                 boxSizing: 'border-box',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: 10,
-                                margin: '8px 0',
+                                gap: 8,
+                                margin: '2px 0',
                             }}
                         >
-                            <p style={{
-                                color: '#94a3b8',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                margin: 0,
-                                textAlign: 'center',
-                                letterSpacing: '0.04em'
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                                width: '100%',
                             }}>
-                                {t('feedback.rate_title') ?? 'Seviyeyi Değerlendir (İsteğe Bağlı)'}
-                            </p>
-                            
-                            {/* Like / Dislike Row */}
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-                                <button
-                                    onClick={() => setSelectedLike(true)}
-                                    style={{
-                                        background: selectedLike === true ? 'rgba(0, 255, 136, 0.15)' : 'rgba(148, 163, 184, 0.05)',
-                                        border: selectedLike === true ? '1px solid rgba(0, 255, 136, 0.6)' : '1px solid rgba(148, 163, 184, 0.15)',
-                                        color: selectedLike === true ? '#00ff88' : '#94a3b8',
-                                        borderRadius: 8,
-                                        padding: '6px 16px',
-                                        fontSize: 14,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6
-                                    }}
-                                >
-                                    👍
-                                </button>
-                                <button
-                                    onClick={() => setSelectedLike(false)}
-                                    style={{
-                                        background: selectedLike === false ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.05)',
-                                        border: selectedLike === false ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(148, 163, 184, 0.15)',
-                                        color: selectedLike === false ? '#ef4444' : '#94a3b8',
-                                        borderRadius: 8,
-                                        padding: '6px 16px',
-                                        fontSize: 14,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6
-                                    }}
-                                >
-                                    👎
-                                </button>
-                            </div>
-
-                            {/* Difficulty Row */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
-                                {(['easy', 'normal', 'hard'] as const).map((diff) => (
+                                <span style={{
+                                    color: '#94a3b8',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    letterSpacing: '0.02em',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    {t('feedback.rate_title')}
+                                </span>
+                                <div style={{ display: 'flex', gap: 6 }}>
                                     <button
-                                        key={diff}
-                                        onClick={() => setSelectedDiff(diff)}
+                                        type="button"
+                                        onClick={() => setSelectedLike(true)}
                                         style={{
-                                            flex: 1,
-                                            background: selectedDiff === diff ? 'rgba(0, 196, 255, 0.15)' : 'rgba(148, 163, 184, 0.05)',
-                                            border: selectedDiff === diff ? '1px solid rgba(0, 196, 255, 0.6)' : '1px solid rgba(148, 163, 184, 0.15)',
-                                            color: selectedDiff === diff ? '#00c4ff' : '#64748b',
-                                            borderRadius: 6,
-                                            padding: '5px 0',
-                                            fontSize: 10,
-                                            fontWeight: 600,
+                                            background: selectedLike === true ? 'rgba(0, 255, 136, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                                            border: selectedLike === true ? '1px solid rgba(0, 255, 136, 0.6)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                            color: selectedLike === true ? '#00ff88' : '#94a3b8',
+                                            borderRadius: 7,
+                                            padding: '4px 10px',
+                                            fontSize: 13,
                                             cursor: 'pointer',
                                             transition: 'all 0.15s',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em'
+                                            lineHeight: 1,
                                         }}
                                     >
-                                        {diff === 'easy' ? (t('feedback.easy') ?? 'Kolay')
-                                            : diff === 'normal' ? (t('feedback.normal') ?? 'Normal')
-                                            : (t('feedback.hard') ?? 'Zor')}
+                                        👍
                                     </button>
-                                ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedLike(false)}
+                                        style={{
+                                            background: selectedLike === false ? 'rgba(239, 68, 68, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                                            border: selectedLike === false ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                            color: selectedLike === false ? '#ef4444' : '#94a3b8',
+                                            borderRadius: 7,
+                                            padding: '4px 10px',
+                                            fontSize: 13,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s',
+                                            lineHeight: 1,
+                                        }}
+                                    >
+                                        👎
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Difficulty buttons */}
+                            <div style={{ display: 'flex', width: '100%', gap: 6 }}>
+                                {(['easy', 'normal', 'hard'] as const).map((diff) => {
+                                    const label = getDiffLabel(diff);
+                                    const isSelected = selectedDiff === diff;
+                                    return (
+                                        <button
+                                            key={diff}
+                                            type="button"
+                                            onClick={() => setSelectedDiff(diff)}
+                                            style={{
+                                                flex: 1,
+                                                minWidth: 0,
+                                                background: isSelected ? 'rgba(0, 196, 255, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                                                border: isSelected ? '1px solid rgba(0, 196, 255, 0.6)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                                color: isSelected ? '#00c4ff' : '#94a3b8',
+                                                borderRadius: 7,
+                                                padding: '6px 2px',
+                                                fontSize: 11,
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </motion.div>
                     )}
@@ -469,61 +491,53 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                             animate={{ opacity: 1, scale: 1 }}
                             style={{
                                 color: '#00ff88',
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: 600,
-                                margin: '8px 0',
+                                margin: '2px 0',
                                 textAlign: 'center',
-                                letterSpacing: '0.04em'
+                                letterSpacing: '0.02em',
                             }}
                         >
-                            ✓ {t('feedback.thank_you') ?? 'Geri bildiriminiz için teşekkürler!'}
+                            ✓ {t('feedback.thank_you')}
                         </motion.p>
                     )}
 
                     {/* Action buttons */}
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.34 }}
+                        transition={{ delay: 0.28 }}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: 10,
-                            marginTop: 4,
+                            gap: 8,
                             width: '100%',
+                            marginTop: 2,
                         }}
                     >
                         {isUserAnonymous && (
                             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                                 <button
+                                    type="button"
                                     onClick={handleOpenAuth}
                                     style={{
                                         width: '100%',
-                                        fontSize: 'clamp(11px, 3vw, 13px)',
-                                        padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
-                                        background: 'rgba(0, 196, 255, 0.12)',
-                                        border: '1px solid rgba(0, 196, 255, 0.55)',
+                                        fontSize: 'clamp(11px, 2.8vw, 12px)',
+                                        padding: '8px 14px',
+                                        background: 'rgba(0, 196, 255, 0.1)',
+                                        border: '1px solid rgba(0, 196, 255, 0.4)',
                                         color: '#00c4ff',
                                         borderRadius: 10,
                                         cursor: 'pointer',
-                                        fontWeight: 700,
-                                        letterSpacing: '0.04em',
-                                        boxShadow: '0 0 14px rgba(0, 196, 255, 0.2)',
+                                        fontWeight: 600,
+                                        letterSpacing: '0.03em',
                                         transition: 'all 0.15s',
                                         touchAction: 'manipulation',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         gap: 6,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 196, 255, 0.22)';
-                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 18px rgba(0, 196, 255, 0.4)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 196, 255, 0.12)';
-                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 14px rgba(0, 196, 255, 0.2)';
                                     }}
                                 >
                                     🔑 {t('win.login_to_save')}
@@ -534,11 +548,10 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                                         animate={{ opacity: 1, y: 0 }}
                                         style={{
                                             color: '#ef4444',
-                                            fontSize: 'clamp(10px, 2.8vw, 11px)',
+                                            fontSize: 11,
                                             fontWeight: 600,
                                             margin: 0,
                                             textAlign: 'center',
-                                            letterSpacing: '0.03em',
                                         }}
                                     >
                                         ⚠️ {t('win.login_failed')}
@@ -549,64 +562,76 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
 
                         <div style={{
                             display: 'flex',
-                            gap: 10,
+                            gap: 8,
                             width: '100%',
                             justifyContent: 'center',
-                            flexWrap: 'wrap',
                         }}>
                             <button
+                                type="button"
                                 onClick={onRestart}
                                 style={{
+                                    flex: 1,
                                     fontSize: 'clamp(11px, 3vw, 13px)',
-                                    padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
-                                    background: 'rgba(148, 163, 184, 0.06)',
-                                    border: '1px solid rgba(148, 163, 184, 0.25)',
-                                    color: '#94a3b8',
+                                    padding: '9px 12px',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    color: '#cbd5e1',
                                     borderRadius: 10,
                                     cursor: 'pointer',
-                                    letterSpacing: '0.04em',
                                     fontWeight: 600,
+                                    letterSpacing: '0.03em',
                                     transition: 'all 0.15s',
                                     touchAction: 'manipulation',
-                                    flexShrink: 0,
-                                }}
-                                onMouseEnter={(e) => {
-                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148, 163, 184, 0.12)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148, 163, 184, 0.06)';
+                                    whiteSpace: 'nowrap',
                                 }}
                             >
                                 {t('win.restart')}
                             </button>
-                            {onNextLevel && (
+                            {onNextLevel ? (
                                 <button
+                                    type="button"
                                     onClick={onNextLevel}
                                     style={{
+                                        flex: 1.4,
                                         fontSize: 'clamp(11px, 3vw, 13px)',
-                                        padding: 'clamp(8px, 2vw, 10px) clamp(16px, 4vw, 22px)',
-                                        background: 'rgba(0, 255, 136, 0.08)',
-                                        border: '1px solid rgba(0, 255, 136, 0.45)',
+                                        padding: '9px 12px',
+                                        background: 'rgba(0, 255, 136, 0.14)',
+                                        border: '1px solid rgba(0, 255, 136, 0.5)',
                                         color: '#00ff88',
                                         borderRadius: 10,
                                         cursor: 'pointer',
-                                        fontWeight: 600,
-                                        letterSpacing: '0.04em',
-                                        boxShadow: '0 0 12px rgba(0,255,136,0.15)',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.03em',
+                                        boxShadow: '0 0 14px rgba(0, 255, 136, 0.18)',
                                         transition: 'all 0.15s',
                                         touchAction: 'manipulation',
-                                        flexShrink: 0,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 255, 136, 0.15)';
-                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 16px rgba(0,255,136,0.3)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0, 255, 136, 0.08)';
-                                        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.15)';
+                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     {t('win.next_level')}
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={onMenu}
+                                    style={{
+                                        flex: 1.4,
+                                        fontSize: 'clamp(11px, 3vw, 13px)',
+                                        padding: '9px 12px',
+                                        background: 'rgba(0, 255, 136, 0.14)',
+                                        border: '1px solid rgba(0, 255, 136, 0.5)',
+                                        color: '#00ff88',
+                                        borderRadius: 10,
+                                        cursor: 'pointer',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.03em',
+                                        boxShadow: '0 0 14px rgba(0, 255, 136, 0.18)',
+                                        transition: 'all 0.15s',
+                                        touchAction: 'manipulation',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {t('win.menu')}
                                 </button>
                             )}
                         </div>
