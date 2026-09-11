@@ -1,6 +1,7 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
 import { Direction } from '../../logic/types';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 interface DirectionDeflectorCellRendererProps {
     cell: Cell;
@@ -16,11 +17,42 @@ const ARROWS: Record<Direction, string> = {
 };
 
 export const DirectionDeflectorCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: DirectionDeflectorCellRendererProps) => {
+    const { theme } = useGameTheme();
     const isOccupied = entityOnCell !== null || prevEntityOnCell !== null;
 
     const mapping = (cell.customData.mapping as Record<Direction, Direction>) ?? {
         up: 'right', right: 'down', down: 'left', left: 'up'
     };
+
+    if (theme === 'legacy') {
+        return (
+            <div style={{
+                width: 64,
+                height: 64,
+                background: 'rgba(236, 72, 153, 0.12)',
+                border: '2px solid rgba(236, 72, 153, 0.6)',
+                boxShadow: 'inset 0 0 14px rgba(236, 72, 153, 0.2), 0 0 8px rgba(236, 72, 153, 0.15)',
+                boxSizing: 'border-box',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}>
+                <span
+                    style={{
+                        fontSize: 20,
+                        lineHeight: 1,
+                        color: '#ec4899',
+                        textShadow: '0 0 8px rgba(236,72,153,0.7)',
+                        userSelect: 'none',
+                        fontWeight: 'bold',
+                    }}
+                >
+                    ⤭
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div 

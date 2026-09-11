@@ -1,10 +1,13 @@
 // components/entities/BoxGraphic.tsx
-// APTAL GRAFİK — kutu görünümü. Fizik → PhysicsWrapper'da.
+// Görünüm (Neon vs Legacy Tema Desteği)
 
 import { Entity } from '../../logic/entityTypes';
 import { getPlayerColor } from '../playerColors';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 export const BoxGraphic = ({ entity }: { entity: Entity }) => {
+    const { theme } = useGameTheme();
+    
     // requiresPower: customData'da varsa ve isPowered değilse soluk göster
     const requiresPower = (entity.customData.requiresPower as boolean) ?? false;
     const isPowered = entity.isElectrified;
@@ -23,6 +26,83 @@ export const BoxGraphic = ({ entity }: { entity: Entity }) => {
         const colorSchema = getPlayerColor(colorFilterIndex);
         hex = colorSchema.hex;
         rgb = colorSchema.rgb;
+    }
+
+    if (theme === 'legacy') {
+        const isUnpowered = dimmed;
+        return (
+            <div style={{
+                width: 64,
+                height: 64,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+            }}>
+                <div
+                    style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 6,
+                        background: isUnpowered ? 'rgba(30, 40, 55, 0.9)' : 'rgba(15, 23, 35, 0.95)',
+                        border: isUnpowered ? '2px solid rgba(71, 85, 105, 0.5)' : `2px solid ${hex}`,
+                        boxShadow: isUnpowered
+                            ? 'inset 0 1px 0 rgba(71,85,105,0.15)'
+                            : `0 0 10px rgba(${rgb},0.5), 0 0 20px rgba(${rgb},0.2), inset 0 1px 0 rgba(${rgb},0.15)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        userSelect: 'none',
+                        position: 'relative',
+                    }}
+                >
+                    <span
+                        style={{
+                            fontSize: 16,
+                            lineHeight: 1,
+                            color: isUnpowered ? '#334155' : hex,
+                            textShadow: isUnpowered ? 'none' : `0 0 8px rgba(${rgb},0.8)`,
+                            fontWeight: 'bold',
+                            userSelect: 'none',
+                        }}
+                    >
+                        ▣
+                    </span>
+                    {requiresPower && (
+                        <span
+                            style={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 3,
+                                fontSize: 11,
+                                lineHeight: 1,
+                                color: isPowered ? '#fbbf24' : '#334155',
+                                textShadow: isPowered ? '0 0 6px rgba(251,191,36,0.8)' : 'none',
+                                userSelect: 'none',
+                            }}
+                        >
+                            ⚡
+                        </span>
+                    )}
+                    {durabilityEnabled && (
+                        <span
+                            style={{
+                                position: 'absolute',
+                                bottom: 2,
+                                right: 3,
+                                fontSize: 10,
+                                lineHeight: 1,
+                                color: hex,
+                                fontWeight: 'bold',
+                                userSelect: 'none',
+                            }}
+                        >
+                            {durability}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
     }
 
     return (

@@ -5,7 +5,7 @@ import SelectionLayer from './SelectionLayer';
 import { ColControls, RowControls, COL_CTRL_H, ROW_CTRL_W } from './GridRowColControls';
 import { useEditorContext } from '../EditorContext';
 import { calculateRoomLayoutOffsets, getEdgePoint, routePortalPath } from '@/app/src/game2/logic/engine/rooms';
-import GameCell from '@/app/src/games/components/GameCell';
+import GameCellAdapter from '@/app/src/game2/components/GameCellAdapter';
 import { getPlayerColor } from '@/app/src/game2/components/playerColors';
 import { EDGE_COLOR } from '../editorConfig';
 import type { CellType, EdgeBehavior } from '@/app/src/games/types';
@@ -838,7 +838,7 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
                             position: 'relative',
                           }}
                         >
-                          <GameCell
+                          <GameCellAdapter
                             cellType={cellType}
                             cellSize={cellSize}
                           />

@@ -6,7 +6,7 @@ import { useAuth } from '@/app/src/hooks/useAuth';
 import type { LevelRequest } from '@/app/src/lib/firebase/firestore';
 import type { LevelPart } from '@/app/src/lib/firebase/admin';
 import type { CellType } from '@/app/src/games/types';
-import GameCell from '@/app/src/games/components/GameCell';
+import GameCellAdapter from '@/app/src/game2/components/GameCellAdapter';
 import { useT, type T } from '@/app/src/contexts/LanguageContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ function GridPreview({ grid, cellSize = 20 }: { grid: CellType[][]; cellSize?: n
       {grid.map((row, r) => (
         <div key={r} style={{ display: 'flex' }}>
           {row.map((cell, c) => (
-            <GameCell key={c} cellType={cell} cellSize={cellSize} />
+            <GameCellAdapter key={c} cellType={cell} cellSize={cellSize} />
           ))}
         </div>
       ))}

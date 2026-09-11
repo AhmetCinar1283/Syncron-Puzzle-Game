@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import GameCell from '@/app/src/games/components/GameCell';
+import GameCellAdapter from '@/app/src/game2/components/GameCellAdapter';
 import type { CellType } from '@/app/src/games/types';
 import {
   CELL_TYPES_BASIC, CELL_TYPES_ICE, CELL_TYPES_POWER,
@@ -48,7 +48,7 @@ function ToolBtn({ tool, active, color, label, onClick, small, children }: ToolB
         position: 'relative',
       }}
     >
-      {children ?? <GameCell cellType={tool as CellType} cellSize={sz - 4} />}
+      {children ?? <GameCellAdapter cellType={tool as string} cellSize={sz - 4} />}
       {active && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,

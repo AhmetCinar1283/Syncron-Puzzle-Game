@@ -15,6 +15,7 @@ import { useGamepad } from '@/app/src/hooks/useGamepad';
 import { calculateRoomLayoutOffsets } from '../logic/engine/rooms';
 import { processActionRequest } from '../logic/actions/registry';
 import { GameActionButton } from '../logic/actions/types';
+import { useGameTheme } from '../contexts/GameThemeContext';
 
 const NATIVE_CELL_SIZE = 64;
 const HUD_HEIGHT = 52; // px — HUD'un sabit yüksekliği
@@ -84,6 +85,7 @@ export function PlayScreen({
     solutionSteps,
 }: PlayScreenProps) {
     const t = useT();
+    const { theme, toggleTheme } = useGameTheme();
     const { play, muted, toggleMute } = useSoundManager();
     const [moveCount, setMoveCount] = useState(0);
     const [showNotes, setShowNotes] = useState(false);
@@ -676,6 +678,28 @@ export function PlayScreen({
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                    <button
+                        onClick={toggleTheme}
+                        title={`Theme: ${theme === 'neon' ? 'Neon' : 'Classic'}`}
+                        style={{
+                            fontSize: 14,
+                            width: 30,
+                            height: 30,
+                            background: theme === 'neon' ? 'rgba(0,255,136,0.05)' : 'rgba(0,196,255,0.05)',
+                            border: theme === 'neon' ? '1px solid rgba(0,255,136,0.2)' : '1px solid rgba(0,196,255,0.2)',
+                            color: theme === 'neon' ? '#00ff88' : '#00c4ff',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.15s',
+                            flexShrink: 0,
+                            touchAction: 'manipulation',
+                        }}
+                    >
+                        🎨
+                    </button>
                     <button
                         onClick={toggleMute}
                         title={muted ? t('hud.unmute') : t('hud.mute')}

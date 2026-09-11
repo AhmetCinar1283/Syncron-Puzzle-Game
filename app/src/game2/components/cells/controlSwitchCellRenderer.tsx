@@ -1,5 +1,6 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 interface ControlSwitchCellRendererProps {
     cell: Cell;
@@ -8,7 +9,37 @@ interface ControlSwitchCellRendererProps {
 }
 
 export const ControlSwitchCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: ControlSwitchCellRendererProps) => {
+    const { theme } = useGameTheme();
     const isOccupied = entityOnCell !== null || prevEntityOnCell !== null;
+
+    if (theme === 'legacy') {
+        return (
+            <div style={{
+                width: 64,
+                height: 64,
+                background: 'rgba(168, 85, 247, 0.12)',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                boxShadow: 'inset 0 0 10px rgba(168, 85, 247, 0.15)',
+                boxSizing: 'border-box',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+            }}>
+                <span
+                    style={{
+                        fontSize: 18,
+                        color: '#c084fc',
+                        textShadow: '0 0 8px rgba(168,85,247,0.7)',
+                        userSelect: 'none',
+                        fontWeight: 'bold',
+                    }}
+                >
+                    ❖
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div 

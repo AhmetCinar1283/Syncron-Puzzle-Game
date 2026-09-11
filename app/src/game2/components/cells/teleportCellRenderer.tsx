@@ -1,6 +1,7 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
 import { useState, useEffect, useRef } from 'react';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 type TeleportGroup = 'A' | 'B' | 'C';
 
@@ -17,6 +18,7 @@ interface TeleportCellRendererProps {
 }
 
 export const TeleportCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: TeleportCellRendererProps) => {
+    const { theme } = useGameTheme();
     const group = (cell.customData.group as TeleportGroup) ?? 'A';
     const isIn  = (cell.customData.isIn as boolean) ?? true;
     const color = GROUP_COLOR[group];
@@ -43,6 +45,49 @@ export const TeleportCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: T
             if (timerRef.current) clearTimeout(timerRef.current);
         };
     }, []);
+
+    if (theme === 'legacy') {
+        return (
+            <div style={{
+                width: 64,
+                height: 64,
+                background: isIn ? `rgba(${rgb}, 0.12)` : `rgba(${rgb}, 0.06)`,
+                border: `2px solid rgba(${rgb}, ${isIn ? 0.6 : 0.4})`,
+                boxShadow: isIn ? `inset 0 0 14px rgba(${rgb}, 0.2), 0 0 8px rgba(${rgb}, 0.15)` : `inset 0 0 10px rgba(${rgb}, 0.12)`,
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+            }}>
+                <span
+                    style={{
+                        fontSize: 14,
+                        lineHeight: 1,
+                        color: color,
+                        textShadow: `0 0 8px ${color}`,
+                        userSelect: 'none',
+                    }}
+                >
+                    {isIn ? '⟿' : '⟾'}
+                </span>
+                <span
+                    style={{
+                        fontSize: 12,
+                        lineHeight: 1,
+                        color: color,
+                        textShadow: `0 0 6px ${color}`,
+                        userSelect: 'none',
+                        fontWeight: 'bold',
+                        marginTop: 1,
+                    }}
+                >
+                    {group}
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div 

@@ -1,11 +1,42 @@
 import { Cell } from '../../logic/cellTypes';
-
 import { getPlayerColor } from '../playerColors';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 export const TargetCellRenderer = ({ cell }: { cell: Cell }) => {
+    const { theme } = useGameTheme();
     const playerIndex = (cell.customData.playerIndex as number) ?? 0;
     const { hex, rgb } = getPlayerColor(playerIndex);
     const cellSize = 64;
+
+    if (theme === 'legacy') {
+        return (
+            <div style={{
+                width: cellSize,
+                height: cellSize,
+                background: `rgba(${rgb}, 0.07)`,
+                border: `2px solid rgba(${rgb}, 0.55)`,
+                boxShadow: `inset 0 0 16px rgba(${rgb}, 0.2)`,
+                boxSizing: 'border-box',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+            }}>
+                <span
+                    className="target-pulse-blue"
+                    style={{
+                        fontSize: cellSize * 0.38,
+                        lineHeight: 1,
+                        color: hex,
+                        userSelect: 'none',
+                        display: 'inline-block',
+                    }}
+                >
+                    ◎
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div style={{

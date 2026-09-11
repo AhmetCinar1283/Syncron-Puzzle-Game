@@ -1,17 +1,62 @@
 // components/entities/PlayerGraphic.tsx
-// APTAL GRAFİK — sadece entity verisini renkli bir şekle dönüştürür.
-// Fizik, pozisyon, animasyon → PhysicsWrapper'ın işi.
+// Görünüm (Neon vs Legacy Tema Desteği)
 
 import { Entity } from '../../logic/entityTypes';
 import { getPlayerColor } from '../playerColors';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 export const PlayerGraphic = ({ entity }: { entity: Entity }) => {
+    const { theme } = useGameTheme();
     const playerIndex = (entity.customData.playerIndex as number) ?? 0;
     const mode = (entity.customData.mode as 'normal' | 'reversed') ?? 'normal';
     const isReversed = mode === 'reversed';
     
-    // Ters yönde de olsak oyuncu kendi asıl rengini korusun (yeşil/mavi vs.)
-    const { primary, glow } = getPlayerColor(playerIndex);
+    const { primary, glow, hex } = getPlayerColor(playerIndex);
+
+    if (theme === 'legacy') {
+        const bg = primary;
+        const textColor = playerIndex === 0 ? '#003320' : playerIndex === 1 ? '#002233' : '#1a0033';
+        return (
+            <div style={{
+                width: 64,
+                height: 64,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+            }}>
+                <div
+                    style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        backgroundColor: bg,
+                        boxShadow: `0 0 12px ${bg}, 0 0 24px ${glow}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'default',
+                        userSelect: 'none',
+                    }}
+                >
+                    {entity.customData.isLocked ? (
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
+                    ) : (
+                        <span
+                            style={{
+                                fontSize: 20,
+                                lineHeight: 1,
+                                color: textColor,
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            {isReversed ? '⬇' : '⬆'}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{

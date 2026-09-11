@@ -282,14 +282,18 @@ function EditorInner() {
   );
 }
 
+import { GameThemeProvider } from '@/app/src/game2/contexts/GameThemeContext';
+
 export default function EditorPage() {
   return (
-    <Suspense fallback={
-      <div style={{ height: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: '#1e3a5f', fontSize: 12, letterSpacing: '0.1em' }}>LOADING...</span>
-      </div>
-    }>
-      <EditorInner />
-    </Suspense>
+    <GameThemeProvider>
+      <Suspense fallback={
+        <div style={{ height: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ color: '#1e3a5f', fontSize: 12, letterSpacing: '0.1em' }}>LOADING...</span>
+        </div>
+      }>
+        <EditorInner />
+      </Suspense>
+    </GameThemeProvider>
   );
 }

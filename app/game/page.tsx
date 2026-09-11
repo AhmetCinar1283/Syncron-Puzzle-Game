@@ -1,15 +1,18 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import type { LevelData } from '@/app/src/games/types';
 import type { StoredLevel } from '@/app/src/lib/db';
 import { useUserStorage } from '@/app/src/lib/userStorage';
-import GameShell from '@/app/src/games/components/GameShell';
+import { PlayScreen } from '@/app/src/game2/components/PlayScreen';
+import { convertToGame2State } from '@/app/src/game2/logic/converter';
+import { GameThemeProvider } from '@/app/src/game2/contexts/GameThemeContext';
 import { useT } from '@/app/src/contexts/LanguageContext';
 import { signInAnonymously } from 'firebase/auth';
 import { auth } from '@/app/src/lib/firebase/config';
-
+import { UIButtonType } from '@/app/src/game2/logic/types';
+import { solvePuzzle } from '@/app/src/games/logic/solver';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,6 +30,7 @@ function storedToLevelData(stored: StoredLevel & { id: number }): LevelData {
     trailCollision: stored.trailCollision,
     initialBoxes: stored.initialBoxes,
     conveyorPowerRequired: stored.conveyorPowerRequired,
+    gameNotes: stored.gameNotes,
   };
 }
 
@@ -53,7 +57,6 @@ function GameContent() {
       return;
     }
 
-    // Reset state immediately so old level is not shown while new one loads
     setLoading(true);
     setLevel(null);
     setNextLevelId(null);
@@ -61,13 +64,10 @@ function GameContent() {
 
     let cancelled = false;
     async function load() {
-      // JIT anonymous sign-in: if user hasn’t signed in yet, do it now
-      // before loading the level. This is the moment they chose to play.
       if (!auth.currentUser) {
         try {
           await signInAnonymously(auth);
         } catch (anonErr) {
-          // Non-fatal: level still loads from local Dexie cache
           console.warn('[Game] JIT anonymous sign-in failed:', anonErr);
         }
       }
@@ -80,7 +80,6 @@ function GameContent() {
         if (cancelled) return;
         if (!stored) { setError(true); setLoading(false); return; }
 
-        // Lazy fetch from Firestore if stale or missing full level data
         if ((stored.isNeedSync || !stored.grid?.length) && stored.firestoreId) {
           try {
             const { fetchAndCacheLevel } = await import('@/app/src/lib/firebase/sync');
@@ -126,46 +125,57 @@ function GameContent() {
     }
   }, [nextLevelId, isPreset, router]);
 
+  const handleButtonPressed = useCallback((buttonType: UIButtonType) => {
+    if (buttonType === 'menu') {
+      router.push('/levels');
+    } else if (buttonType === 'next_level') {
+      handleNextLevel();
+    }
+  }, [router, handleNextLevel]);
+
+  const game2State = useMemo(() => {
+    if (!level) return null;
+    return convertToGame2State(level as unknown as StoredLevel & { id: number });
+  }, [level]);
+
+  const solutionSteps = useMemo(() => {
+    if (!level) return null;
+    const res = solvePuzzle(level, 30, 4000);
+    return res.solvable ? res.solution : null;
+  }, [level]);
+
   if (loading) return <LoadingScreen />;
-  if (error || !level) return <ErrorScreen onBack={() => router.push('/levels')} />;
+  if (error || !level || !game2State) return <ErrorScreen onBack={() => router.push('/levels')} />;
+
+  const mainRoomGrid = game2State.rooms['main']?.grid;
 
   return (
     <main
       style={{
         height: '100dvh',
+        width: '100vw',
         background: '#030712',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px 8px',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
     >
-      <button
-        onClick={() => router.push('/levels')}
-        style={{
-          position: 'fixed',
-          top: 12,
-          left: 16,
-          background: 'none',
-          border: 'none',
-          color: '#1e3a5f',
-          fontSize: 12,
-          cursor: 'pointer',
-          letterSpacing: '0.06em',
-          zIndex: 30,
-        }}
-      >
-        {t('game.back')}
-      </button>
-
-      <GameShell
+      <PlayScreen
         key={level.id}
-        level={level}
-        source={isPreset ? 'preset' : 'user'}
-        onNextLevel={nextLevelId !== null ? handleNextLevel : undefined}
+        levelName={level.name}
+        initialEntities={game2State.entities}
+        initialGrid={mainRoomGrid}
+        initialRooms={game2State.rooms}
+        controlMode={game2State.controlMode}
+        initialControlledRooms={game2State.initialControlledRooms}
+        levelEdges={level.edges}
+        trailCollision={level.trailCollision}
+        onButtonPressed={handleButtonPressed}
+        gameNotes={level.gameNotes}
+        solutionSteps={solutionSteps}
       />
     </main>
   );
@@ -227,8 +237,10 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
 
 export default function GamePage() {
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <GameContent />
-    </Suspense>
+    <GameThemeProvider>
+      <Suspense fallback={<LoadingScreen />}>
+        <GameContent />
+      </Suspense>
+    </GameThemeProvider>
   );
 }

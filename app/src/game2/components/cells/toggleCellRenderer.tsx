@@ -1,5 +1,6 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
+import { useGameTheme } from '../../contexts/GameThemeContext';
 
 interface ToggleCellRendererProps {
     cell: Cell;
@@ -8,8 +9,39 @@ interface ToggleCellRendererProps {
 }
 
 export const ToggleCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: ToggleCellRendererProps) => {
+    const { theme } = useGameTheme();
     // Aktif çalışma modu: hücre üzerinde bir nesne varken VEYA yeni ayrılmışken!
     const isOccupied = entityOnCell !== null || prevEntityOnCell !== null;
+
+    if (theme === 'legacy') {
+        return (
+            <div style={{
+                width: 64,
+                height: 64,
+                background: 'rgba(255, 215, 0, 0.07)',
+                border: '1px solid rgba(255, 215, 0, 0.45)',
+                boxShadow: 'inset 0 0 14px rgba(255, 215, 0, 0.18)',
+                boxSizing: 'border-box',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}>
+                <span
+                    style={{
+                        fontSize: 19,
+                        lineHeight: 1,
+                        color: '#ffd700',
+                        textShadow: '0 0 8px rgba(255,215,0,0.7)',
+                        userSelect: 'none',
+                        fontWeight: 'bold',
+                    }}
+                >
+                    ⇄
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div 

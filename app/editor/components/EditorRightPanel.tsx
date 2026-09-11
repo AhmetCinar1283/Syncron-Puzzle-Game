@@ -105,9 +105,9 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
         <Lbl>{t('editor.name')}</Lbl>
         <input value={levelName} onChange={(e) => setLevelName(e.target.value)} style={{ ...iStyle, width: '100%', marginBottom: 10 }} />
         <Lbl>{t('editor.difficulty')}</Lbl>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
           {([1, 2, 3, 4] as const).map((d) => (
-            <NBtn key={d} onClick={() => setDifficulty(d)} active={difficulty === d} color={DIFFICULTY_COLORS[d]} style={{ flex: 1, padding: '3px 4px', fontSize: 9 }}>
+            <NBtn key={d} onClick={() => setDifficulty(d)} active={difficulty === d} color={DIFFICULTY_COLORS[d]} style={{ padding: '3px 4px', fontSize: 9, whiteSpace: 'normal', wordBreak: 'break-word' }}>
               {t(`difficulty.${d}`)}
             </NBtn>
           ))}

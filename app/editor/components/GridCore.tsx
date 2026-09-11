@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import GameCell from '@/app/src/games/components/GameCell';
+import GameCellAdapter from '@/app/src/game2/components/GameCellAdapter';
 import type { EdgeBehavior } from '@/app/src/games/types';
 import { EDGE_COLOR } from '../editorConfig';
 import { useEditorContext } from '../EditorContext';
@@ -137,7 +137,7 @@ export default function GridCore() {
                 onMouseEnter={() => { if (isPainting.current) paintCell(r, c, true); }}
                 onMouseUp={() => { isPainting.current = false; }}
               >
-                <GameCell cellType={cell} cellSize={cellSize} />
+                <GameCellAdapter cellType={cell} cellSize={cellSize} />
                 {cellObjects.map((obj) => (
                   <ObjDot 
                     key={obj.id} 

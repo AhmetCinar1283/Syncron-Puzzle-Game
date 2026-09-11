@@ -14,6 +14,7 @@ import { LevelEdges } from '../logic/engine/getNextTopologyPosition';
 import { GAME_ANIMATION_KEYFRAMES } from './effects/animationStyles';
 import { getPlayerColor } from './playerColors';
 import { calculateRoomLayoutOffsets, routePortalPath } from '../logic/engine/rooms';
+import { useGameTheme } from '../contexts/GameThemeContext';
 
 const CELL_SIZE = 64;
 
@@ -97,6 +98,7 @@ function getEdgePoint(offset: { left: number; top: number; width: number; height
 }
 
 const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }: GameBoardProps) => {
+    const { theme } = useGameTheme();
     const [prevSnapshots, setPrevSnapshots] = useState<TickSnapshot[] | null>(snapshots);
     const [currentFrame, setCurrentFrame] = useState(0);
 
@@ -365,8 +367,13 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
                             boxSizing: 'border-box',
                             transition: 'opacity 0.25s, box-shadow 0.25s',
                             opacity: isControlled ? 1.0 : 0.4,
-                            border: '2px solid transparent',
-                            boxShadow: isControlled ? '0 0 20px rgba(0, 196, 255, 0.6), inset 0 0 10px rgba(0, 196, 255, 0.3)' : 'none',
+                            border: theme === 'legacy' ? '3px solid rgba(30, 58, 138, 0.5)' : '2px solid transparent',
+                            boxShadow: theme === 'legacy' 
+                                ? '0 0 30px rgba(0, 0, 0, 0.8)' 
+                                : isControlled 
+                                ? '0 0 20px rgba(0, 196, 255, 0.6), inset 0 0 10px rgba(0, 196, 255, 0.3)' 
+                                : 'none',
+                            background: theme === 'legacy' ? '#060d1a' : undefined,
                             borderRadius: 6,
                         }}
                     >

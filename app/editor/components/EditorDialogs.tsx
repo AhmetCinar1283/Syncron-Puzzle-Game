@@ -9,7 +9,7 @@ import { Modal, NBtn, iStyle, Lbl } from './EditorUI';
 import { DIFFICULTY_COLORS } from '../editorConfig';
 import AiAssistantDialog from './AiAssistantDialog';
 import { useT } from '@/app/src/contexts/LanguageContext';
-import GameCell from '@/app/src/games/components/GameCell';
+import GameCellAdapter from '@/app/src/game2/components/GameCellAdapter';
 import { getPlayerColor } from '@/app/src/game2/components/playerColors';
 
 export interface GeneratorFiltersUI {
@@ -654,7 +654,7 @@ function GeneratorModal({
                 }}>
                   {room.grid.map((row: CellType[], r: number) =>
                     row.map((cell: CellType, c: number) => (
-                      <GameCell key={`${r}-${c}`} cellType={cell} cellSize={miniCellSize} />
+                      <GameCellAdapter key={`${r}-${c}`} cellType={cell} cellSize={miniCellSize} />
                     ))
                   )}
                 </div>
@@ -740,7 +740,7 @@ function GeneratorModal({
         }}>
           {level.grid.map((row, r) =>
             row.map((cell, c) => (
-              <GameCell key={`${r}-${c}`} cellType={cell} cellSize={miniCellSize} />
+              <GameCellAdapter key={`${r}-${c}`} cellType={cell} cellSize={miniCellSize} />
             ))
           )}
         </div>
