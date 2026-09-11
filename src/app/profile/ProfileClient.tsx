@@ -3,13 +3,9 @@
 import React, { useState, useEffect, useMemo, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { updateProfile } from 'firebase/auth';
-
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
-import { db, functions, auth } from '@/services/firebase/config';
+import { getUserProfileData, updateUserDisplayName, requestNewTag } from '@/services/firebase/users';
 import { useBadges } from '@/hooks/useBadges';
 import { Badge } from '@/services/api/badgesClient';
 import { useFriends } from '@/hooks/useFriends';
@@ -206,10 +202,10 @@ export default function ProfileClient() {
     if (!viewUid) return;
     if (isOwner) {
       setLoadingProfile(true);
-      getDoc(doc(db, 'users', viewUid))
-        .then((snap) => {
-          if (snap.exists()) {
-            setProfileDoc(snap.data());
+      getUserProfileData(viewUid)
+        .then((data) => {
+          if (data) {
+            setProfileDoc(data);
           }
         })
         .catch((err) => console.error('[Profile] Failed to fetch firestore profile:', err))
@@ -312,9 +308,7 @@ export default function ProfileClient() {
     setTagSuccess(false);
 
     try {
-      const requestNewTag = httpsCallable<{ tag: string }, { tag: string }>(functions, 'requestNewTag');
-      const result = await requestNewTag({ tag: tagInput.trim() });
-      const newTag = result.data.tag;
+      const newTag = await requestNewTag(tagInput.trim());
 
       setProfileDoc((prev: any) =>
         prev
@@ -366,15 +360,10 @@ export default function ProfileClient() {
 
     try {
       if (!viewUid) throw new Error('No user ID found');
-      // 1. Update Firestore user doc
-      await updateDoc(doc(db, 'users', viewUid), { displayName: newName });
+      // 1. Update Firestore user doc + Firebase Auth profile
+      await updateUserDisplayName(viewUid, newName);
 
-      // 2. Update Firebase Auth profile if user object is current user
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: newName });
-      }
-
-      // 3. Update local state
+      // 2. Update local state
       setProfileDoc((prev: any) =>
         prev
           ? {

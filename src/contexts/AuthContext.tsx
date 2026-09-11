@@ -29,9 +29,9 @@ import {
   EmailAuthProvider,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/services/firebase';
-import { createOrUpdateUserDoc, type UserDoc } from '@/services/firebase/firestore';
+import { auth } from '@/services/firebase';
+import { createOrUpdateUserDoc, getUserDocSnapshot, type UserDoc } from '@/services/firebase/firestore';
+import { clearPlayedLevelsForUserSwitch } from '@/services/sync/playedLevels';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/store';
 import { setAuthUser, setFirestoreData, resetUser } from '@/store/userSlice';
@@ -121,13 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const prevUid = localStorage.getItem('activeUserId');
           if (prevUid && prevUid !== firebaseUser.uid) {
-            const { getDB } = await import('@/services/db');
-            const db = getDB();
-            await db.playedLevels.clear();
-            // Clear D1 sync cursors so the new user gets a full resync
-            await db.syncMeta.delete('playedLevels_d1');
-            await db.syncMeta.delete('playedLevels_d1_cursor');
-            await db.syncMeta.clear();
+            await clearPlayedLevelsForUserSwitch();
           }
           localStorage.setItem('activeUserId', firebaseUser.uid);
         } catch { /* ignore */ }
@@ -173,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!user.isAnonymous) {
           snap = await createOrUpdateUserDoc(user, accepted);
         } else {
-          snap = await getDoc(doc(db, 'users', user.uid));
+          snap = await getUserDocSnapshot(user.uid);
         }
 
         if (snap && snap.exists()) {

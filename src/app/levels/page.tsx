@@ -61,13 +61,12 @@ function LevelsPageContent() {
 
   // ── Veri yükleme ────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
-    const { getOrderedLevels, getPresetLevels, getDB } = await import('@/services/db');
+    const { getOrderedLevels, getPresetLevels, getAllPlayedLevels } = await import('@/services/db');
     const [presetData, userData] = await Promise.all([getPresetLevels(), getOrderedLevels()]);
     setPresets(presetData as LevelEntry[]);
     setUserLevels(userData as LevelEntry[]);
 
-    const db = getDB();
-    const playedData = await db.playedLevels.toArray();
+    const playedData = await getAllPlayedLevels();
     setPlayedMap(new Map(playedData.map((p) => [p.levelId, p])));
 
     setLoading(false);
@@ -187,8 +186,8 @@ function LevelsPageContent() {
         Object.values(p.order).some((e) => (typeof e === 'string' ? e : e.id) === deleteConfirm.firestoreId),
       );
       await deleteFirestoreLevel(deleteConfirm.firestoreId, part ? part.partId : '');
-      const { getDB } = await import('@/services/db');
-      await getDB().presetLevels.delete(deleteConfirm.id);
+      const { deletePresetLevel } = await import('@/services/db');
+      await deletePresetLevel(deleteConfirm.id);
       await reload();
     } catch (err) {
       console.error('[DeletePreset]', err);

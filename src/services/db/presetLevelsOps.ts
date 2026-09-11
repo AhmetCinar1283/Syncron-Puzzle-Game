@@ -48,6 +48,23 @@ export async function getPresetLevels(): Promise<(StoredLevel & { id: number })[
  * Belirtilen currentId değerinden sonra gelen hazır bölümün Dexie ID'sini döndürür.
  * Doğru sıralamayı garanti etmek için tekilleştirilmiş ve sıralanmış listeyi kullanır.
  */
+/** Bir hazır (kampanya) bölüm kaydını Dexie'den siler. */
+export async function deletePresetLevel(id: number): Promise<void> {
+  const db = getDB();
+  await db.presetLevels.delete(id);
+}
+
+/** Tekilleştirme yapmadan tüm hazır (kampanya) bölüm kayıtlarını ham haliyle döndürür. */
+export async function getAllPresetLevelsRaw(): Promise<(StoredLevel & { id: number })[]> {
+  const db = getDB();
+  return db.presetLevels.toArray() as Promise<(StoredLevel & { id: number })[]>;
+}
+
+export async function getPresetLevelById(id: number): Promise<(StoredLevel & { id: number }) | undefined> {
+  const db = getDB();
+  return db.presetLevels.get(id) as Promise<(StoredLevel & { id: number }) | undefined>;
+}
+
 export async function getNextPresetLevelId(currentId: number): Promise<number | null> {
   const sorted = await getPresetLevels();
   const currentLvl = sorted.find((l) => l.id === currentId);

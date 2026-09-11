@@ -5,34 +5,13 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AdminGuard } from '@/components/common/AdminGuard';
-import { db } from '@/services/firebase';
 import {
-  collection,
-  query,
-  orderBy,
-  limit,
-  startAfter,
-  getDocs,
-  where,
-  doc,
-  getDoc,
-  type DocumentData,
-  type QueryDocumentSnapshot,
-} from 'firebase/firestore';
-
-type UserProfile = {
-  uid: string;
-  email?: string;
-  displayName?: string;
-  tag?: string;
-  role: 'user' | 'moderator' | 'admin';
-  authProvider: 'anonymous' | 'google' | 'email';
-  totalScore: number;
-  completedCount: number;
-  createdAt: number; // ms
-};
-
-const PAGE_SIZE = 15;
+  searchAdminUsers,
+  getAdminUsersPage,
+  ADMIN_USERS_PAGE_SIZE as PAGE_SIZE,
+  type AdminUserProfile as UserProfile,
+} from '@/services/firebase/adminUsers';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 export default function AdminUsersDashboard() {
   const router = useRouter();
@@ -68,77 +47,17 @@ export default function AdminUsersDashboard() {
           setLastDoc(null);
           setHasMore(false);
 
-          let fetched: UserProfile[] = [];
-
-          // 1. UID Exact Match Check (28 chars or standard Firestore UID)
-          if (debouncedQuery.length >= 20 && !debouncedQuery.includes('@') && !debouncedQuery.startsWith('#')) {
-            const userRef = doc(db, 'users', debouncedQuery);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists() && active) {
-              fetched.push(mapUserDoc(userSnap.data()));
-            }
-          }
-
-          // 2. Email exact match
-          if (fetched.length === 0 && debouncedQuery.includes('@')) {
-            const q = query(
-              collection(db, 'users'),
-              where('email', '==', debouncedQuery),
-              limit(1)
-            );
-            const snaps = await getDocs(q);
-            if (!snaps.empty && active) {
-              fetched.push(mapUserDoc(snaps.docs[0].data()));
-            }
-          }
-
-          // 3. Gamer Tag exact match
-          if (fetched.length === 0) {
-            const tagQuery = debouncedQuery.startsWith('#')
-              ? debouncedQuery.slice(1)
-              : debouncedQuery;
-            const q = query(
-              collection(db, 'users'),
-              where('tag', '==', tagQuery),
-              limit(5)
-            );
-            const snaps = await getDocs(q);
-            if (!snaps.empty && active) {
-              snaps.forEach((d) => fetched.push(mapUserDoc(d.data())));
-            }
-          }
-
-          // 4. Display Name prefix match (fallback if other search types yield nothing)
-          if (fetched.length === 0) {
-            const q = query(
-              collection(db, 'users'),
-              where('displayName', '>=', debouncedQuery),
-              where('displayName', '<=', debouncedQuery + '\uf8ff'),
-              orderBy('displayName'),
-              limit(PAGE_SIZE)
-            );
-            const snaps = await getDocs(q);
-            if (!snaps.empty && active) {
-              snaps.forEach((d) => fetched.push(mapUserDoc(d.data())));
-            }
-          }
-
+          const fetched = await searchAdminUsers(debouncedQuery);
           if (active) {
             setUsers(fetched);
           }
         } else {
           // Fetch Default List (paginated, sorted by createdAt desc)
-          const q = query(
-            collection(db, 'users'),
-            orderBy('createdAt', 'desc'),
-            limit(PAGE_SIZE)
-          );
-          const snaps = await getDocs(q);
+          const { users: list, lastDoc: newLastDoc, hasMore: more } = await getAdminUsersPage();
           if (active) {
-            const list = snaps.docs.map((d) => mapUserDoc(d.data()));
             setUsers(list);
-            setLastDoc(snaps.docs.length > 0 ? snaps.docs[snaps.docs.length - 1] : null);
-            setHasMore(snaps.docs.length === PAGE_SIZE);
+            setLastDoc(newLastDoc);
+            setHasMore(more);
           }
         }
       } catch (err) {
@@ -161,46 +80,17 @@ export default function AdminUsersDashboard() {
 
     setLoadingMore(true);
     try {
-      const q = query(
-        collection(db, 'users'),
-        orderBy('createdAt', 'desc'),
-        startAfter(lastDoc),
-        limit(PAGE_SIZE)
-      );
-      const snaps = await getDocs(q);
-      const list = snaps.docs.map((d) => mapUserDoc(d.data()));
+      const { users: list, lastDoc: newLastDoc, hasMore: more } = await getAdminUsersPage(lastDoc);
 
       setUsers((prev) => [...prev, ...list]);
-      setLastDoc(snaps.docs.length > 0 ? snaps.docs[snaps.docs.length - 1] : null);
-      setHasMore(snaps.docs.length === PAGE_SIZE);
+      setLastDoc(newLastDoc);
+      setHasMore(more);
     } catch (err) {
       console.error('[AdminUsers] Error fetching more users:', err);
     } finally {
       setLoadingMore(false);
     }
   };
-
-  // Helper map Firestore document fields to UserProfile
-  function mapUserDoc(data: DocumentData): UserProfile {
-    const toMs = (v: any): number => {
-      if (v && typeof v.toMillis === 'function') return v.toMillis();
-      if (typeof v === 'number') return v;
-      if (v instanceof Date) return v.getTime();
-      return Date.now();
-    };
-
-    return {
-      uid: data.uid || '',
-      email: data.email || undefined,
-      displayName: data.displayName || undefined,
-      tag: data.tag || undefined,
-      role: data.role || 'user',
-      authProvider: data.authProvider || 'anonymous',
-      totalScore: data.totalScore ?? 0,
-      completedCount: data.completedCount ?? 0,
-      createdAt: toMs(data.createdAt),
-    };
-  }
 
   return (
     <AdminGuard>

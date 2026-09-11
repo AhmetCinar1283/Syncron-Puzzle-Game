@@ -3,11 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
-import { db } from '@/services/firebase/config';
 import {
+  subscribeToTicket,
   subscribeToMessages,
   sendTicketMessage,
   markTicketAsRead,
@@ -50,55 +49,25 @@ export default function TicketDetailClient() {
     if (loading || !user || isAnonymous || !ticketId) return;
 
     setTicketLoading(true);
-    const docRef = doc(db, 'supportTickets', ticketId);
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          
-          // Securely check if the user owns this ticket
-          if (data.uid !== user.uid) {
-            router.replace('/support/my-tickets');
-            return;
-          }
-
-          // Robust mapping of Firestore Timestamps
-          const mapToMs = (v: any) => {
-            if (v && typeof v === 'object' && 'seconds' in v) {
-              return v.seconds * 1000;
-            }
-            return v || Date.now();
-          };
-
-          const mappedTicket: SupportTicket = {
-            id: snap.id,
-            uid: data.uid || '',
-            email: data.email || '',
-            displayName: data.displayName || 'User',
-            tag: data.tag || null,
-            category: data.category || 'general',
-            subject: data.subject || '',
-            status: data.status || 'open',
-            priority: data.priority || 'normal',
-            hasUnreadAdmin: !!data.hasUnreadAdmin,
-            hasUnreadUser: !!data.hasUnreadUser,
-            createdAt: mapToMs(data.createdAt),
-            updatedAt: mapToMs(data.updatedAt),
-            closedAt: data.closedAt ? mapToMs(data.closedAt) : null,
-            adminNote: null // users never see admin internal notes
-          };
-          setTicket(mappedTicket);
-        } else {
+    const unsubscribe = subscribeToTicket(
+      ticketId,
+      (mappedTicket) => {
+        if (!mappedTicket) {
           router.replace('/support/my-tickets');
+          return;
         }
+        // Securely check if the user owns this ticket
+        if (mappedTicket.uid !== user.uid) {
+          router.replace('/support/my-tickets');
+          return;
+        }
+        setTicket({ ...mappedTicket, adminNote: null }); // users never see admin internal notes
         setTicketLoading(false);
       },
-      (error) => {
-        console.error('[TicketDetail] Error fetching ticket:', error);
+      () => {
         router.replace('/support/my-tickets');
-      }
+      },
     );
 
     return () => unsubscribe();

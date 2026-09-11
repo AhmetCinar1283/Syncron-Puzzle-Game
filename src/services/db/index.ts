@@ -16,6 +16,9 @@ export {
   deleteStoredLevel,
   setLevelRequestId,
   localClear,
+  getUserLevelById,
 } from './levelsOps';
 
-export { getPresetLevels, getNextPresetLevelId } from './presetLevelsOps';
+export { getPresetLevels, getNextPresetLevelId, getPresetLevelById, getAllPresetLevelsRaw, deletePresetLevel } from './presetLevelsOps';
+
+export { getPlayedLevel, putPlayedLevel, getAllPlayedLevels } from './playedLevelsOps';

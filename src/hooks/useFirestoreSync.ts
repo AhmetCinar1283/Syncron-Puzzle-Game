@@ -7,6 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { syncPlayedLevelsFromWorker } from '@/services/sync/playedLevels';
+import { sendTelemetry } from '@/services/api/gameClient';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 /**
@@ -36,26 +37,17 @@ export function useFirestoreSync() {
         if (Date.now() - session.lastActiveTime > 5 * 60 * 1000) {
           localStorage.removeItem('active_level_session');
 
-          const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
-          if (!WORKER_URL || !user) return;
+          if (!user) return;
 
-          const token = await user.getIdToken();
-          await fetch(`${WORKER_URL}/game/telemetry`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              id: session.id,
-              levelId: session.levelId,
-              version: session.version,
-              outcome: 'quit',
-              timeSpent: Math.max(0, Math.round((session.lastActiveTime - session.startTime) / 1000)),
-              restarts: session.restarts,
-              deaths: session.deaths,
-              movesCount: 0,
-            }),
+          await sendTelemetry({
+            id: session.id,
+            levelId: session.levelId,
+            version: session.version,
+            outcome: 'quit',
+            timeSpent: Math.max(0, Math.round((session.lastActiveTime - session.startTime) / 1000)),
+            restarts: session.restarts,
+            deaths: session.deaths,
+            movesCount: 0,
           });
         }
       } catch (err) {

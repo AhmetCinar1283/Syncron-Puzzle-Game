@@ -197,6 +197,32 @@ export function subscribeToMessages(
   );
 }
 
+/**
+ * Tek bir bileti gerçek zamanlı olarak dinler (detay sayfaları için).
+ * Belge yoksa `callback(null)` çağrılır.
+ */
+export function subscribeToTicket(
+  ticketId: string,
+  callback: (ticket: SupportTicket | null) => void,
+  onError?: (error: unknown) => void,
+): Unsubscribe {
+  const docRef = doc(db, 'supportTickets', ticketId);
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback(mapDocToSupportTicket(snap));
+      } else {
+        callback(null);
+      }
+    },
+    (error) => {
+      console.error('[subscribeToTicket] Error subscribing to ticket:', error);
+      onError?.(error);
+    },
+  );
+}
+
 // ─── Admin Functions (Yönetici Tarafı Fonksiyonları) ─────────────────────────
 
 /**

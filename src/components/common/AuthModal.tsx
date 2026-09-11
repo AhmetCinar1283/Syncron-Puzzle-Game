@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, type FormEvent } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
 import { LANGS, type Lang } from '@/lib/i18n';
-import { functions, db } from '@/services/firebase/config';
+import { getUserTagData, requestNewTag } from '@/services/firebase/users';
 
 interface Props {
   onClose: () => void;
@@ -41,11 +39,7 @@ function toMessageKey(err: unknown): string {
 
 // ─── Tag data shape ───────────────────────────────────────────────────────────
 
-interface TagData {
-  tag?: string;
-  tagChangeCount: number;
-  tagChangedAt: Date | null;
-}
+type TagData = import('@/services/firebase/users').UserTagData;
 
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -72,15 +66,8 @@ export default function AuthModal({ onClose }: Props) {
 
   useEffect(() => {
     if (isAnonymous || !user) return;
-    getDoc(doc(db, 'users', user.uid)).then((snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setTagData({
-          tag: d.tag,
-          tagChangeCount: d.tagChangeCount ?? 0,
-          tagChangedAt: d.tagChangedAt?.toDate() ?? null,
-        });
-      }
+    getUserTagData(user.uid).then((data) => {
+      if (data) setTagData(data);
     });
   }, [isAnonymous, user]);
 
@@ -133,9 +120,7 @@ export default function AuthModal({ onClose }: Props) {
     setTagError('');
     setTagSuccess(false);
     try {
-      const fn = httpsCallable<{ tag: string }, { tag: string }>(functions, 'requestNewTag');
-      const result = await fn({ tag: tagInput.trim() });
-      const newTag = result.data.tag;
+      const newTag = await requestNewTag(tagInput.trim());
       setTagData((prev) =>
         prev
           ? { ...prev, tag: newTag, tagChangeCount: prev.tagChangeCount + 1, tagChangedAt: new Date() }

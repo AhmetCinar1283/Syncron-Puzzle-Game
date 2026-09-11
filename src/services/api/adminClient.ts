@@ -112,6 +112,27 @@ export interface IssueBanParams {
 }
 
 /**
+ * Bölüm analiz istatistiklerini worker'dan getirir (`/admin/level-analytics`).
+ * İstek başarısız olursa (401/500/vb.) veya token yoksa `null` döner (sessizce yutar,
+ * çağıran taraf zaten diğer verileri yüklemeye devam eder).
+ */
+export async function getLevelAnalyticsData<T = any>(): Promise<T[] | null> {
+  const token = await getAdminIdToken();
+  if (!token) return null;
+
+  const baseUrl = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || '';
+  const res = await fetch(`${baseUrl}/admin/level-analytics`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (body.success && Array.isArray(body.analytics)) {
+    return body.analytics as T[];
+  }
+  return null;
+}
+
+/**
  * Belirli bir kullanıcının yasaklama (ban) geçmişini getirir.
  */
 export async function getUserBans(uid: string): Promise<UserBansResponse> {

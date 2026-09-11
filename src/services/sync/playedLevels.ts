@@ -51,6 +51,19 @@ async function writeLastSync(serverTimeIso: string): Promise<void> {
   } catch { /* yazma hataları yoksayılır */ }
 }
 
+/**
+ * Farklı bir kullanıcı oturum açtığında önceki kullanıcıya ait yerel (Dexie)
+ * oynanan bölüm kayıtlarını ve D1 senkronizasyon imleçlerini temizler.
+ */
+export async function clearPlayedLevelsForUserSwitch(): Promise<void> {
+  const dexie = getDB();
+  await dexie.playedLevels.clear();
+  // D1 senkronizasyon imleçlerini temizle ki yeni kullanıcı tam senkronizasyon yapsın
+  await dexie.syncMeta.delete(SYNC_KEY);
+  await dexie.syncMeta.delete(`${SYNC_KEY}_cursor`);
+  await dexie.syncMeta.clear();
+}
+
 // ─── Main export (Ana Dışa Aktarılan Fonksiyonlar) ──────────────────────────────
 
 export interface SyncPlayedLevelsResult {

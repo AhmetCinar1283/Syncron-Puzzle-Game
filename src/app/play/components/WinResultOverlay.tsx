@@ -6,6 +6,7 @@ import { useT } from '@/contexts/LanguageContext';
 import { useGamepad } from '@/hooks/useGamepad';
 import { useAuthContext } from '@/contexts/AuthContext';
 import AuthModal from '@/components/common/AuthModal';
+import { sendFeedback } from '@/services/api/gameClient';
 
 interface WorkerResult {
     success: boolean;
@@ -167,33 +168,12 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
             setSubmitted(true);
             localStorage.setItem(`feedback_submitted_${levelId}_${version}`, 'true');
             
-            const submit = async () => {
-                const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
-                if (!WORKER_URL) return;
-
-                try {
-                    const { auth: firebaseAuth } = await import('@/services/firebase/config');
-                    const token = firebaseAuth.currentUser ? await firebaseAuth.currentUser.getIdToken() : null;
-                    if (!token) return;
-
-                    await fetch(`${WORKER_URL}/game/feedback`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                            levelId,
-                            version,
-                            difficulty: selectedDiff,
-                            liked: selectedLike ? 1 : 0,
-                        }),
-                    });
-                } catch (err) {
-                    console.warn('[Feedback] Failed to submit feedback:', err);
-                }
-            };
-            submit();
+            sendFeedback({
+                levelId,
+                version,
+                difficulty: selectedDiff,
+                liked: selectedLike ? 1 : 0,
+            });
         }
     }, [selectedLike, selectedDiff, levelId, version, submitted]);
 

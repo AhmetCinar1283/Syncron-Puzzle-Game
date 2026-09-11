@@ -205,6 +205,14 @@ export async function updateLevelRequest(
 }
 
 /**
+ * `users/{uid}` dokümanını olduğu gibi (var olma durumuyla) getirir.
+ * Anonim kullanıcılar için doküman oluşturmaz, sadece okur.
+ */
+export async function getUserDocSnapshot(uid: string): Promise<DocumentSnapshot> {
+  return getDoc(doc(db, 'users', uid));
+}
+
+/**
  * Bölüm isteklerini durum filtresine göre yeniden eskiye doğru sıralı getirir (Yalnızca yöneticiler).
  */
 export async function getLevelRequests(

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
 import AuthModal from '@/components/common/AuthModal';
-import { auth } from '@/services/firebase';
+import { createTicket } from '@/services/api/supportClient';
 import {
   type TicketCategory,
   CATEGORY_LABELS,
@@ -60,50 +60,21 @@ export default function SupportPage() {
     setErrorMsg('');
 
     try {
-      const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
-      if (!WORKER_URL) {
-        throw new Error('Worker URL is not configured.');
-      }
+      const result = await createTicket(category, subject, body);
 
-      // Fetch the ID token from Firebase auth
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) {
-        throw new Error('Failed to retrieve authentication token.');
-      }
-
-      const response = await fetch(`${WORKER_URL}/create-ticket`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ category, subject, body })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 429) {
-          setErrorMsg(isTr 
-            ? 'Çok fazla destek talebi gönderdiniz. Lütfen daha sonra tekrar deneyin.' 
+      if (!result.success) {
+        if (result.errorStatus === 429) {
+          setErrorMsg(isTr
+            ? 'Çok fazla destek talebi gönderdiniz. Lütfen daha sonra tekrar deneyin.'
             : 'Too many requests. Please try again later.');
         } else {
-          try {
-            const errObj = JSON.parse(errorText);
-            setErrorMsg(errObj.error || t('support.err_generic'));
-          } catch {
-            setErrorMsg(errorText || t('support.err_generic'));
-          }
+          setErrorMsg(result.errorMessage || t('support.err_generic'));
         }
         setSubmitting(false);
         return;
       }
 
-      const data = await response.json();
-      if (data.success && data.ticketId) {
-        router.push(`/support/my-tickets/detail/?id=${data.ticketId}`);
-      } else {
-        throw new Error('Response did not contain a ticketId.');
-      }
+      router.push(`/support/my-tickets/detail/?id=${result.ticketId}`);
     } catch (err) {
       console.error('[CreateTicket] Error submitting support ticket:', err);
       setErrorMsg(t('support.err_generic'));

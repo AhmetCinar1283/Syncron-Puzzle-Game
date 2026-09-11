@@ -1,6 +1,12 @@
 import { getDB } from './schema';
 import type { StoredLevel } from './schema';
 
+/** Kullanıcının kendi bölümünü (levels tablosu) Dexie ID'sine göre getirir. */
+export async function getUserLevelById(id: number): Promise<(StoredLevel & { id: number }) | undefined> {
+  const db = getDB();
+  return db.levels.get(id) as Promise<(StoredLevel & { id: number }) | undefined>;
+}
+
 /**
  * Yeni bir bölüm kaydeder ve ID'sini sıralama dizisinde belirtilen `position` indeksine ekler.
  * `position` belirtilmezse dizinin sonuna eklenir.

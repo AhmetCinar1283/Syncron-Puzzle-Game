@@ -4,8 +4,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db as firestoreDb } from '@/services/firebase/config';
+import { getLevelAnalyticsData } from '@/services/api/adminClient';
+import {
+  getLevelAnalyticsAlertRules,
+  saveLevelAnalyticsAlertRules,
+  type AlertRule,
+  type AlertCondition,
+} from '@/services/firebase/adminLevelAnalytics';
+import { getAllPresetLevelsRaw } from '@/services/db';
 import { useT } from '@/contexts/LanguageContext';
 
 // Types for data models
@@ -23,20 +29,6 @@ interface LevelStats {
   votes_easy: number;
   votes_normal: number;
   votes_hard: number;
-}
-
-interface AlertCondition {
-  metric: 'dropOff' | 'avgDeaths' | 'avgRestarts' | 'avgTime' | 'likeRatio';
-  operator: '>' | '<' | '>=' | '<=' | '==';
-  value: number;
-  connector?: 'AND' | 'OR';
-}
-
-interface AlertRule {
-  id: string;
-  name: string;
-  conditions: AlertCondition[];
-  isActive: boolean;
 }
 
 interface StoredLevelInfo {
@@ -1121,9 +1113,7 @@ export default function LevelAnalyticsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { getDB } = await import('@/services/db');
-      const db = getDB();
-      const rawLevels = await db.presetLevels.toArray();
+      const rawLevels = await getAllPresetLevelsRaw();
       const mappedLevels = rawLevels
         .filter((l) => l.firestoreId)
         .map((l) => ({
@@ -1145,24 +1135,14 @@ export default function LevelAnalyticsPage() {
 
       setLevels(mappedLevels);
 
-      const token = await user.getIdToken();
-      const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
-      const res = await fetch(`${WORKER_URL}/admin/level-analytics`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        const body = await res.json();
-        if (body.success && Array.isArray(body.analytics)) {
-          setAnalytics(body.analytics);
-        }
+      const analyticsData = await getLevelAnalyticsData();
+      if (analyticsData) {
+        setAnalytics(analyticsData);
       }
 
-      const docRef = doc(firestoreDb, 'settings', 'levelAnalyticsAlerts');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setAlertRules(docSnap.data().rules ?? []);
+      const existingRules = await getLevelAnalyticsAlertRules();
+      if (existingRules !== null) {
+        setAlertRules(existingRules);
       } else {
         const defaultRules: AlertRule[] = [
           {
@@ -1182,7 +1162,7 @@ export default function LevelAnalyticsPage() {
           },
         ];
         setAlertRules(defaultRules);
-        await setDoc(docRef, { rules: defaultRules });
+        await saveLevelAnalyticsAlertRules(defaultRules);
       }
     } catch (err) {
       console.error('[Analytics] Failed to load data:', err);
@@ -1272,7 +1252,7 @@ export default function LevelAnalyticsPage() {
     setAlertRules(updatedRules);
 
     try {
-      await setDoc(doc(firestoreDb, 'settings', 'levelAnalyticsAlerts'), { rules: updatedRules });
+      await saveLevelAnalyticsAlertRules(updatedRules);
       setNewRuleName('');
       setNewConditions([{ metric: 'dropOff', operator: '>', value: 50 }]);
     } catch (e) {
@@ -1284,7 +1264,7 @@ export default function LevelAnalyticsPage() {
     const updatedRules = alertRules.filter((r) => r.id !== ruleId);
     setAlertRules(updatedRules);
     try {
-      await setDoc(doc(firestoreDb, 'settings', 'levelAnalyticsAlerts'), { rules: updatedRules });
+      await saveLevelAnalyticsAlertRules(updatedRules);
     } catch (e) {
       console.error('Failed to delete alert rule:', e);
     }
@@ -1296,7 +1276,7 @@ export default function LevelAnalyticsPage() {
     );
     setAlertRules(updatedRules);
     try {
-      await setDoc(doc(firestoreDb, 'settings', 'levelAnalyticsAlerts'), { rules: updatedRules });
+      await saveLevelAnalyticsAlertRules(updatedRules);
     } catch (e) {
       console.error('Failed to toggle alert rule:', e);
     }

@@ -3,11 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
-import { db } from '@/services/firebase/config';
 import {
+  subscribeToTicket,
   subscribeToMessages,
   sendAdminReply,
   updateTicketStatus,
@@ -62,50 +61,21 @@ export default function AdminTicketDetailClient() {
     if (loading || (role !== 'admin' && role !== 'moderator') || !ticketId) return;
 
     setTicketLoading(true);
-    const docRef = doc(db, 'supportTickets', ticketId);
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          
-          const mapToMs = (v: any) => {
-            if (v && typeof v === 'object' && 'seconds' in v) {
-              return v.seconds * 1000;
-            }
-            return v || Date.now();
-          };
-
-          const mappedTicket: SupportTicket = {
-            id: snap.id,
-            uid: data.uid || '',
-            email: data.email || '',
-            displayName: data.displayName || 'User',
-            tag: data.tag || null,
-            category: data.category || 'general',
-            subject: data.subject || '',
-            status: data.status || 'open',
-            priority: data.priority || 'normal',
-            hasUnreadAdmin: !!data.hasUnreadAdmin,
-            hasUnreadUser: !!data.hasUnreadUser,
-            createdAt: mapToMs(data.createdAt),
-            updatedAt: mapToMs(data.updatedAt),
-            closedAt: data.closedAt ? mapToMs(data.closedAt) : null,
-            adminNote: data.adminNote || ''
-          };
-          
+    const unsubscribe = subscribeToTicket(
+      ticketId,
+      (mappedTicket) => {
+        if (mappedTicket) {
           setTicket(mappedTicket);
-          setInternalNoteLocal(data.adminNote || '');
+          setInternalNoteLocal(mappedTicket.adminNote || '');
         } else {
           router.replace('/admin/support');
         }
         setTicketLoading(false);
       },
-      (error) => {
-        console.error('[AdminTicketDetail] Error subscribing to ticket details:', error);
+      () => {
         router.replace('/admin/support');
-      }
+      },
     );
 
     return () => unsubscribe();

@@ -176,8 +176,8 @@ export function useEditorState(editId: number | null, firestoreIdParam: string |
   }, [isModerator, selectedPartId, showFirestoreLevels]);
 
   const loadForEdit = useCallback(async (id: number) => {
-    const { getDB } = await import('@/services/db');
-    const stored = await getDB().levels.get(id);
+    const { getUserLevelById } = await import('@/services/db');
+    const stored = await getUserLevelById(id);
     if (!stored) return;
     setLevelName(stored.name);
     setGameNotes(stored.gameNotes ?? '');

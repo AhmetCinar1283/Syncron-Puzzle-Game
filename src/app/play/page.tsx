@@ -17,6 +17,8 @@ import { signInAnonymously } from 'firebase/auth';
 import { auth } from '@/services/firebase/config';
 import { useAppDispatch } from '@/store/hooks';
 import { addXpAndScore } from '@/store/userSlice';
+import { sendTelemetry, completeLevel } from '@/services/api/gameClient';
+import { getPlayedLevel, putPlayedLevel } from '@/services/db';
 
 // ─── Worker tipi (docs/scoring.md) ──────────────────────────────────────────
 
@@ -99,34 +101,16 @@ function PlayContent() {
         // Clear active session from localStorage
         localStorage.removeItem('active_level_session');
 
-        const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
-        if (!WORKER_URL) return;
-
-        try {
-            const { auth: firebaseAuth } = await import('@/services/firebase/config');
-            const token = firebaseAuth.currentUser ? await firebaseAuth.currentUser.getIdToken() : null;
-            if (!token) return;
-
-            await fetch(`${WORKER_URL}/game/telemetry`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    id: currentSession.id,
-                    levelId: currentSession.levelId,
-                    version: currentSession.version,
-                    outcome,
-                    timeSpent,
-                    restarts: currentSession.restarts,
-                    deaths: currentSession.deaths,
-                    movesCount,
-                }),
-            });
-        } catch (err) {
-            console.warn('[Telemetry] Failed to submit telemetry:', err);
-        }
+        await sendTelemetry({
+            id: currentSession.id,
+            levelId: currentSession.levelId!,
+            version: currentSession.version,
+            outcome,
+            timeSpent,
+            restarts: currentSession.restarts,
+            deaths: currentSession.deaths,
+            movesCount,
+        });
     }, []);
 
     // ── Win overlay ──────────────────────────────────────────
@@ -166,27 +150,26 @@ function PlayContent() {
                 let nextId: number | null = null;
 
                 if (isPreset) {
-                    const { getDB, getNextPresetLevelId } = await import('@/services/db');
-                    const db = getDB();
-                    let raw = await db.presetLevels.get(levelId!);
+                    const { getPresetLevelById, getNextPresetLevelId } = await import('@/services/db');
+                    let raw = await getPresetLevelById(levelId!);
                     if (cancelled) return;
                     if (!raw) {
                         try {
                             const { syncLevelsMeta } = await import('@/services/firebase/sync');
                             await syncLevelsMeta();
-                            raw = await db.presetLevels.get(levelId!);
+                            raw = await getPresetLevelById(levelId!);
                         } catch (err) {
                             console.warn('[Play] syncLevelsMeta fallback failed:', err);
                         }
                         if (cancelled) return;
                     }
                     if (!raw) { setError(true); setLoading(false); return; }
-                    
+
                     if ((raw.isNeedSync || !raw.grid?.length || raw.rooms === undefined) && raw.firestoreId) {
                         try {
                             const { fetchAndCacheLevel } = await import('@/services/firebase/sync');
                             await fetchAndCacheLevel(raw.firestoreId, raw.id!);
-                            raw = await db.presetLevels.get(levelId!);
+                            raw = await getPresetLevelById(levelId!);
                         } catch (err) {
                             console.warn('[Play] Lazy fetch failed:', err);
                         }
@@ -199,12 +182,11 @@ function PlayContent() {
                     storageSet('lastPlayedLevelId', String(levelId));
                     storageSet('lastPlayedSource', 'preset');
                 } else {
-                    const { getDB, getNextLevelId } = await import('@/services/db');
-                    const db = getDB();
-                    const raw = await db.levels.get(levelId!);
+                    const { getUserLevelById, getNextLevelId } = await import('@/services/db');
+                    const raw = await getUserLevelById(levelId!);
                     if (cancelled) return;
                     if (!raw) { setError(true); setLoading(false); return; }
-                    
+
                     stored = storedToLevelData(raw as StoredLevel & { id: number });
                     nextId = await getNextLevelId(levelId!);
                     storageSet('lastPlayedLevelId', String(levelId));
@@ -287,11 +269,9 @@ function PlayContent() {
         // ── 1. Optimistic write: save immediately to local Dexie so UI updates without lag ──
         if (levelKey) {
             try {
-                const { getDB } = await import('@/services/db');
-                const db = getDB();
-                const existing = await db.playedLevels.get(levelKey);
+                const existing = await getPlayedLevel(levelKey);
                 const provisionalStars = (existing?.stars ?? 0) >= 1 ? existing!.stars! : 1;
-                await db.playedLevels.put({
+                await putPlayedLevel({
                     levelId: levelKey,
                     score: provisionalStars,
                     timeSpent,
@@ -306,8 +286,6 @@ function PlayContent() {
         }
 
         if (!firestoreId) return; // Kullanıcı seviyelerinde worker yok
-        const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
-        if (!WORKER_URL) return;
 
         try {
             // Get Firebase ID Token for authorization.
@@ -336,22 +314,13 @@ function PlayContent() {
                 return;
             }
 
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            };
-
-            const res = await fetch(`${WORKER_URL}/complete-level`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    levelId: firestoreId,
-                    moves: moveHistoryRef.current,
-                    timeSpent,
-                }),
+            const result = await completeLevel<WorkerResult>(token, {
+                levelId: firestoreId,
+                moves: moveHistoryRef.current,
+                timeSpent,
             });
-            if (res.ok) {
-                const data: WorkerResult = await res.json();
+            if (result.ok && result.data) {
+                const data = result.data;
                 setWorkerResult(data);
 
                 // Update Redux state with earned XP and score delta
@@ -367,10 +336,8 @@ function PlayContent() {
                 // Dexie'ye de kaydet (sunucu tarafından onaylanmış yıldızlarla güncelle)
                 if (data.success && data.stars) {
                     try {
-                        const { getDB } = await import('@/services/db');
-                        const db = getDB();
-                        const existing = await db.playedLevels.get(levelKey!);
-                        await db.playedLevels.put({
+                        const existing = await getPlayedLevel(levelKey!);
+                        await putPlayedLevel({
                             levelId: levelKey!,
                             score: data.stars,
                             timeSpent,
@@ -384,8 +351,7 @@ function PlayContent() {
                     }
                 }
             } else {
-                const errText = await res.text();
-                console.warn('[Play] Worker verification failed with status:', res.status, errText);
+                console.warn('[Play] Worker verification failed with status:', result.status, result.errorText);
                 setWorkerResult({ success: false });
             }
         } catch (err) {
