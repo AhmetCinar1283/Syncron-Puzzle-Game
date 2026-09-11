@@ -1,7 +1,7 @@
 'use client';
 
-import GreatSupporterClient from './GreatSupporterClient';
+import { GreatSupporterPage } from '@/features/great-supporter';
 
-export default function GreatSupporterPage() {
-  return <GreatSupporterClient />;
+export default function Page() {
+  return <GreatSupporterPage />;
 }

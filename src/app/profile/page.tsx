@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import ProfileClient from './ProfileClient';
+import { ProfileClient } from '@/features/profile';
 
 export const metadata: Metadata = {
   title: 'Profil | Syncron',
