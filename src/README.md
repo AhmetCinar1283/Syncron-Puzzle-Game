@@ -12,8 +12,9 @@ src/
 │   └── common/          # Uygulama genelinde kullanılan ortak bileşenler ve korumalar (AuthModal, AdminGuard, BackButtonManager, ...).
 ├── contexts/            # React Context API ile yönetilen global durumlar (Oturum, Dil).
 ├── hooks/               # API, gamepad, arkadaşlık vb. işlevleri sarmalayan React kancaları.
-├── features/            # Sayfa bazlı özellik modülleri (admin, editor, friends, leaderboard, profile, levels, play, home, support, donate).
-├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri) + solver/ (çözücü ve prosedürel üretici).
+├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls).
+│   └── <isim>/          #   components/ (sunum), hooks/ (state+efekt), lib/ (saf yardımcılar), index.ts (public API).
+├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü ve prosedürel üretici).
 ├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/ — eski app/src/lib/{api,firebase,db,sync}.
 ├── lib/                 # i18n/, userStorage.ts, saf yardımcı fonksiyonlar.
 └── store/               # Redux durum yönetimi (User state, Store yapılandırması).

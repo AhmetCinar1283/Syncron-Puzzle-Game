@@ -7,7 +7,7 @@ import { useT, useLanguage } from '@/contexts/LanguageContext';
 import { getUserProfileData } from '@/services/firebase/users';
 import { useBadges } from '@/hooks/useBadges';
 import { Badge } from '@/services/api/badgesClient';
-import { useFriends } from '@/hooks/useFriends';
+import { useFriends } from '@/features/friends/hooks/useFriends';
 import { useGamepad } from '@/hooks/useGamepad';
 import { NEON_TYPES, Particle, ProfileDoc } from '../lib/constants';
 
