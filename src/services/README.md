@@ -32,6 +32,9 @@ Firestore/Functions SDKs, or Dexie directly — everything goes through a module
 ## sync/ — cross-backend synchronization
 - `playedLevels.ts` — pulls `played_levels` from the Worker/D1 into Dexie `playedLevels` (delta sync via `syncMeta` cursor), and clears local played-level state on user switch.
 
+## monetization/ — reklam adaptör katmanı
+- Reklam/platform olayları için platformdan bağımsız tek arayüz (`AdProvider`), yetenek nesnesi (`getCapabilities`) ve saf reklam sıklığı politikası. Hiçbir `features` modülünü import etmez; React erişimi `src/contexts/MonetizationContext.tsx` üzerinden (`useAds`/`useCapabilities`). Detaylar `services/monetization/README.md`.
+
 ## lib/ (outside services/, for reference)
 - `userStorage.ts` — localStorage key/value helpers (per-user namespaced), not a backend.
 - `i18n/` — static translation strings, not a backend.

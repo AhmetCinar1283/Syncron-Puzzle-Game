@@ -246,6 +246,10 @@ const en: Record<string, string> = {
   'win.login_to_save': 'SIGN IN / SAVE',
   'win.login_failed': 'Login failed',
 
+  // Ads (monetization) — shown by features that consume rewarded ads (hints, skips, ...)
+  'ads.rewarded_unavailable': 'Ads aren\'t available right now. Try again later.',
+  'ads.rewarded_failed': 'The ad couldn\'t be shown. No worries — try again in a moment.',
+
   // Feedback
   'feedback.rate_title': 'Rate Level',
   'feedback.difficulty': 'Difficulty',

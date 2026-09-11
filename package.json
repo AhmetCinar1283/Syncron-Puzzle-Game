@@ -4,20 +4,22 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "cross-env NEXT_PUBLIC_PLATFORM=web next dev",
+    "dev:mock": "cross-env NEXT_PUBLIC_PLATFORM=mock next dev",
+    "build": "cross-env NEXT_PUBLIC_PLATFORM=web next build",
     "start": "next start",
     "lint": "eslint",
-    "build:mobile": "next build && npx cap sync",
+    "test": "vitest run",
+    "build:mobile": "cross-env NEXT_PUBLIC_PLATFORM=android next build && npx cap sync",
     "cap:sync": "npx cap sync",
     "cap:open": "npx cap open android",
-    "electron:dev": "node electron/dev-runner.js",
-    "electron:serve": "next build && electron .",
-    "electron:pack": "next build && electron-builder --dir",
-    "electron:dist": "next build && electron-builder",
-    "electron:dist:win": "next build && electron-builder --win",
-    "electron:dist:mac": "next build && electron-builder --mac",
-    "electron:dist:linux": "next build && electron-builder --linux"
+    "electron:dev": "cross-env NEXT_PUBLIC_PLATFORM=electron node electron/dev-runner.js",
+    "electron:serve": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron .",
+    "electron:pack": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder --dir",
+    "electron:dist": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder",
+    "electron:dist:win": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder --win",
+    "electron:dist:mac": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder --mac",
+    "electron:dist:linux": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder --linux"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
@@ -36,6 +38,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "dexie": "^4.4.1",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
@@ -46,6 +49,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
   }
 }

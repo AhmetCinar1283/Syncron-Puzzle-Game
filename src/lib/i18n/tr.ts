@@ -246,6 +246,10 @@ const tr: Record<string, string> = {
   'win.login_to_save': 'GİRİŞ YAP / KAYDET',
   'win.login_failed': 'Giriş başarısız',
 
+  // Reklamlar (monetization) — ödüllü reklam kullanan feature'lar (ipucu, atlama, ...) gösterir
+  'ads.rewarded_unavailable': 'Şu an reklam gösterilemiyor. Birazdan tekrar dene.',
+  'ads.rewarded_failed': 'Reklam gösterilemedi. Sorun değil, birazdan tekrar dene.',
+
   // Feedback
   'feedback.rate_title': 'Bölümü Değerlendir',
   'feedback.difficulty': 'Zorluk',

@@ -15,7 +15,7 @@ const GameThemeContext = createContext<GameThemeContextType | undefined>(undefin
 const STORAGE_KEY = 'know_and_conquer_game_theme';
 
 export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<GameTheme>('neon');
+  const [theme, setThemeState] = useState<GameTheme>('legacy');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem(STORAGE_KEY) as GameTheme | null;
@@ -46,7 +46,7 @@ export const useGameTheme = () => {
   if (!context) {
     // Return default fallback if used outside provider
     return {
-      theme: 'neon' as GameTheme,
+      theme: 'legacy' as GameTheme,
       setTheme: () => {},
       toggleTheme: () => {},
     };

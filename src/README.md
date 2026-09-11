@@ -15,7 +15,7 @@ src/
 ├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls).
 │   └── <isim>/          #   components/ (sunum), hooks/ (state+efekt), lib/ (saf yardımcılar), index.ts (public API).
 ├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü ve prosedürel üretici).
-├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/ — eski app/src/lib/{api,firebase,db,sync}.
+├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı) — eski app/src/lib/{api,firebase,db,sync}.
 ├── lib/                 # i18n/, userStorage.ts, saf yardımcı fonksiyonlar.
 └── store/               # Redux durum yönetimi (User state, Store yapılandırması).
 ```
@@ -37,6 +37,9 @@ src/
 * **friendsClient / leaderboardClient / badgesClient:** Arkadaşlık istekleri, liderlik sıralamaları ve kazanılan rozetlerin sergilenmesi işlemlerini yöneten servis uç noktalarıdır.
 * **adminClient:** Yalnızca yönetici ve moderatör yetkisine sahip kullanıcıların erişebileceği yasaklama (ban) yönetimi API isteklerini gerçekleştirir.
 
-### 4. Altyapı Bileşenleri (`components/common`)
+### 4. Reklam Adaptör Katmanı (`services/monetization`)
+* Reklam ve platform olaylarının (bölüm arası/ödüllü reklam, oynanış başladı/durdu, mutlu an) tek bir arayüzden geçtiği modül. Platform build-time `NEXT_PUBLIC_PLATFORM` env değeriyle seçilir; kodun geri kalanı platform adını değil `getCapabilities()` yeteneklerini sorgular. `src/contexts/MonetizationContext.tsx` (`useAds`/`useCapabilities`) React erişimini sağlar. Detaylar `src/services/monetization/README.md`'de.
+
+### 5. Altyapı Bileşenleri (`components/common`)
 * **AdminGuard:** `/admin/*` yollarını koruyarak yalnızca yönetici veya moderatörlerin sayfaya erişebilmesini sağlar.
 * **BackButtonManager:** Web tarayıcısı ve Capacitor mobil platformlar için cihazın fiziksel geri tuşuna basıldığında tutarlı bir geri gitme hiyerarşisi (örn: oyundan çıkıp bölümlere dönme) sunar.

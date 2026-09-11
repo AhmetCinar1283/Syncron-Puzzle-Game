@@ -8,11 +8,18 @@ import FirestoreSync from "@/components/common/FirestoreSync";
 import UserBadge from "@/components/common/UserBadge";
 import BackButtonManager from "@/components/common/BackButtonManager";
 import StoreProvider from "@/store/StoreProvider";
-import AdSenseLoader from "@/components/common/AdSenseLoader";
+import { GameThemeProvider } from "@/game-engine/contexts/GameThemeContext";
+import { MonetizationProvider } from "@/contexts/MonetizationContext";
+import { MonetizationDebugPanel } from "@/components/common/MonetizationDebugPanel";
+import { CURRENT_PLATFORM } from "@/services/monetization";
 
 const BASE_URL = 'https://syncron.polyvoclub.com';
 
 const GA_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? '';
+
+// AdSense hesabı onaylandığında web build'i için tekrar açılacak (bkz.
+// src/services/monetization/providers/adsense.draft.ts).
+const ADSENSE_ENABLED = false;
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -75,9 +82,9 @@ export const metadata: Metadata = {
   icons: {
     icon: '/icon.ico',
   },
-  other: {
-    "google-adsense-account": "ca-pub-3798429741438186",
-  },
+  ...(ADSENSE_ENABLED && CURRENT_PLATFORM === 'web'
+    ? { other: { "google-adsense-account": "ca-pub-3798429741438186" } }
+    : {}),
 };
 
 export default function RootLayout({
@@ -95,7 +102,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet" />
-        <AdSenseLoader />
         {GA_ID && (
           <>
             <Script
@@ -144,10 +150,15 @@ export default function RootLayout({
           <StoreProvider>
             <AuthProvider>
               <ToastProvider>
-                <FirestoreSync />
-                <UserBadge />
-                <BackButtonManager />
-                {children}
+                <GameThemeProvider>
+                  <MonetizationProvider>
+                    <FirestoreSync />
+                    <UserBadge />
+                    <BackButtonManager />
+                    {children}
+                    <MonetizationDebugPanel />
+                  </MonetizationProvider>
+                </GameThemeProvider>
               </ToastProvider>
             </AuthProvider>
           </StoreProvider>
