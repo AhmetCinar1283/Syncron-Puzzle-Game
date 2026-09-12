@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { useT } from '@/contexts/LanguageContext';
+import { useCapabilities } from '@/contexts/MonetizationContext';
 
 interface WinActionsProps {
     isUserAnonymous: boolean;
@@ -35,6 +36,7 @@ const PRIMARY_BUTTON_STYLE: CSSProperties = {
 /** Kazanma ekranının alt butonları: (anonimse) giriş yap + tekrar / sonraki-menü. */
 export function WinActions({ isUserAnonymous, loginFailed, onOpenAuth, onRestart, onNextLevel, onMenu }: WinActionsProps) {
     const t = useT();
+    const { accountLogin } = useCapabilities();
 
     return (
         <motion.div
@@ -50,7 +52,7 @@ export function WinActions({ isUserAnonymous, loginFailed, onOpenAuth, onRestart
                 marginTop: 2,
             }}
         >
-            {isUserAnonymous && (
+            {isUserAnonymous && accountLogin && (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                     <button
                         type="button"

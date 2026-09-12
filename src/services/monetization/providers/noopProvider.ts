@@ -8,6 +8,9 @@ export const noopProvider: AdProvider = {
   async init() {
     // Yapılacak bir şey yok.
   },
+  loadingStart() {
+    // Yapılacak bir şey yok.
+  },
   loadingFinished() {
     // Yapılacak bir şey yok.
   },

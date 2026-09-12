@@ -15,6 +15,7 @@ import { GAME_ANIMATION_KEYFRAMES } from './effects/animationStyles';
 import { getPlayerColor } from './playerColors';
 import { calculateRoomLayoutOffsets, routePortalPath } from '../logic/engine/rooms';
 import { useGameTheme } from '../contexts/GameThemeContext';
+import { assetUrl } from '@/lib/assetUrl';
 
 const CELL_SIZE = 64;
 
@@ -34,7 +35,7 @@ const VFX_SOUNDS: Record<string, string> = {
 };
 
 function playAudio(src: string) {
-    new Audio(src).play().catch(() => {});
+    new Audio(assetUrl(src)).play().catch(() => {});
 }
 
 interface GameBoardProps {

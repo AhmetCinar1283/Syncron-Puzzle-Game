@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useAppRouter, useAppSearchParams } from '@/lib/navigation';
 import { type StoredLevel, type StoredPlayedLevel } from '@/services/db';
 import { useAuth } from '@/hooks/useAuth';
 import { useT } from '@/contexts/LanguageContext';
@@ -18,8 +18,8 @@ const SELECTED_PART_STORAGE_KEY = 'levelsPage:selectedPartId';
 
 export function useLevelsPage() {
   const t = useT();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = useAppRouter();
+  const searchParams = useAppSearchParams();
   const { isModerator, user } = useAuth();
   const { totalScore } = useAppSelector(selectUser);
 
@@ -28,6 +28,7 @@ export function useLevelsPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<LevelEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [parts, setParts] = useState<Array<{ id: string; name: string }>>([]);
@@ -43,6 +44,19 @@ export function useLevelsPage() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
+
+  // ── Çevrimdışı bandı ────────────────────────────────────────────────────
+  useEffect(() => {
+    setIsOffline(typeof navigator !== 'undefined' && !navigator.onLine);
+    const goOnline = () => setIsOffline(false);
+    const goOffline = () => setIsOffline(true);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
 
   // ── Responsive ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -97,8 +111,8 @@ export function useLevelsPage() {
     const initialPart = fromUrl || fromStorage || '';
     if (initialPart) setSelectedPartId(initialPart);
 
-    import('@/services/firebase/adminParts').then(({ getAllParts }) => {
-      getAllParts()
+    import('@/services/levels/campaignParts').then(({ getCampaignParts }) => {
+      getCampaignParts()
         .then((fetchedParts) => {
           const mapped = fetchedParts.map((p) => ({ id: p.partId, name: p.name }));
           setParts(mapped);
@@ -346,6 +360,7 @@ export function useLevelsPage() {
     loading,
     syncing,
     isMobile,
+    isOffline,
     deleteConfirm,
     setDeleteConfirm,
     deleting,

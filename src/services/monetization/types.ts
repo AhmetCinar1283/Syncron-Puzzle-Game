@@ -38,6 +38,8 @@ export type AdEventListener = (event: AdEvent) => void;
 export interface AdProvider {
   /** SDK'yı yükler/başlatır. Birden çok çağrılırsa idempotent olmalıdır. */
   init(): Promise<void>;
+  /** Level içeriği yüklenmeye BAŞLADIĞINDA bir kez çağrılır (bkz. `loadingFinished`). */
+  loadingStart(): void;
   /** Level içeriği oyuncuya gösterilmeye hazır olduğunda bir kez çağrılır. */
   loadingFinished(): void;
   /** Aktif oynanış başladı (SDK'nın reklam arasına girmemesi için). */

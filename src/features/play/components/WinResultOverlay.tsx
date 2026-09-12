@@ -196,6 +196,25 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                                 +{result.scoreDelta} PTS
                             </motion.span>
                         )}
+                        {!loading && result?.success === false && result.reason === 'offline' && (
+                            <motion.span
+                                key="offline-badge"
+                                initial={{ opacity: 0, y: 3 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{
+                                    color: '#f59e0b',
+                                    background: 'rgba(245, 158, 11, 0.12)',
+                                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '1px 7px',
+                                    borderRadius: 999,
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                {t('play.offline_score_not_saved')}
+                            </motion.span>
+                        )}
                         {badgeInfo && (
                             <motion.span
                                 key="best-badge"

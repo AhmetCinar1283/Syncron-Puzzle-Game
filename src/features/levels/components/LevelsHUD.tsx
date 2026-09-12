@@ -11,6 +11,8 @@ export interface LevelsHUDProps {
   onNewLevel: () => void;
   isGamepadConnected: boolean;
   labels: { back: string; campaign: string; custom: string; newLevel: string };
+  /** Editör (dolayısıyla "özel leveller" sekmesi ve "yeni level") portal build'lerinde kapalıdır. */
+  showCustomTab?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ export function LevelsHUD({
   onNewLevel,
   isGamepadConnected,
   labels,
+  showCustomTab = true,
 }: LevelsHUDProps) {
   return (
     <div
@@ -44,14 +47,18 @@ export function LevelsHUD({
         {isGamepadConnected && <GamepadBadge letter="B" color="#ef4444" />}
       </button>
 
-      <div className="relative flex rounded-lg border border-white/5 bg-black/30 p-0.5">
-        <TabButton active={activeTab === 'campaign'} color="#00ff88" onClick={() => onChangeTab('campaign')}>
-          {labels.campaign}
-        </TabButton>
-        <TabButton active={activeTab === 'custom'} color="#00c4ff" onClick={() => onChangeTab('custom')}>
-          {labels.custom}
-        </TabButton>
-      </div>
+      {showCustomTab ? (
+        <div className="relative flex rounded-lg border border-white/5 bg-black/30 p-0.5">
+          <TabButton active={activeTab === 'campaign'} color="#00ff88" onClick={() => onChangeTab('campaign')}>
+            {labels.campaign}
+          </TabButton>
+          <TabButton active={activeTab === 'custom'} color="#00c4ff" onClick={() => onChangeTab('custom')}>
+            {labels.custom}
+          </TabButton>
+        </div>
+      ) : (
+        <div />
+      )}
 
       <div className="flex items-center gap-1.5">
         {totalScore > 0 && (
@@ -68,12 +75,14 @@ export function LevelsHUD({
         >
           <span className={syncing ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
         </button>
-        <button
-          onClick={onNewLevel}
-          className="rounded-lg border border-cyan-400/45 bg-cyan-400/10 px-2.5 py-1.5 text-[11px] font-extrabold tracking-wide text-cyan-400"
-        >
-          {isMobile ? '+' : labels.newLevel}
-        </button>
+        {showCustomTab && (
+          <button
+            onClick={onNewLevel}
+            className="rounded-lg border border-cyan-400/45 bg-cyan-400/10 px-2.5 py-1.5 text-[11px] font-extrabold tracking-wide text-cyan-400"
+          >
+            {isMobile ? '+' : labels.newLevel}
+          </button>
+        )}
       </div>
     </div>
   );

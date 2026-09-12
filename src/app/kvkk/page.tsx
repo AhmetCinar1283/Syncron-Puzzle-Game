@@ -1,12 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
 
 export default function KvkkPage() {
   const t = useT();
   const { lang } = useLanguage();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const isTr = lang === 'tr';
 

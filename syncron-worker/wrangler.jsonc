@@ -16,7 +16,11 @@
 	],
 	"vars": {
 		"FIREBASE_PROJECT_ID": "syncron-1923",
-		"ALLOWED_ORIGIN": "http://localhost:3000, http://localhost, capacitor://localhost, https://syncron-1923.web.app, https://syncron-1923.firebaseapp.com, https://know-and-conquer.web.app, https://know-and-conquer.firebaseapp.com, https://syncron.polimelo.com"
+		// "*.crazygames.com" / "*.gamedistribution.com": portal build'lerini iframe içinde
+		// sunan alt domain önceden bilinemediği için suffix eşleşmesiyle karşılanır
+		// (bkz. src/index.ts `originMatchesPattern`). localhost:4300/4301:
+		// `npm run serve:portal` ile yerel portal testi.
+		"ALLOWED_ORIGIN": "http://localhost:3000, http://localhost:4300, http://localhost:4301, http://localhost, capacitor://localhost, https://syncron-1923.web.app, https://syncron-1923.firebaseapp.com, https://know-and-conquer.web.app, https://know-and-conquer.firebaseapp.com, https://syncron.polimelo.com, *.crazygames.com, *.gamedistribution.com"
 		// FIREBASE_API_KEY is provisioned as a secret — NOT a plain var (git-leak risk).
 		// Set once with: wrangler secret put FIREBASE_API_KEY
 	},

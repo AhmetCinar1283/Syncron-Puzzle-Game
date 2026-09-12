@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useCapabilities } from '@/contexts/MonetizationContext';
 import AuthModal from './AuthModal';
 import { useT } from '@/contexts/LanguageContext';
 import { subscribeToUserTickets } from '@/services/firebase/support';
@@ -13,10 +14,18 @@ import { subscribeToUserTickets } from '@/services/firebase/support';
  * - Signed in  → initial letter avatar (sky neon)
  * - Has unread ticket → displays a pulsing green/emerald notification dot.
  * Clicking opens AuthModal.
+ *
+ * Portal build'lerinde (`capabilities.accountLogin === false`) hiç render edilmez:
+ * dış giriş (Google/e-posta) portal kurallarınca yasak, ve `/profile` rotası
+ * portal zip'ine hiç dahil edilmiyor — `router.push('/profile')` gerçek bir
+ * URL değişikliğine (`next/navigation`, bellek içi router'a değil) neden
+ * olduğundan, portal'ın alt dizininde 404'e düşüp oyunu "koparıyordu"
+ * (bkz. `.plans/monetization/02-portal-buildleri.md`).
  */
 export default function UserBadge() {
   const t = useT();
   const { user, isAnonymous, loading } = useAuthContext();
+  const { accountLogin } = useCapabilities();
   const [open, setOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const router = useRouter();
@@ -60,7 +69,7 @@ export default function UserBadge() {
     };
   }, [pathname]);
 
-  if (loading) return null;
+  if (loading || !accountLogin) return null;
 
   const displayName = user?.displayName ?? user?.email?.split('@')[0] ?? null;
   const initial = displayName?.[0]?.toUpperCase() ?? '?';

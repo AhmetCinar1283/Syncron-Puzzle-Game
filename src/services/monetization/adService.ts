@@ -65,6 +65,11 @@ class AdService {
     return () => this.listeners.delete(listener);
   }
 
+  async loadingStart(): Promise<void> {
+    const provider = await this.getProvider();
+    provider.loadingStart();
+  }
+
   async loadingFinished(): Promise<void> {
     const provider = await this.getProvider();
     provider.loadingFinished();

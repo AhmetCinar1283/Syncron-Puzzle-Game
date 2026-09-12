@@ -23,11 +23,27 @@ import { donorApiRouter } from './routes/donorApi';
 
 const app = new Hono<AppContext>();
 
-// Helper function to check and resolve CORS origin when multiple domains are allowed
+// Helper function to check and resolve CORS origin when multiple domains are allowed.
+// Portal build'leri (CrazyGames/GameDistribution) oyunu kendi alt domain'lerinden
+// (`*.crazygames.com`, `*.gamedistribution.com`) iframe içinde sunar — bu alt
+// domain önceden bilinemez, bu yüzden sabit bir origin listesi bunlar için işe
+// yaramaz. `*.` önekli desenler burada suffix (hostname sonu) eşleşmesiyle
+// karşılanır (bkz. `.plans/monetization/02-portal-buildleri.md`).
+function originMatchesPattern(origin: string, pattern: string): boolean {
+  if (!pattern.startsWith('*.')) return origin === pattern;
+  try {
+    const { hostname } = new URL(origin);
+    const suffix = pattern.slice(1); // "*.crazygames.com" -> ".crazygames.com"
+    return hostname.endsWith(suffix);
+  } catch {
+    return false;
+  }
+}
+
 function getAllowedOrigin(origin: string | undefined, allowedOriginVar: string | undefined): string {
   const allowed = allowedOriginVar || '';
-  const list = allowed.split(',').map((x) => x.trim());
-  if (origin && list.includes(origin)) {
+  const list = allowed.split(',').map((x) => x.trim()).filter(Boolean);
+  if (origin && list.some((pattern) => originMatchesPattern(origin, pattern))) {
     return origin;
   }
   return list[0] || 'http://localhost:3000';

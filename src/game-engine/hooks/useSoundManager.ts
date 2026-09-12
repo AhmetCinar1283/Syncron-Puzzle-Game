@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { userStorageGet, userStorageSet } from '@/lib/userStorage';
+import { assetUrl } from '@/lib/assetUrl';
 
 export type SoundName =
   | 'move'
@@ -59,7 +60,7 @@ export function useSoundManager() {
     names.forEach((name) => {
       const src = SOUND_FILES[name];
       if (!src) return;
-      const audio = new Audio(src);
+      const audio = new Audio(assetUrl(src));
       audio.volume = SOUND_VOLUME[name] ?? 0.5;
       audio.preload = 'auto';
       audioRefs.current[name] = audio;

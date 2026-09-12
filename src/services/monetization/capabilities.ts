@@ -19,8 +19,14 @@ export interface PlatformCapabilities {
   donations: boolean;
   /** Giriş yapma zorunlu tutulabilir mi (portallar misafir oynanışı ister). */
   requireLogin: boolean;
-  /** Kampanya levelleri build'e JSON olarak gömülü mü (sunucu erişimi olmadan oynanabilir). */
-  bundledLevels: boolean;
+  /** Giriş UI'ı (Google/e-posta ile bağlama, "giriş yap" tetikleyicileri) gösterilebilir mi. Portallar kendi hesap sistemleri dışında dış giriş yasaklar. */
+  accountLogin: boolean;
+  /** Google Analytics gibi üçüncü parti script'ler yüklenebilir mi. */
+  thirdPartyScripts: boolean;
+  /** Editör ve admin gibi geliştirici/portal-oyuncusunu ilgilendirmeyen girişler gösterilebilir mi. */
+  devTools: boolean;
+  /** Uygulama, gerçek URL/route yerine tek statik giriş + bellek içi router ile mi çalışıyor (bkz. src/lib/navigation). */
+  inMemoryRouting: boolean;
 }
 
 const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
@@ -31,7 +37,10 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     purchases: true,
     donations: true,
     requireLogin: false,
-    bundledLevels: false,
+    accountLogin: true,
+    thirdPartyScripts: true,
+    devTools: true,
+    inMemoryRouting: false,
   },
   electron: {
     interstitialAds: false,
@@ -40,9 +49,12 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     purchases: true,
     donations: true,
     requireLogin: false,
-    bundledLevels: false,
+    accountLogin: true,
+    thirdPartyScripts: true,
+    devTools: true,
+    inMemoryRouting: false,
   },
-  // Görev 03'te AdMob sağlayıcısı bağlanınca true'ya çekilecek.
+  // Görev 03'te AdMob sağlayıcısı bağlanınca reklam alanları true'ya çekilecek.
   android: {
     interstitialAds: false,
     rewardedAds: false,
@@ -50,9 +62,13 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     purchases: false,
     donations: false,
     requireLogin: false,
-    bundledLevels: false,
+    accountLogin: true,
+    thirdPartyScripts: true,
+    devTools: true,
+    inMemoryRouting: false,
   },
-  // Görev 02'de gerçek SDK sağlayıcıları bağlanınca reklam kanalları açılacak.
+  // Portal build'leri: gerçek SDK reklam sağlayıcıları, tek statik giriş + bellek
+  // içi router, yalnızca misafir oynanış (bkz. 02-portal-buildleri.md).
   crazygames: {
     interstitialAds: true,
     rewardedAds: true,
@@ -60,7 +76,10 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     purchases: false,
     donations: false,
     requireLogin: false,
-    bundledLevels: true,
+    accountLogin: false,
+    thirdPartyScripts: false,
+    devTools: false,
+    inMemoryRouting: true,
   },
   gamedistribution: {
     interstitialAds: true,
@@ -69,7 +88,10 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     purchases: false,
     donations: false,
     requireLogin: false,
-    bundledLevels: true,
+    accountLogin: false,
+    thirdPartyScripts: false,
+    devTools: false,
+    inMemoryRouting: true,
   },
   // Geliştirme sırasında reklam akışını uçtan uca görmek için: web yetenekleri + reklamlar.
   mock: {
@@ -79,7 +101,10 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     purchases: true,
     donations: true,
     requireLogin: false,
-    bundledLevels: false,
+    accountLogin: true,
+    thirdPartyScripts: true,
+    devTools: true,
+    inMemoryRouting: false,
   },
 };
 

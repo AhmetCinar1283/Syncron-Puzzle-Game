@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
+import { useCapabilities } from '@/contexts/MonetizationContext';
 import { useLevelsPage } from '../hooks/useLevelsPage';
 import { LevelsHUD } from './LevelsHUD';
 import { CampaignMap } from './CampaignMap';
@@ -10,6 +11,7 @@ import { WarpTransition } from './WarpTransition';
 import { LevelListView } from './LevelListView';
 
 function LevelsPageContent() {
+  const { devTools } = useCapabilities();
   const {
     t,
     router,
@@ -19,6 +21,7 @@ function LevelsPageContent() {
     loading,
     syncing,
     isMobile,
+    isOffline,
     deleteConfirm,
     setDeleteConfirm,
     deleting,
@@ -82,6 +85,7 @@ function LevelsPageContent() {
         onBack={() => router.push('/')}
         onNewLevel={() => router.push('/editor')}
         isGamepadConnected={isGamepadConnected}
+        showCustomTab={devTools}
         labels={{
           back: t('common.back_menu'),
           campaign: t('levels.campaign'),
@@ -89,6 +93,15 @@ function LevelsPageContent() {
           newLevel: t('levels.new'),
         }}
       />
+
+      {isOffline && (
+        <div
+          className="absolute inset-x-0 z-40 flex items-center justify-center bg-amber-500/15 py-1 text-center text-[11px] font-bold tracking-wide text-amber-400 backdrop-blur-sm"
+          style={{ top: 'var(--hud-h)' }}
+        >
+          {t('levels.offline_banner')}
+        </div>
+      )}
 
       <div className="relative flex-1 overflow-hidden">
         <WarpTransition active={isWarping} label="WARPING..." />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation';
 import { signInAnonymously } from 'firebase/auth';
 import type { StoredLevel } from '@/services/db';
 import { auth } from '@/services/firebase/config';
@@ -33,7 +33,7 @@ interface UseLevelLoaderArgs {
  * `reload()` restartKey'i artırır → effect yeniden çalışır, PlayScreen key'i değişir.
  */
 export function useLevelLoader({ levelId, isPreset, onBeforeLoad, onLoaded }: UseLevelLoaderArgs) {
-    const router = useRouter();
+    const router = useAppRouter();
     const { setItem: storageSet } = useUserStorage();
 
     const [levelName, setLevelName] = useState<string>('');
@@ -98,10 +98,15 @@ export function useLevelLoader({ levelId, isPreset, onBeforeLoad, onLoaded }: Us
                             await fetchAndCacheLevel(raw.firestoreId, raw.id!);
                             raw = await getPresetLevelById(levelId!);
                         } catch (err) {
+                            // Çevrimdışı/ağ hatası: level daha önce hiç tam indirilmemişse
+                            // grid hâlâ boş kalır — aşağıdaki kontrol bunu yakalar.
                             console.warn('[Play] Lazy fetch failed:', err);
                         }
                         if (cancelled) return;
-                        if (!raw) { setError(true); setLoading(false); return; }
+                        // Fetch başarısız olduysa `raw` hâlâ eski (boş grid'li) placeholder
+                        // olabilir. Boş tahtayla oynatmak yerine "bir kez online gir" hatası
+                        // gösterilir (bkz. 02-portal-buildleri.md §4).
+                        if (!raw || !raw.grid?.length) { setError(true); setLoading(false); return; }
                     }
 
                     stored = storedToLevelData(raw as StoredLevel & { id: number });

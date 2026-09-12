@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation';
 import { useEffect, useState } from 'react';
 import { useT } from '@/contexts/LanguageContext';
 import { useGamepad } from '@/hooks/useGamepad';
@@ -8,7 +8,7 @@ import { NEON_TYPES, type Particle } from '../lib/constants';
 
 export function useControlsPage() {
   const t = useT();
-  const router = useRouter();
+  const router = useAppRouter();
   const [particles, setParticles] = useState<Particle[]>([]);
   const [activeButtons, setActiveButtons] = useState<Record<number, boolean>>({});
   const [axes, setAxes] = useState<number[]>([0, 0, 0, 0]);

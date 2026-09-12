@@ -250,6 +250,11 @@ const en: Record<string, string> = {
   'ads.rewarded_unavailable': 'Ads aren\'t available right now. Try again later.',
   'ads.rewarded_failed': 'The ad couldn\'t be shown. No worries — try again in a moment.',
 
+  // Offline (monetization) — bundled/cached levels can be played offline, but score never is
+  'play.offline_score_not_saved': 'You\'re offline — this score wasn\'t saved.',
+  'play.level_not_downloaded': 'This level hasn\'t been downloaded yet. Open it once while online.',
+  'levels.offline_banner': 'You\'re offline — showing the last downloaded map.',
+
   // Feedback
   'feedback.rate_title': 'Rate Level',
   'feedback.difficulty': 'Difficulty',

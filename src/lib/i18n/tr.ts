@@ -250,6 +250,11 @@ const tr: Record<string, string> = {
   'ads.rewarded_unavailable': 'Şu an reklam gösterilemiyor. Birazdan tekrar dene.',
   'ads.rewarded_failed': 'Reklam gösterilemedi. Sorun değil, birazdan tekrar dene.',
 
+  // Çevrimdışı (monetization) — önbellekteki leveller çevrimdışı oynanabilir, skor asla
+  'play.offline_score_not_saved': 'Çevrimdışısınız — bu skor kaydedilmedi.',
+  'play.level_not_downloaded': 'Bu bölüm henüz indirilmedi. Bir kez online iken açman gerekiyor.',
+  'levels.offline_banner': 'Çevrimdışısınız — en son indirilen harita gösteriliyor.',
+
   // Feedback
   'feedback.rate_title': 'Bölümü Değerlendir',
   'feedback.difficulty': 'Zorluk',

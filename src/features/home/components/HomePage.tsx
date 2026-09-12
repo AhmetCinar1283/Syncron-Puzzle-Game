@@ -1,5 +1,7 @@
 'use client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useCapabilities } from '@/contexts/MonetizationContext';
+import { AppLink } from '@/lib/navigation';
 import { CanvasParticles } from './CanvasParticles';
 import { MenuCard } from './MenuCard';
 import { useHomePage } from '../hooks/useHomePage';
@@ -7,6 +9,7 @@ import { useHomePage } from '../hooks/useHomePage';
 export function HomePage() {
   const { lang } = useLanguage();
   const isTr = lang === 'tr';
+  const { externalLinks } = useCapabilities();
   const { t, isMobile, options, activeMenuIndex, setActiveMenuIndex, isConnected } = useHomePage();
 
   return (
@@ -127,18 +130,20 @@ export function HomePage() {
               </div>
             ))}
           </div>
-          <p style={{ marginTop: 16, marginBottom: 0, color: '#374151', fontSize: 11 }}>
-            {t('home.seo')}{' '}
-            <a
-              href="https://syncron.polyvoclub.com"
-              style={{ color: '#00ff8844', textDecoration: 'none' }}
-            >
-              syncron.polyvoclub.com
-            </a>
-            .
-          </p>
+          {externalLinks && (
+            <p style={{ marginTop: 16, marginBottom: 0, color: '#374151', fontSize: 11 }}>
+              {t('home.seo')}{' '}
+              <a
+                href="https://syncron.polyvoclub.com"
+                style={{ color: '#00ff8844', textDecoration: 'none' }}
+              >
+                syncron.polyvoclub.com
+              </a>
+              .
+            </p>
+          )}
 
-          {/* Footer links */}
+          {/* Footer links — iç sayfalar AppLink ile: portal build'inde URL değişmeden çalışır. */}
           <footer
             style={{
               marginTop: 24,
@@ -151,23 +156,27 @@ export function HomePage() {
               paddingTop: 16,
             }}
           >
-            <a
-              href="/support"
-              style={{
-                color: '#00ff8888',
-                textDecoration: 'none',
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#00ff88')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#00ff8888')}
-            >
-              {isTr ? 'DESTEK' : 'SUPPORT'}
-            </a>
-            <span style={{ color: '#1e3a5f', fontSize: 10 }}>•</span>
-            <a
+            {externalLinks && (
+              <>
+                <AppLink
+                  href="/support"
+                  style={{
+                    color: '#00ff8888',
+                    textDecoration: 'none',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#00ff88')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#00ff8888')}
+                >
+                  {isTr ? 'DESTEK' : 'SUPPORT'}
+                </AppLink>
+                <span style={{ color: '#1e3a5f', fontSize: 10 }}>•</span>
+              </>
+            )}
+            <AppLink
               href="/privacy"
               style={{
                 color: '#00ff8888',
@@ -181,9 +190,9 @@ export function HomePage() {
               onMouseLeave={(e) => (e.currentTarget.style.color = '#00ff8888')}
             >
               {isTr ? 'GİZLİLİK' : 'PRIVACY'}
-            </a>
+            </AppLink>
             <span style={{ color: '#1e3a5f', fontSize: 10 }}>•</span>
-            <a
+            <AppLink
               href="/terms"
               style={{
                 color: '#00ff8888',
@@ -197,9 +206,9 @@ export function HomePage() {
               onMouseLeave={(e) => (e.currentTarget.style.color = '#00ff8888')}
             >
               {isTr ? 'KOŞULLAR' : 'TERMS'}
-            </a>
+            </AppLink>
             <span style={{ color: '#1e3a5f', fontSize: 10 }}>•</span>
-            <a
+            <AppLink
               href="/kvkk"
               style={{
                 color: '#00ff8888',
@@ -213,7 +222,7 @@ export function HomePage() {
               onMouseLeave={(e) => (e.currentTarget.style.color = '#00ff8888')}
             >
               {isTr ? 'KVKK BEYANI' : 'KVKK'}
-            </a>
+            </AppLink>
           </footer>
         </section>
         {isConnected && (

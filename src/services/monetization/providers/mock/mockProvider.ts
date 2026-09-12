@@ -41,6 +41,9 @@ export const mockProvider: AdProvider = {
   async init() {
     // Sahte sağlayıcının başlatılacak bir SDK'sı yok.
   },
+  loadingStart() {
+    console.info('[mockProvider] loadingStart');
+  },
   loadingFinished() {
     console.info('[mockProvider] loadingFinished');
   },

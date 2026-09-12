@@ -33,8 +33,18 @@ hook'ları — bu modülü doğrudan import etmek yerine feature'lar bunları ku
 
 | Platform | Sağlayıcı | Not |
 |---|---|---|
-| `web`, `electron`, `android`, `crazygames`, `gamedistribution` | `providers/noopProvider.ts` | Gerçek SDK'lar 02/03 numaralı görevlerde bağlanacak |
+| `web`, `electron` | `providers/noopProvider.ts` | Reklamsız |
+| `android` | `providers/noopProvider.ts` | Gerçek AdMob sağlayıcısı 03 numaralı görevde bağlanacak |
+| `crazygames` | `providers/crazygames/crazyGamesProvider.ts` | CrazyGames HTML5 SDK v3, script enjeksiyonu ile |
+| `gamedistribution` | `providers/gamedistribution/gameDistributionProvider.ts` | GameDistribution SDK, `NEXT_PUBLIC_GD_GAME_ID` env değeri gerekir |
 | `mock` | `providers/mock/mockProvider.ts` | Geliştirme sırasında tarayıcıda uçtan uca test için |
+
+CrazyGames/GameDistribution sağlayıcıları yalnızca ilgili `NEXT_PUBLIC_PLATFORM`
+değeriyle build alındığında dinamik import ile yüklenir — SDK script'leri diğer
+build'lerin bundle'ına hiç girmez. Reklam sırasında ses kısma, sağlayıcıdan
+bağımsız olarak `adService`'in `before-ad`/`after-ad` olaylarına abone olan
+`features/play/hooks/useAdPauseAudio.ts` tarafından yapılır (her iki portal da
+bunu zorunlu tutar).
 
 `providers/adsense.draft.ts` **hiçbir platforma kayıtlı değildir** — AdSense
 hesabı onaylanana kadar hiçbir build'e girmez (dosyanın başındaki yorum,

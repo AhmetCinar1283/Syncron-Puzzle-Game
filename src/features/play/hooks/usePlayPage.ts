@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useAppSearchParams, useAppRouter } from '@/lib/navigation';
 import type { UIButtonType } from '@/game-engine/logic/types';
 import type { WorkerResult } from '../lib/types';
 import { usePlaySession } from './usePlaySession';
@@ -14,8 +14,8 @@ import { usePlayAds } from './usePlayAds';
  * kazanma (worker) → navigasyon. View (`PlayContent`) sadece dönen değerleri çizer.
  */
 export function usePlayPage() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
+    const searchParams = useAppSearchParams();
+    const router = useAppRouter();
 
     const idParam = searchParams.get('id');
     const source = searchParams.get('source');

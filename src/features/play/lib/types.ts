@@ -14,6 +14,13 @@ export interface WorkerResult {
     isNewBestSolution?: boolean;
     isBestSolution?: boolean;
     isGoodSolution?: boolean;
+    /**
+     * `success:false` iken UI'nin hangi mesajı göstereceğini ayırt eder.
+     * `offline`: sunucuya hiç ulaşılamadı (skor asla yerelde hesaplanmaz —
+     * bkz. 02-portal-buildleri.md §5). `error`: sunucuya ulaşıldı ama
+     * doğrulama/başka bir sebeple reddetti.
+     */
+    reason?: 'offline' | 'error';
 }
 
 /**

@@ -63,7 +63,7 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
                     await anonSignIn(firebaseAuth);
                 } catch (retryErr) {
                     console.warn('[Play] Token retry sign-in failed — cannot submit score:', retryErr);
-                    setWorkerResult({ success: false });
+                    setWorkerResult({ success: false, reason: navigator.onLine ? 'error' : 'offline' });
                     return;
                 }
             }
@@ -74,7 +74,7 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
 
             if (!token) {
                 console.warn('[Play] No auth token available after retry — cannot submit score.');
-                setWorkerResult({ success: false });
+                setWorkerResult({ success: false, reason: 'error' });
                 return;
             }
 
@@ -116,12 +116,14 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
                 }
             } else {
                 console.warn('[Play] Worker verification failed with status:', result.status, result.errorText);
-                setWorkerResult({ success: false });
+                setWorkerResult({ success: false, reason: 'error' });
             }
         } catch (err) {
             console.warn('[Play] Worker call failed:', err);
-            // Worker olmadan da oyun devam eder — sonuç overlay'i gösterilir
-            setWorkerResult({ success: false });
+            // Worker olmadan da oyun devam eder — sonuç overlay'i gösterilir.
+            // navigator.onLine kesin değildir (bazı tarayıcılarda yanlış pozitif/negatif
+            // verebilir) ama burada elimizdeki en iyi sinyal; asıl hata zaten loglandı.
+            setWorkerResult({ success: false, reason: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error' });
         }
     }, [firestoreId, levelId, submitTelemetry, dispatch, moveHistoryRef, startTimeRef, setWorkerResult]);
 }

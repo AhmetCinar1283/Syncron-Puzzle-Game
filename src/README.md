@@ -7,6 +7,7 @@ Bu dizin, Next.js uygulamasının tüm kaynak kodunu barındırır: rotalar (`ap
 ```
 src/
 ├── app/                 # Next.js route'ları (page.tsx/layout.tsx dosyaları, sadece kompozisyon).
+│   └── _portal/         #   Portal build'lerinin (CrazyGames/GameDistribution) tek kompozisyon kökü — PortalShell + portalRoutes (bkz. src/lib/navigation).
 ├── components/
 │   ├── ui/              # Tasarım sistemi primitifleri (Button, Modal, Card, ...).
 │   └── common/          # Uygulama genelinde kullanılan ortak bileşenler ve korumalar (AuthModal, AdminGuard, BackButtonManager, ...).
@@ -15,8 +16,8 @@ src/
 ├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls).
 │   └── <isim>/          #   components/ (sunum), hooks/ (state+efekt), lib/ (saf yardımcılar), index.ts (public API).
 ├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü ve prosedürel üretici).
-├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı) — eski app/src/lib/{api,firebase,db,sync}.
-├── lib/                 # i18n/, userStorage.ts, saf yardımcı fonksiyonlar.
+├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı), levels/ (kampanya bölüm listesi önbelleği) — eski app/src/lib/{api,firebase,db,sync}.
+├── lib/                 # i18n/, userStorage.ts, navigation/ (next/navigation adaptörü — portal'da bellek içi router), assetUrl.ts, saf yardımcı fonksiyonlar.
 └── store/               # Redux durum yönetimi (User state, Store yapılandırması).
 ```
 
@@ -39,6 +40,11 @@ src/
 
 ### 4. Reklam Adaptör Katmanı (`services/monetization`)
 * Reklam ve platform olaylarının (bölüm arası/ödüllü reklam, oynanış başladı/durdu, mutlu an) tek bir arayüzden geçtiği modül. Platform build-time `NEXT_PUBLIC_PLATFORM` env değeriyle seçilir; kodun geri kalanı platform adını değil `getCapabilities()` yeteneklerini sorgular. `src/contexts/MonetizationContext.tsx` (`useAds`/`useCapabilities`) React erişimini sağlar. Detaylar `src/services/monetization/README.md`'de.
+
+### 4b. Portal Build'leri (`app/_portal`, `lib/navigation`, `services/levels`) — bkz. `.plans/monetization/02-portal-buildleri.md`
+* CrazyGames/GameDistribution build'leri tek bir statik `index.html` üretir (`next.config.ts` `assetPrefix: './'`, yalnızca bu iki platformda). `app/_portal/PortalShell.tsx`, `capabilities.inMemoryRouting` true olduğunda `app/page.tsx`'ten render edilir ve `lib/navigation`'ın bellek içi router'ına göre `app/_portal/portalRoutes.tsx` tablosundaki ekranı seçer — URL hiç değişmez.
+* `lib/navigation`: `useAppRouter`/`useAppSearchParams`/`useAppPathname`/`AppLink` — `next/navigation`/`next/link` yerine bunlardan import edilir (portal-reachable ekranlarda). `inMemoryRouting` yeteneğine göre gerçek Next router'ına ya da bellek içi router'a delege eder.
+* `services/levels/campaignParts.ts`: kampanya bölüm listesini Firestore'dan getirir, localStorage'a yedekler; Firestore'a ulaşılamazsa son bilinen listeyi döner (leveller gömülmez — bkz. plan).
 
 ### 5. Altyapı Bileşenleri (`components/common`)
 * **AdminGuard:** `/admin/*` yollarını koruyarak yalnızca yönetici veya moderatörlerin sayfaya erişebilmesini sağlar.

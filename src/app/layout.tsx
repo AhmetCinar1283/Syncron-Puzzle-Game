@@ -11,11 +11,14 @@ import StoreProvider from "@/store/StoreProvider";
 import { GameThemeProvider } from "@/game-engine/contexts/GameThemeContext";
 import { MonetizationProvider } from "@/contexts/MonetizationContext";
 import { MonetizationDebugPanel } from "@/components/common/MonetizationDebugPanel";
-import { CURRENT_PLATFORM } from "@/services/monetization";
+import { CURRENT_PLATFORM, getCapabilities } from "@/services/monetization";
 
 const BASE_URL = 'https://syncron.polyvoclub.com';
 
-const GA_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? '';
+const capabilities = getCapabilities(CURRENT_PLATFORM);
+
+// Portallar veri toplama için kullanıcı onayı ister; GA'yı orada hiç yüklemiyoruz.
+const GA_ID = capabilities.thirdPartyScripts ? (process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? '') : '';
 
 // AdSense hesabı onaylandığında web build'i için tekrar açılacak (bkz.
 // src/services/monetization/providers/adsense.draft.ts).

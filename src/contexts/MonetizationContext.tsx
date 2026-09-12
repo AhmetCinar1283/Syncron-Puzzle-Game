@@ -11,6 +11,7 @@ import {
   CURRENT_PLATFORM,
   adService,
   getCapabilities,
+  type AdEventListener,
   type InterstitialRequestContext,
   type InterstitialResult,
   type PlatformCapabilities,
@@ -19,6 +20,8 @@ import {
 
 interface MonetizationContextType {
   capabilities: PlatformCapabilities;
+  /** Level içeriği yüklenmeye BAŞLADIĞINDA bir kez çağrılır. */
+  loadingStart: () => Promise<void>;
   /** Level içeriği oynanmaya hazır olduğunda bir kez çağrılır. */
   loadingFinished: () => Promise<void>;
   /** Aktif oynanış başladı. */
@@ -35,6 +38,8 @@ interface MonetizationContextType {
   requestInterstitial: (ctx?: InterstitialRequestContext) => Promise<InterstitialResult>;
   /** Ödüllü reklamı gösterir; her zaman çözülür. */
   showRewarded: () => Promise<RewardedResult>;
+  /** Reklam gösterimi öncesi/sonrası bildirim alır (ör. ses kısma). Aboneliği kaldıran fonksiyonu döner. */
+  onAdEvent: (listener: AdEventListener) => () => void;
 }
 
 const MonetizationContext = createContext<MonetizationContextType | undefined>(undefined);
@@ -44,6 +49,7 @@ export function MonetizationProvider({ children }: { children: React.ReactNode }
   const value = useMemo<MonetizationContextType>(
     () => ({
       capabilities: getCapabilities(CURRENT_PLATFORM),
+      loadingStart: () => adService.loadingStart(),
       loadingFinished: () => adService.loadingFinished(),
       gameplayStart: () => adService.gameplayStart(),
       gameplayStop: () => adService.gameplayStop(),
@@ -52,6 +58,7 @@ export function MonetizationProvider({ children }: { children: React.ReactNode }
       syncCompletedTotal: (persistedTotal) => adService.syncCompletedTotal(persistedTotal),
       requestInterstitial: (ctx) => adService.requestInterstitial(ctx),
       showRewarded: () => adService.showRewarded(),
+      onAdEvent: (listener) => adService.onAdEvent(listener),
     }),
     [],
   );

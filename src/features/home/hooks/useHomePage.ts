@@ -1,18 +1,20 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useUserStorage } from '@/lib/userStorage';
 import { useSelector } from 'react-redux';
 import { selectUser } from '@/store/userSlice';
 import { useT } from '@/contexts/LanguageContext';
+import { useCapabilities } from '@/contexts/MonetizationContext';
 import { useGamepad } from '@/hooks/useGamepad';
 
 export function useHomePage() {
   const t = useT();
-  const router = useRouter();
+  const router = useAppRouter();
   const { getItem: storageGet } = useUserStorage();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const user = useSelector(selectUser);
+  const { devTools, accountLogin } = useCapabilities();
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile screen size on mount and window resize
@@ -82,18 +84,34 @@ export function useHomePage() {
     const opts = [
       { id: 'play', label: t('home.play'), sub: t('home.play_sub'), color: '#00ff88', onClick: handlePlayClick },
       { id: 'levels', label: t('home.levels'), sub: t('home.levels_sub'), color: '#ffd700', onClick: () => router.push('/levels') },
-      { id: 'editor', label: t('home.editor'), sub: t('home.editor_sub'), color: '#00c4ff', onClick: () => router.push('/editor') },
-      { id: 'friends', label: `👥 ${t('friends.title')}`, sub: t('home.friends_sub'), color: '#ec4899', onClick: () => router.push('/friends') },
-      { id: 'controls', label: t('home.controls'), sub: t('home.controls_sub'), color: '#fbbf24', onClick: () => router.push('/controls') },
     ];
-    if (user?.role === 'admin') {
+    // Editör bir geliştirici aracıdır — portal oyuncusunu ilgilendirmez.
+    if (devTools) {
+      opts.push({ id: 'editor', label: t('home.editor'), sub: t('home.editor_sub'), color: '#00c4ff', onClick: () => router.push('/editor') });
+    }
+    // Arkadaşlar girişe bağlı bir özellik — portallar yalnızca misafir oynanışa izin verir.
+    if (accountLogin) {
+      opts.push({ id: 'friends', label: `👥 ${t('friends.title')}`, sub: t('home.friends_sub'), color: '#ec4899', onClick: () => router.push('/friends') });
+    }
+    opts.push({ id: 'controls', label: t('home.controls'), sub: t('home.controls_sub'), color: '#fbbf24', onClick: () => router.push('/controls') });
+    if (devTools && user?.role === 'admin') {
       opts.push({ id: 'admin', label: t('home.admin'), sub: t('home.admin_sub'), color: '#00ff88', onClick: () => router.push('/admin') });
     }
     return opts;
-  }, [t, user?.role, router, handlePlayClick]);
+  }, [t, user?.role, router, handlePlayClick, devTools, accountLogin]);
 
   const handleMoveMenu = useCallback((dir: 'up' | 'down' | 'left' | 'right') => {
     setActiveMenuIndex((prev) => {
+      // Aşağıdaki 2 sütunlu grid haritası yalnızca tam kart setini (5 veya 6 kart:
+      // play/levels/editor/friends/controls[/admin]) varsayar — bu, web/android/electron
+      // ve mock'ta değişmedi. Portal build'lerinde (devTools=false, accountLogin=false)
+      // kart sayısı azaldığı için tek sütun gibi basitçe döngüsel gezinilir.
+      if (options.length <= 4) {
+        const len = options.length;
+        if (dir === 'up') return prev === -1 ? len - 1 : prev === 0 ? -1 : prev - 1;
+        if (dir === 'down') return prev === -1 ? 0 : prev === len - 1 ? -1 : prev + 1;
+        return prev; // left/right: tek sütunda anlamsız
+      }
       const hasAdmin = options.length > 5;
       switch (dir) {
         case 'up':

@@ -5,6 +5,7 @@ import { useAppSelector } from '@/store/hooks';
 import { selectUser } from '@/store/userSlice';
 import { getAllPlayedLevels } from '@/services/db';
 import { useAds } from '@/contexts/MonetizationContext';
+import { useAdPauseAudio } from './useAdPauseAudio';
 
 /**
  * `/play` sayfasının reklam adaptörüne bağlandığı TEK yer. Mevcut play akışını
@@ -12,8 +13,18 @@ import { useAds } from '@/contexts/MonetizationContext';
  * döndürdüğü fonksiyonları uygun anlarda çağırır.
  */
 export function usePlayAds(levelReady: boolean) {
-    const { loadingFinished, gameplayStart, gameplayStop, happyTime, recordLevelCompleted, syncCompletedTotal, requestInterstitial } = useAds();
+    const { loadingStart, loadingFinished, gameplayStart, gameplayStop, happyTime, recordLevelCompleted, syncCompletedTotal, requestInterstitial } = useAds();
     const loadingFinishedCalledRef = useRef(false);
+
+    // Reklam sırasında sayfa sesini kısar (portal kuralı) — bkz. useAdPauseAudio.
+    useAdPauseAudio();
+
+    // SDK'ya yükleme başladığını bildir (bkz. CrazyGames game.loadingStart/loadingStop).
+    // Bir kez, mount'ta — loadingFinished ile aynı "oturum başına bir kez" semantiği.
+    useEffect(() => {
+        loadingStart();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- bilerek sadece mount'ta
+    }, []);
 
     const completedCount = useAppSelector((state) => selectUser(state).completedCount);
 

@@ -33,6 +33,7 @@ export const adsenseDraftProvider: AdProvider = {
   async init() {
     throw new Error('[adsense.draft] Henüz bağlanmadı — hesap onayı bekleniyor.');
   },
+  loadingStart() {},
   loadingFinished() {},
   gameplayStart() {},
   gameplayStop() {},
