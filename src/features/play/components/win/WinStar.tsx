@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 
 interface WinStarProps {
     n: 1 | 2 | 3;
@@ -21,9 +22,9 @@ export function WinStar({ n, loading, stars }: WinStarProps) {
                     animate={{ scale: 1, opacity: 0.25 }}
                     exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.15 } }}
                     transition={{ delay: (n - 1) * 0.07, duration: 0.25, type: 'spring', stiffness: 300, damping: 20 }}
-                    style={{ fontSize: 'clamp(28px, 8vw, 40px)', color: '#1e3a5f', display: 'inline-block', lineHeight: 1 }}
+                    style={{ fontSize: 'clamp(28px, 8vw, 40px)', color: '#1e3a5f', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
                 >
-                    ★
+                    <GameIcon name="star" size="1em" />
                 </motion.span>
             ) : (
                 <motion.span
@@ -53,9 +54,9 @@ export function WinStar({ n, loading, stars }: WinStarProps) {
                         ? { delay: (n - 1) * 0.22, duration: 0.7, ease: [0.22, 1, 0.36, 1] }
                         : { delay: (n - 1) * 0.05, duration: 0.2 }
                     }
-                    style={{ fontSize: 'clamp(28px, 8vw, 40px)', display: 'inline-block', lineHeight: 1 }}
+                    style={{ fontSize: 'clamp(28px, 8vw, 40px)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
                 >
-                    ★
+                    <GameIcon name="star" size="1em" />
                 </motion.span>
             )}
         </AnimatePresence>

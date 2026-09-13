@@ -9,6 +9,7 @@ import GeneratorGeneralSection from './GeneratorGeneralSection';
 import GeneratorRoomsSection from './GeneratorRoomsSection';
 import GeneratorPlayersSection from './GeneratorPlayersSection';
 import GeneratorCellsSection from './GeneratorCellsSection';
+import { GameIcon } from '@/components/icons';
 
 export interface GeneratorModalProps {
   onClose: () => void;
@@ -59,8 +60,8 @@ export default function GeneratorModal({ onClose, onGenerate }: GeneratorModalPr
 
             {/* Sticky Actions Footer */}
             <div style={{ flexShrink: 0, display: 'flex', gap: 8, borderTop: '1px solid rgba(30,58,95,0.3)', paddingTop: 10 }}>
-              <NBtn onClick={handleGenerateClick} color="#00c4ff" active style={{ flex: 2, padding: '8px 20px', fontSize: 12, fontWeight: 700 }}>
-                ⚡ GENERATE LEVEL
+              <NBtn onClick={handleGenerateClick} color="#00c4ff" active style={{ flex: 2, padding: '8px 20px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <GameIcon name="lightning" size={13} /> GENERATE LEVEL
               </NBtn>
               <NBtn onClick={onClose} style={{ flex: 1, padding: '8px 16px', fontSize: 12 }}>
                 CANCEL

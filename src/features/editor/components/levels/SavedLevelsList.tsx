@@ -4,6 +4,7 @@ import type { RefObject } from 'react';
 import type { StoredLevel } from '@/services/db';
 import { useT } from '@/contexts/LanguageContext';
 import type { LevelReorderDragApi } from '../../hooks/useLevelReorderDrag';
+import { GameIcon } from '@/components/icons';
 
 interface SavedLevelsListProps {
   savedLevels: (StoredLevel & { id: number })[];
@@ -57,7 +58,9 @@ export default function SavedLevelsList({ savedLevels, editId, drag, currentLeve
           >
             {/* Left: Drag Handle and Level Info */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 14, color: '#334155', cursor: 'grab', userSelect: 'none' }}>☰</span>
+              <span style={{ color: '#334155', cursor: 'grab', userSelect: 'none', display: 'flex', alignItems: 'center' }}>
+                <GameIcon name="menu" size={14} />
+              </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 9, color: isCurrent ? '#00c4ff' : '#1e3a5f', fontWeight: 'bold' }}>

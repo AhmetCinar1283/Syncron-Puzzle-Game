@@ -3,6 +3,7 @@
 import { useEditorContext } from '../../EditorContext';
 import { useT } from '@/contexts/LanguageContext';
 import { SectionHeading, type CellRef } from './settingsShared';
+import { GameIcon } from '@/components/icons';
 
 /** Conveyor cells: power requirement + step count (steps === 1 is the default and is not stored). */
 export function ConveyorsSection({ cells }: { cells: CellRef[] }) {
@@ -39,7 +40,9 @@ export function ConveyorsSection({ cells }: { cells: CellRef[] }) {
                   }}
                   style={{ accentColor: '#c4b5fd', width: 11, height: 11 }}
                 />
-                <span style={{ fontSize: 9, color: isRequired ? '#c4b5fd' : '#475569' }}>⚡ {t('editor.conveyor_needs_power')}</span>
+                <span style={{ fontSize: 9, color: isRequired ? '#c4b5fd' : '#475569', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <GameIcon name="lightning" size={10} /> {t('editor.conveyor_needs_power')}
+                </span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 9, color: '#c4b5fd' }}>Steps:</span>

@@ -13,9 +13,12 @@ types.ts              — AdProvider arayüzü + sonuç tipleri
 platform.ts            — NEXT_PUBLIC_PLATFORM okuma
 capabilities.ts         — platform → yetenek tablosu
 providerRegistry.ts     — KOMPOZİSYON KÖKÜ: platform → sağlayıcı (dinamik import)
-adService.ts            — tek giriş noktası: init, gameplay start/stop, interstitial/rewarded, event bus
+adService.ts            — tek giriş noktası: init/prewarm, gameplay start/stop, interstitial/rewarded/banner, event bus
 entitlement.ts          — "reklamsız mı?" bağlantı noktası (07'de bağlanacak)
-policy/                 — reklam sıklığı politikası (saf, birim testli)
+policy/                 — reklam sıklığı politikası (saf, birim testli): tek havuz,
+                          "level bitişi" (kazanma VEYA ölüm/restart) sayacı +
+                          süre eşiği, misafir/kayıtlı için ayrı değerler
+offer.ts                — "reklamları kaldır" teklifinin fiyatı (07'ye kadar yer tutucu)
 providers/               — sağlayıcı uygulamaları
 ```
 
@@ -34,10 +37,19 @@ hook'ları — bu modülü doğrudan import etmek yerine feature'lar bunları ku
 | Platform | Sağlayıcı | Not |
 |---|---|---|
 | `web`, `electron` | `providers/noopProvider.ts` | Reklamsız |
-| `android` | `providers/noopProvider.ts` | Gerçek AdMob sağlayıcısı 03 numaralı görevde bağlanacak |
+| `android` | `providers/admob/admobProvider.ts` | AdMob: bölüm arası + ödüllü + kalıcı alt banner, UMP rıza akışı (bkz. o klasörün `README.md`'si) |
 | `crazygames` | `providers/crazygames/crazyGamesProvider.ts` | CrazyGames HTML5 SDK v3, script enjeksiyonu ile |
 | `gamedistribution` | `providers/gamedistribution/gameDistributionProvider.ts` | GameDistribution SDK, `NEXT_PUBLIC_GD_GAME_ID` env değeri gerekir |
 | `mock` | `providers/mock/mockProvider.ts` | Geliştirme sırasında tarayıcıda uçtan uca test için |
+
+## Banner
+
+`AdProvider`'ın `showBanner`/`hideBanner`/`onBannerHeight` metotları **isteğe
+bağlıdır**; yalnızca banner destekleyen sağlayıcılar (AdMob, mock) tanımlar ve
+`capabilities.bannerAds` ile açılır. Banner native olarak WebView'in üstüne
+çizildiği için gerçek yüksekliği React tarafına bildirilir ve
+`components/common/AdBannerMount.tsx` bunu `--ad-banner-height` CSS değişkenine
+yazar (bkz. `docs/platforms.md` → "Banner ve sayfa düzeni").
 
 CrazyGames/GameDistribution sağlayıcıları yalnızca ilgili `NEXT_PUBLIC_PLATFORM`
 değeriyle build alındığında dinamik import ile yüklenir — SDK script'leri diğer

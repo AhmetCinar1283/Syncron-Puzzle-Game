@@ -2,12 +2,24 @@
 
 import React from 'react';
 import { CATEGORIES } from '../lib/constants';
+import { GameIcon, IconName } from '@/components/icons';
 
 interface CategoryTabsProps {
   t: (key: string) => string;
   catIndex: number;
   onSelect: (idx: number) => void;
 }
+
+const getCatIcon = (id: string): IconName => {
+  switch (id) {
+    case 'stars': return 'star';
+    case 'levels': return 'mountain';
+    case 'records': return 'medal';
+    case 'creators': return 'architect';
+    case 'friends': return 'friends';
+    default: return 'trophy';
+  }
+};
 
 export default function CategoryTabs({ t, catIndex, onSelect }: CategoryTabsProps) {
   return (
@@ -56,7 +68,10 @@ export default function CategoryTabs({ t, catIndex, onSelect }: CategoryTabsProp
               }
             }}
           >
-            {t(cat.labelKey)}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <GameIcon name={getCatIcon(cat.id)} size={15} color={isSelected ? cat.color : '#9ca3af'} />
+              {t(cat.labelKey)}
+            </span>
           </button>
         );
       })}

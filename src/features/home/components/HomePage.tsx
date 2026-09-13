@@ -5,6 +5,7 @@ import { AppLink } from '@/lib/navigation';
 import { CanvasParticles } from './CanvasParticles';
 import { MenuCard } from './MenuCard';
 import { useHomePage } from '../hooks/useHomePage';
+import { GameIcon } from '@/components/icons';
 
 export function HomePage() {
   const { lang } = useLanguage();
@@ -115,17 +116,17 @@ export function HomePage() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
             {[
-              { icon: '↑↓←→', key: 'home.tip_move' },
-              { icon: '⊕', key: 'home.tip_win' },
-              { icon: '❄', key: 'home.tip_ice' },
-              { icon: '⟳', key: 'home.tip_toggle' },
-              { icon: '◎', key: 'home.tip_teleporter' },
-              { icon: '▶', key: 'home.tip_conveyor' },
-              { icon: '⚡', key: 'home.tip_power' },
-              { icon: '✦', key: 'home.tip_editor' },
+              { icon: <GameIcon name="gamepad" size={14} />, key: 'home.tip_move' },
+              { icon: <GameIcon name="target" size={14} />, key: 'home.tip_win' },
+              { icon: <GameIcon name="ice" size={14} />, key: 'home.tip_ice' },
+              { icon: <GameIcon name="switch" size={14} />, key: 'home.tip_toggle' },
+              { icon: <GameIcon name="portal" size={14} />, key: 'home.tip_teleporter' },
+              { icon: <GameIcon name="arrow-right" size={14} />, key: 'home.tip_conveyor' },
+              { icon: <GameIcon name="lightning" size={14} />, key: 'home.tip_power' },
+              { icon: <GameIcon name="sparkles" size={14} />, key: 'home.tip_editor' },
             ].map(({ icon, key }) => (
               <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ color: '#00ff8833', flexShrink: 0, width: 18 }}>{icon}</span>
+                <span style={{ color: '#00ff8888', flexShrink: 0, width: 18, display: 'inline-flex', alignItems: 'center' }}>{icon}</span>
                 <span>{t(key)}</span>
               </div>
             ))}
@@ -228,7 +229,7 @@ export function HomePage() {
         {isConnected && (
           <div style={{
             position: 'fixed',
-            bottom: 12,
+            bottom: 'calc(12px + var(--ad-banner-height))',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'rgba(3, 7, 18, 0.85)',
@@ -246,7 +247,7 @@ export function HomePage() {
             zIndex: 100,
             pointerEvents: 'none',
           }}>
-            <span>🎮</span>
+            <GameIcon name="gamepad" size={14} />
             <span>
               {isTr ? 'D-pad / Sol Analog: Yönlendir | (A): Seç' : 'D-pad / Left Stick: Navigate | (A): Select'}
             </span>

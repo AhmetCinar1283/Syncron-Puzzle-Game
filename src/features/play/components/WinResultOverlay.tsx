@@ -12,6 +12,7 @@ import { useWinFeedback } from '../hooks/useWinFeedback';
 import { WinStar } from './win/WinStar';
 import { WinFeedbackWidget } from './win/WinFeedbackWidget';
 import { WinActions } from './win/WinActions';
+import { GameIcon } from '@/components/icons';
 
 interface WinResultOverlayProps {
     result: WorkerResult | null; // null = yükleniyor
@@ -258,9 +259,13 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                                 margin: '2px 0',
                                 textAlign: 'center',
                                 letterSpacing: '0.02em',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
                             }}
                         >
-                            ✓ {t('feedback.thank_you')}
+                            <GameIcon name="check" size={12} /> {t('feedback.thank_you')}
                         </motion.p>
                     )}
 

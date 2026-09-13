@@ -49,6 +49,7 @@ export function MonetizationDebugPanel() {
 
   return (
     <div
+      className="monetization-debug-panel"
       style={{
         position: 'fixed',
         bottom: 12,
@@ -88,7 +89,8 @@ export function MonetizationDebugPanel() {
       </div>
 
       <div style={{ opacity: 0.8 }}>
-        tamamlanan: {policy.totalCompleted} · son reklamdan: {policy.levelsSinceLastAd} level
+        son reklamdan: {policy.finishesSinceLastAd} level bitişi
+        {policy.lastAdAtMs !== null && ` · son reklam ${new Date(policy.lastAdAtMs).toLocaleTimeString()}`}
       </div>
       <div style={{ opacity: 0.8, wordBreak: 'break-all' }}>{lastResult}</div>
     </div>

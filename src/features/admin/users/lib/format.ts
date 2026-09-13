@@ -30,51 +30,51 @@ export function formatLogMetadata(log: AuditLogEntry, isTr: boolean): string {
   switch (act) {
     case 'account.create':
       return isTr
-        ? `👤 Yeni profil oluşturuldu. Kayıt sağlayıcı: **${meta.provider || log.metadata.authProvider || 'anonymous'}**`
-        : `👤 New profile created. Auth provider: **${meta.provider || log.metadata.authProvider || 'anonymous'}**`;
+        ? `Yeni profil oluşturuldu. Kayıt sağlayıcı: **${meta.provider || log.metadata.authProvider || 'anonymous'}**`
+        : `New profile created. Auth provider: **${meta.provider || log.metadata.authProvider || 'anonymous'}**`;
 
     case 'account.tag_change':
       return isTr
-        ? `🏷️ GamerTag değiştirildi. Yeni etiket: **#${meta.tag || meta.newTag}**`
-        : `🏷️ GamerTag changed. New label: **#${meta.tag || meta.newTag}**`;
+        ? `GamerTag değiştirildi. Yeni etiket: **#${meta.tag || meta.newTag}**`
+        : `GamerTag changed. New label: **#${meta.tag || meta.newTag}**`;
 
     case 'level.complete':
       return isTr
-        ? `🏆 **${meta.levelId}** seviyesini **${meta.stars} Yıldız** ile **${meta.timeSpent} saniyede** tamamladı (${meta.moveCount} hamle).`
-        : `🏆 Completed **${meta.levelId}** with **${meta.stars} Stars** in **${meta.timeSpent} seconds** (${meta.moveCount} moves).`;
+        ? `**${meta.levelId}** seviyesini **${meta.stars} Yıldız** ile **${meta.timeSpent} saniyede** tamamladı (${meta.moveCount} hamle).`
+        : `Completed **${meta.levelId}** with **${meta.stars} Stars** in **${meta.timeSpent} seconds** (${meta.moveCount} moves).`;
 
     case 'level.start':
       return isTr
-        ? `🎮 **${meta.levelId}** seviyesini oynamaya başladı.`
-        : `🎮 Started playing level **${meta.levelId}**.`;
+        ? `**${meta.levelId}** seviyesini oynamaya başladı.`
+        : `Started playing level **${meta.levelId}**.`;
 
     case 'ticket.create':
       return isTr
-        ? `✉️ **#${meta.ticketId || meta.id}** nolu destek talebini oluşturdu. Başlık: **"${meta.subject}"**`
-        : `✉️ Opened support ticket **#${meta.ticketId || meta.id}**. Subject: **"${meta.subject}"**`;
+        ? `**#${meta.ticketId || meta.id}** nolu destek talebini oluşturdu. Başlık: **"${meta.subject}"**`
+        : `Opened support ticket **#${meta.ticketId || meta.id}**. Subject: **"${meta.subject}"**`;
 
     case 'ticket.reply':
       return isTr
-        ? `💬 **#${meta.ticketId}** nolu destek talebine yanıt gönderdi.`
-        : `💬 Sent a reply to support ticket **#${meta.ticketId}**.`;
+        ? `**#${meta.ticketId}** nolu destek talebine yanıt gönderdi.`
+        : `Sent a reply to support ticket **#${meta.ticketId}**.`;
 
     case 'payment.success':
       return isTr
-        ? `💳 Abonelik ödemesi başarıyla tahsil edildi. Tutar: **$${meta.amount || '9.99'}**. Ref: **${meta.ref || meta.transactionId}**`
-        : `💳 Subscription payment successful. Amount: **$${meta.amount || '9.99'}**. Ref: **${meta.ref || meta.transactionId}**`;
+        ? `Abonelik ödemesi başarıyla tahsil edildi. Tutar: **$${meta.amount || '9.99'}**. Ref: **${meta.ref || meta.transactionId}**`
+        : `Subscription payment successful. Amount: **$${meta.amount || '9.99'}**. Ref: **${meta.ref || meta.transactionId}**`;
 
     case 'payment.failed':
       return isTr
-        ? `❌ Ödeme Hatası! Başarısız ödeme denemesi. Neden: **${meta.reason || 'insufficient_funds'}**. Ref: **${meta.ref || meta.transactionId || 'N/A'}**`
-        : `❌ Payment Failed! Unsuccessful billing attempt. Reason: **${meta.reason || 'insufficient_funds'}**. Ref: **${meta.ref || meta.transactionId || 'N/A'}**`;
+        ? `Ödeme Hatası! Başarısız ödeme denemesi. Neden: **${meta.reason || 'insufficient_funds'}**. Ref: **${meta.ref || meta.transactionId || 'N/A'}**`
+        : `Payment Failed! Unsuccessful billing attempt. Reason: **${meta.reason || 'insufficient_funds'}**. Ref: **${meta.ref || meta.transactionId || 'N/A'}**`;
 
     case 'admin.ban':
       return isTr
-        ? `🚫 Sistem erişimi askıya alındı (Banned). Gerekçe: **${meta.reason || 'Bilinmiyor'}**`
-        : `🚫 Access suspended (Banned). Reason: **${meta.reason || 'Unknown'}**`;
+        ? `Sistem erişimi askıya alındı (Banned). Gerekçe: **${meta.reason || 'Bilinmiyor'}**`
+        : `Access suspended (Banned). Reason: **${meta.reason || 'Unknown'}**`;
 
     case 'admin.unban':
-      return isTr ? `🔓 Kullanıcı engeli kaldırıldı.` : `🔓 Access suspension lifted (Unbanned).`;
+      return isTr ? `Kullanıcı engeli kaldırıldı.` : `Access suspension lifted (Unbanned).`;
 
     default:
       // Generic metadata formatter to avoid displaying raw JSON

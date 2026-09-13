@@ -4,6 +4,7 @@ import { useEditorContext } from '../../EditorContext';
 import { useT } from '@/contexts/LanguageContext';
 import { getPlayerColor } from '@/game-engine/components/playerColors';
 import { SectionHeading } from './settingsShared';
+import { GameIcon } from '@/components/icons';
 
 /** Per-player cards: position (clear), movement mode, lock-on-target. */
 export default function PlayersSection() {
@@ -25,15 +26,17 @@ export default function PlayersSection() {
               borderRadius: 8,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: color, fontWeight: 700 }}>🟢 Player {obj.id}</span>
+                <span style={{ fontSize: 11, color: color, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <GameIcon name="user" size={12} color={color} /> Player {obj.id}
+                </span>
               </div>
-              <div style={{ fontSize: 10, color: obj.row !== null ? color : '#334155', marginBottom: 6 }}>
+              <div style={{ fontSize: 10, color: obj.row !== null ? color : '#334155', marginBottom: 6, display: 'flex', alignItems: 'center' }}>
                 {obj.row !== null ? `${obj.roomId ?? 'main'} (${obj.row}, ${obj.col})` : t('editor.not_placed')}
                 {obj.row !== null && (
                   <button
                     onClick={() => setObjects((os) => os.map((o) => o.id === obj.id ? { ...o, row: null, col: null } : o))}
-                    style={{ marginLeft: 4, fontSize: 9, background: 'none', border: 'none', color: '#334155', cursor: 'pointer' }}
-                  >✕</button>
+                    style={{ marginLeft: 4, fontSize: 9, background: 'none', border: 'none', color: '#334155', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                  ><GameIcon name="close" size={9} /></button>
                 )}
               </div>
 

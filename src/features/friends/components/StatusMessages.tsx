@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 
 interface StatusMessagesProps {
   error: string | null;
@@ -25,10 +26,14 @@ export function StatusMessages({ error, successMsg }: StatusMessagesProps) {
             color: '#ff2d55',
             borderRadius: '8px',
             fontSize: '13px',
-            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
           }}
         >
-          ⚠️ {error.startsWith('friends.') ? t(error) : error}
+          <GameIcon name="warning" size={14} color="#ff2d55" />
+          <span>{error.startsWith('friends.') ? t(error) : error}</span>
         </motion.div>
       )}
 
@@ -45,10 +50,14 @@ export function StatusMessages({ error, successMsg }: StatusMessagesProps) {
             color: '#00ff88',
             borderRadius: '8px',
             fontSize: '13px',
-            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
           }}
         >
-          ✓ {t(successMsg)}
+          <GameIcon name="check" size={14} color="#00ff88" />
+          <span>{t(successMsg)}</span>
         </motion.div>
       )}
     </AnimatePresence>

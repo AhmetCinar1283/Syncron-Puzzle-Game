@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import type { FeedbackDifficulty } from '../../lib/types';
 
 interface WinFeedbackWidgetProps {
@@ -70,10 +71,12 @@ export function WinFeedbackWidget({ selectedLike, onSelectLike, selectedDiff, on
                             fontSize: 13,
                             cursor: 'pointer',
                             transition: 'all 0.15s',
-                            lineHeight: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        👍
+                        <GameIcon name="thumbs-up" size={14} />
                     </button>
                     <button
                         type="button"
@@ -87,10 +90,12 @@ export function WinFeedbackWidget({ selectedLike, onSelectLike, selectedDiff, on
                             fontSize: 13,
                             cursor: 'pointer',
                             transition: 'all 0.15s',
-                            lineHeight: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        👎
+                        <GameIcon name="thumbs-down" size={14} />
                     </button>
                 </div>
             </div>

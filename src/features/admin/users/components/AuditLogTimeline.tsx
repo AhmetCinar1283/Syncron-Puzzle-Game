@@ -1,7 +1,25 @@
 'use client';
 
+import { GameIcon } from '@/components/icons';
+import type { IconName } from '@/components/icons/types';
 import { CATEGORY_DETAILS, type AuditLogEntry } from '../lib/types';
 import { formatLogMetadata } from '../lib/format';
+
+function getActionIcon(action: string): IconName {
+  switch (action) {
+    case 'account.create': return 'user';
+    case 'account.tag_change': return 'tag';
+    case 'level.complete': return 'trophy';
+    case 'level.start': return 'gamepad';
+    case 'ticket.create': return 'mail';
+    case 'ticket.reply': return 'chat';
+    case 'payment.success': return 'credit-card';
+    case 'payment.failed': return 'error';
+    case 'admin.ban': return 'ban';
+    case 'admin.unban': return 'unlock';
+    default: return 'sparkles';
+  }
+}
 
 export function AuditLogTimeline({
   isTr,
@@ -47,8 +65,9 @@ export function AuditLogTimeline({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase' }}>
-          🕦 {isTr ? 'İŞLEMSEL DENETİM GÜNLÜĞÜ (TIMELINE)' : 'FILTERABLE AUDIT LOG TIMELINE'}
+        <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <GameIcon name="clock" size={14} color="#9333ea" />
+          <span>{isTr ? 'İŞLEMSEL DENETİM GÜNLÜĞÜ (TIMELINE)' : 'FILTERABLE AUDIT LOG TIMELINE'}</span>
         </h3>
       </div>
 
@@ -240,24 +259,18 @@ export function AuditLogTimeline({
                 {/* Content Row */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: '240px' }}>
-                    {/* Human readable payload text (supports markdown **Bold**) */}
-                    <span
-                      style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.4' }}
-                      dangerouslySetInnerHTML={{
-                        __html: parsedText
-                          .replace(/\*\*(.*?)\*\*/g, '<b style="color:#ffffff">$1</b>')
-                          .replace(/❌/g, '❌')
-                          .replace(/🏆/g, '🏆')
-                          .replace(/🎮/g, '🎮')
-                          .replace(/💳/g, '💳')
-                          .replace(/👤/g, '👤')
-                          .replace(/🏷️/g, '🏷️')
-                          .replace(/💬/g, '💬')
-                          .replace(/✉️/g, '✉️')
-                          .replace(/🚫/g, '🚫')
-                          .replace(/🔓/g, '🔓'),
-                      }}
-                    />
+                    {/* Human readable payload text with GameIcon */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <GameIcon name={getActionIcon(log.action)} size={14} color={dotColor} style={{ marginTop: '2px', flexShrink: 0 }} />
+                      <span
+                        style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.4' }}
+                        dangerouslySetInnerHTML={{
+                          __html: parsedText
+                            .replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}👤🏷️🏆🎮✉️💬💳❌🚫🔓\s]+/u, '')
+                            .replace(/\*\*(.*?)\*\*/g, '<b style="color:#ffffff">$1</b>'),
+                        }}
+                      />
+                    </div>
                     <span style={{ fontSize: '10px', color: '#475569', letterSpacing: '0.04em', fontFamily: 'monospace' }}>
                       action: <b>{log.action}</b> | id: <b>{log.id}</b>
                     </span>

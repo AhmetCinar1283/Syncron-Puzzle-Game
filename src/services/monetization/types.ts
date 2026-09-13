@@ -52,4 +52,24 @@ export interface AdProvider {
   showRewarded(): Promise<RewardedResult>;
   /** "Mutlu an" bildirimi (level tamamlandı gibi) — bazı SDK'lar reklam sıklığını buna göre ayarlar. */
   happyTime(): void;
+  /**
+   * Kalıcı banner'ı gösterir. Banner'ı desteklemeyen sağlayıcılar bu metodu
+   * hiç tanımlamaz; `adService` yokluğunu sessizce geçer.
+   */
+  showBanner?(): Promise<void>;
+  /** Kalıcı banner'ı gizler (ör. reklamsız hak kazanıldığında). */
+  hideBanner?(): Promise<void>;
+  /**
+   * Banner'ın ekranda kapladığı yüksekliği (CSS px) bildirir; 0 = banner yok.
+   * Banner native olarak WebView'in üstüne çizildiği için sayfa düzeni bu kadar
+   * boşluk açmak zorundadır. `null` dinleyici aboneliği kaldırır.
+   */
+  onBannerHeight?(listener: ((heightPx: number) => void) | null): void;
+  /**
+   * Kullanıcıya "reklam tercihleri" girişi sunulması gerekiyor mu (GDPR/KVKK
+   * kapsamındaki kullanıcılar için Google'ın şartı). `init()` sonrası anlamlıdır.
+   */
+  privacyOptionsRequired?(): boolean;
+  /** Rıza tercihlerini yeniden düzenleme formunu açar; başarıysa true döner. */
+  openPrivacyOptions?(): Promise<boolean>;
 }

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 
 const NEON_GLOWS = [
   { color: '#ec4899', glow: '0 0 10px #ec4899, 0 0 30px rgba(236, 72, 153, 0.4)' }, // Pink
@@ -130,13 +131,11 @@ export default function AccessDeniedPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '36px',
               color: '#ec4899',
-              textShadow: '0 0 10px rgba(236, 72, 153, 0.6)',
               boxShadow: '0 0 20px rgba(236, 72, 153, 0.2), inset 0 0 15px rgba(236, 72, 153, 0.1)',
             }}
           >
-            ⚠
+            <GameIcon name="warning" size={36} color="#ec4899" />
           </div>
 
           <div>

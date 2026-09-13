@@ -54,6 +54,8 @@ export const DirectionDeflectorCellRenderer = ({ cell, entityOnCell, prevEntityO
         );
     }
 
+    const borderRadius = theme === 'arcade' ? '0px' : theme === 'blueprint' ? '2px' : '8px';
+
     return (
         <div 
             id={`cell-${cell.id}`}
@@ -62,7 +64,7 @@ export const DirectionDeflectorCellRenderer = ({ cell, entityOnCell, prevEntityO
                 height: 64,
                 background: isOccupied ? 'rgba(15, 23, 42, 0.9)' : 'rgba(15, 23, 42, 0.7)',
                 border: isOccupied ? '2px solid #fbcfe8' : '2px solid #ec4899',
-                borderRadius: '8px',
+                borderRadius,
                 boxShadow: isOccupied
                     ? 'inset 0 0 24px rgba(236,72,153,0.75), 0 0 16px rgba(236,72,153,0.5)'
                     : 'inset 0 0 16px rgba(236,72,153,0.25), 0 0 10px rgba(236,72,153,0.2)',

@@ -2,6 +2,7 @@
 
 import { useAppRouter } from '@/lib/navigation';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
+import AdPrivacyOptionsButton from '@/components/common/AdPrivacyOptionsButton';
 
 export default function PrivacyPage() {
   const t = useT();
@@ -144,6 +145,11 @@ export default function PrivacyPage() {
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Kullanıcı Hakları ve Veri Silme</h2>
               <p>Hesabınızı ve tüm ilerleme verilerinizi silme hakkına sahipsiniz. Verilerinizin kalıcı olarak silinmesini talep etmek için destek kanallarımızdan bizimle iletişime geçebilirsiniz.</p>
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>6. Reklamlar</h2>
+              <p>Oyunun mobil (Android) sürümünde Google AdMob üzerinden reklam gösterilir. AdMob, reklamları sunmak ve ölçmek için reklam kimliği gibi cihaz tanımlayıcılarını işleyebilir. Avrupa Ekonomik Alanı, Birleşik Krallık ve İsviçre&apos;deki kullanıcılara ilk açılışta Google&apos;ın rıza formu gösterilir; <strong>rıza vermezseniz reklamlar kişiselleştirilmeden</strong> sunulur ve oyun tam olarak çalışmaya devam eder. Tercihinizi dilediğiniz zaman aşağıdaki butondan değiştirebilirsiniz.</p>
+              <p>Google&apos;ın reklam verilerini nasıl işlediğini <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" style={{ color: '#67e8f9' }}>Google Gizlilik ve Şartlar</a> sayfasından inceleyebilirsiniz.</p>
+              <AdPrivacyOptionsButton />
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -177,6 +183,11 @@ export default function PrivacyPage() {
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Your Rights and Data Erasure</h2>
               <p>You have full ownership of your records. If you wish to delete your sync user document and account history completely, please contact us through our official support channels.</p>
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>6. Advertising</h2>
+              <p>The mobile (Android) build of the game serves ads through Google AdMob. AdMob may process device identifiers such as the advertising ID in order to deliver and measure ads. Players in the European Economic Area, the United Kingdom and Switzerland are shown Google&apos;s consent form on first launch; <strong>if you decline, ads are served without personalisation</strong> and the game keeps working exactly as before. You can change your choice at any time with the button below.</p>
+              <p>You can review how Google processes advertising data on the <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" style={{ color: '#67e8f9' }}>Google Privacy &amp; Terms</a> page.</p>
+              <AdPrivacyOptionsButton />
             </div>
           )}
         </div>

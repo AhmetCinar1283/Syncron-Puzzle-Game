@@ -2,6 +2,7 @@
 
 import { NBtn, Lbl, iStyle } from '../EditorUI';
 import type { AiTemplateEditorApi } from '../../hooks/useAiTemplateEditor';
+import { GameIcon } from '@/components/icons';
 
 const VAR_STYLE = { color: '#00c4ff' };
 
@@ -18,15 +19,17 @@ export default function AiTemplatesTab({ t: api }: { t: AiTemplateEditorApi }) {
       <div style={{ width: 220, borderRight: '1px solid rgba(30,58,95,0.3)', paddingRight: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Lbl style={{ margin: 0 }}>Prompt Şablonları</Lbl>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, background: '#02050c', padding: 6, borderRadius: 8, border: '1px solid rgba(30,58,95,0.3)' }}>
-          <button onClick={handleNewTemplateClick} style={{ padding: '6px 8px', fontSize: 11, fontWeight: 700, color: '#a78bfa', background: !tempEditId ? 'rgba(167,139,250,0.1)' : 'transparent', border: `1px solid ${!tempEditId ? '#a78bfa' : 'transparent'}`, borderRadius: 6, cursor: 'pointer', textAlign: 'left', marginBottom: 6 }}>
-            ➕ Yeni Şablon Ekle
+          <button onClick={handleNewTemplateClick} style={{ padding: '6px 8px', fontSize: 11, fontWeight: 700, color: '#a78bfa', background: !tempEditId ? 'rgba(167,139,250,0.1)' : 'transparent', border: `1px solid ${!tempEditId ? '#a78bfa' : 'transparent'}`, borderRadius: 6, cursor: 'pointer', textAlign: 'left', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <GameIcon name="plus" size={11} /> Yeni Şablon Ekle
           </button>
           {templates.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1px 0' }}>
               <button onClick={() => setTempEditId(t.id)} style={{ flex: 1, padding: '5px 8px', fontSize: 10, color: tempEditId === t.id ? '#a78bfa' : '#94a3b8', background: tempEditId === t.id ? 'rgba(167,139,250,0.08)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t.name} ({t.type === 'create' ? 'Yeni' : 'Geliştir'})
               </button>
-              <button disabled={t.id.startsWith('default_')} onClick={() => handleDeleteTemplate(t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 11, padding: '0 6px', opacity: t.id.startsWith('default_') ? 0.2 : 1 }}>✕</button>
+              <button disabled={t.id.startsWith('default_')} onClick={() => handleDeleteTemplate(t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 11, padding: '0 6px', opacity: t.id.startsWith('default_') ? 0.2 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <GameIcon name="close" size={10} />
+              </button>
             </div>
           ))}
         </div>
@@ -38,8 +41,8 @@ export default function AiTemplatesTab({ t: api }: { t: AiTemplateEditorApi }) {
           <h4 style={{ margin: 0, color: '#a78bfa', fontSize: 13 }}>
             {!tempEditId ? 'Yeni Şablon Oluşturuluyor' : `Şablonu Düzenle: "${tempName}"`}
           </h4>
-          <NBtn onClick={handleSaveTemplate} color="#a78bfa" active style={{ padding: '5px 16px', fontSize: 11 }}>
-            💾 Şablonu Kaydet
+          <NBtn onClick={handleSaveTemplate} color="#a78bfa" active style={{ padding: '5px 16px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <GameIcon name="save" size={12} /> Şablonu Kaydet
           </NBtn>
         </div>
 

@@ -1,9 +1,10 @@
 // components/entities/BoxGraphic.tsx
-// Görünüm (Neon vs Legacy Tema Desteği)
+// High-legibility, tactile physical crate renderer with classic ▣ icon for all themes
 
 import { Entity } from '../../logic/entityTypes';
 import { getPlayerColor } from '../playerColors';
 import { useGameTheme } from '../../contexts/GameThemeContext';
+import { GameIcon } from '@/components/icons';
 
 export const BoxGraphic = ({ entity }: { entity: Entity }) => {
     const { theme } = useGameTheme();
@@ -28,193 +29,113 @@ export const BoxGraphic = ({ entity }: { entity: Entity }) => {
         rgb = colorSchema.rgb;
     }
 
-    if (theme === 'legacy') {
-        const isUnpowered = dimmed;
-        return (
-            <div style={{
-                width: 64,
-                height: 64,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-            }}>
-                <div
+    // Common overlay badges for durability, power, and color filter
+    const renderBadges = () => (
+        <>
+            {requiresPower && (
+                <span
                     style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 6,
-                        background: isUnpowered ? 'rgba(30, 40, 55, 0.9)' : 'rgba(15, 23, 35, 0.95)',
-                        border: isUnpowered ? '2px solid rgba(71, 85, 105, 0.5)' : `2px solid ${hex}`,
-                        boxShadow: isUnpowered
-                            ? 'inset 0 1px 0 rgba(71,85,105,0.15)'
-                            : `0 0 10px rgba(${rgb},0.5), 0 0 20px rgba(${rgb},0.2), inset 0 1px 0 rgba(${rgb},0.15)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        position: 'absolute',
+                        top: 3,
+                        right: 3,
+                        lineHeight: 1,
+                        color: isPowered ? '#fbbf24' : '#64748b',
+                        filter: isPowered ? 'drop-shadow(0 0 6px rgba(251,191,36,0.9))' : 'none',
                         userSelect: 'none',
-                        position: 'relative',
+                        zIndex: 5,
+                        display: 'inline-flex',
                     }}
                 >
-                    <span
-                        style={{
-                            fontSize: 16,
-                            lineHeight: 1,
-                            color: isUnpowered ? '#334155' : hex,
-                            textShadow: isUnpowered ? 'none' : `0 0 8px rgba(${rgb},0.8)`,
-                            fontWeight: 'bold',
-                            userSelect: 'none',
-                        }}
-                    >
-                        ▣
-                    </span>
-                    {requiresPower && (
-                        <span
-                            style={{
-                                position: 'absolute',
-                                top: 2,
-                                right: 3,
-                                fontSize: 11,
-                                lineHeight: 1,
-                                color: isPowered ? '#fbbf24' : '#334155',
-                                textShadow: isPowered ? '0 0 6px rgba(251,191,36,0.8)' : 'none',
-                                userSelect: 'none',
-                            }}
-                        >
-                            ⚡
-                        </span>
-                    )}
-                    {durabilityEnabled && (
-                        <span
-                            style={{
-                                position: 'absolute',
-                                bottom: 2,
-                                right: 3,
-                                fontSize: 10,
-                                lineHeight: 1,
-                                color: hex,
-                                fontWeight: 'bold',
-                                userSelect: 'none',
-                            }}
-                        >
-                            {durability}
-                        </span>
-                    )}
-                </div>
-            </div>
-        );
+                    <GameIcon name="lightning" size={12} color={isPowered ? '#fbbf24' : '#64748b'} />
+                </span>
+            )}
+            {durabilityEnabled && (
+                <span
+                    style={{
+                        position: 'absolute',
+                        bottom: 2,
+                        right: 4,
+                        fontSize: 12,
+                        lineHeight: 1,
+                        color: dimmed ? '#64748b' : hex,
+                        fontWeight: '900',
+                        fontFamily: 'monospace',
+                        userSelect: 'none',
+                        textShadow: '0 0 4px rgba(0,0,0,0.9)',
+                        zIndex: 5,
+                    }}
+                >
+                    {durability}
+                </span>
+            )}
+            {colorFilterEnabled && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 3,
+                        left: 3,
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        backgroundColor: hex,
+                        boxShadow: `0 0 5px ${hex}`,
+                        zIndex: 5,
+                    }}
+                />
+            )}
+        </>
+    );
+
+    // Dynamic background and styling per theme while preserving physical crate bevels & classic ▣ icon
+    let boxBg = dimmed ? 'rgba(26, 36, 50, 0.9)' : 'rgba(15, 23, 35, 0.95)';
+    let borderRadius = 6;
+
+    if (theme === 'arcade') {
+        boxBg = dimmed ? '#18181b' : '#27272a';
+        borderRadius = 0;
+    } else if (theme === 'neon') {
+        boxBg = dimmed ? 'rgba(8, 16, 28, 0.9)' : 'rgba(10, 22, 38, 0.95)';
+        borderRadius = 4;
+    } else if (theme === 'blueprint') {
+        boxBg = dimmed ? '#071526' : '#0c274c';
+        borderRadius = 2;
+    } else if (theme === 'cosmic') {
+        boxBg = dimmed ? '#0a0516' : '#140924';
+        borderRadius = 6;
     }
+
+    const borderColor = dimmed ? '#475569' : isPowered ? '#fbbf24' : hex;
+    const shadowGlow = dimmed 
+        ? 'inset 2px 2px 0 rgba(255,255,255,0.08), inset -2px -2px 0 #000' 
+        : `inset 2px 2px 0 rgba(255,255,255,0.22), inset -2px -2px 0 #000, 0 0 10px rgba(${rgb}, 0.4), 0 3px 6px rgba(0,0,0,0.5)`;
 
     return (
         <div style={{
-            width: 64,
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            width: 64, height: 64,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
         }}>
-            {/* Dış Kalıp - Görseldeki gibi yuvarlatılmış köşeler ve parlama */}
-            <div 
-                className={isPowered && !dimmed ? 'box-container-active' : undefined}
-                style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 10,
-                    border: `2px solid ${dimmed ? `rgba(${rgb},0.3)` : isPowered ? '#fbbf24' : hex}`,
-                    boxShadow: dimmed
-                        ? 'none'
-                        : isPowered 
-                            ? 'none' // will be animated by class
-                            : `0 0 12px rgba(${rgb},0.5), inset 0 0 6px rgba(${rgb},0.15)`,
-                    background: dimmed ? 'transparent' : `rgba(${rgb},0.02)`,
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 200ms ease-in-out',
-                    position: 'relative',
-                }}
-            >
-                {/* Merkez İkon - Görseldeki iç içe geçmiş kareler */}
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
-                    style={{ filter: dimmed ? 'none' : `drop-shadow(0 0 4px ${isPowered ? '#fbbf24' : hex})` }}
-                >
-                    {/* Dış ince kare */}
-                    <rect x="2" y="2" width="20" height="20" rx="3" 
-                        stroke={dimmed ? `rgba(${rgb},0.4)` : isPowered ? '#fbbf24' : hex} 
-                        strokeWidth="2.5" 
-                    />
-                    {/* İç dolu kare */}
-                    <rect x="8" y="8" width="8" height="8" rx="1.5" 
-                        fill={dimmed ? `rgba(${rgb},0.4)` : isPowered ? '#fbbf24' : hex} 
-                    />
-                </svg>
+            {/* Physical 3D Crate Body */}
+            <div style={{
+                width: 52, height: 52,
+                borderRadius,
+                background: boxBg,
+                border: `2px solid ${borderColor}`,
+                boxShadow: shadowGlow,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                userSelect: 'none', position: 'relative',
+            }}>
+                {/* Classic Iconic ▣ Center Symbol */}
+                <span style={{
+                    fontSize: 18, lineHeight: 1,
+                    color: dimmed ? '#475569' : hex,
+                    textShadow: dimmed ? 'none' : `0 0 8px rgba(${rgb}, 0.85)`,
+                    fontWeight: '900', userSelect: 'none',
+                }}>
+                    ▣
+                </span>
 
-                {/* Top-Left Color Filter Dot Badge */}
-                {colorFilterEnabled && (
-                    <div style={{
-                        position: 'absolute',
-                        top: -5,
-                        left: -5,
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        background: '#030712',
-                        border: `2.5px solid ${hex}`,
-                        boxShadow: `0 0 8px ${hex}`,
-                        zIndex: 2,
-                    }} />
-                )}
-
-                {/* Top-Right Power Required Indicator */}
-                {requiresPower && (
-                    <div style={{
-                        position: 'absolute',
-                        top: -7,
-                        right: -7,
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        background: '#030712',
-                        border: `1.5px solid ${isPowered ? '#fbbf24' : '#475569'}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 8,
-                        color: isPowered ? '#fbbf24' : '#475569',
-                        boxShadow: isPowered ? '0 0 8px #fbbf24' : 'none',
-                        zIndex: 2,
-                        fontWeight: 'bold',
-                    }}>
-                        ⚡
-                    </div>
-                )}
-
-                {/* Bottom-Right Durability Indicator */}
-                {durabilityEnabled && (
-                    <div style={{
-                        position: 'absolute',
-                        bottom: -7,
-                        right: -7,
-                        width: 15,
-                        height: 15,
-                        borderRadius: '50%',
-                        background: '#030712',
-                        border: `1.5px solid ${hex}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 9,
-                        fontWeight: 'bold',
-                        color: hex,
-                        boxShadow: `0 0 8px ${hex}`,
-                        zIndex: 2,
-                        fontFamily: 'monospace',
-                    }}>
-                        {durability}
-                    </div>
-                )}
+                {renderBadges()}
             </div>
         </div>
     );

@@ -39,7 +39,7 @@ src/
 * **adminClient:** Yalnızca yönetici ve moderatör yetkisine sahip kullanıcıların erişebileceği yasaklama (ban) yönetimi API isteklerini gerçekleştirir.
 
 ### 4. Reklam Adaptör Katmanı (`services/monetization`)
-* Reklam ve platform olaylarının (bölüm arası/ödüllü reklam, oynanış başladı/durdu, mutlu an) tek bir arayüzden geçtiği modül. Platform build-time `NEXT_PUBLIC_PLATFORM` env değeriyle seçilir; kodun geri kalanı platform adını değil `getCapabilities()` yeteneklerini sorgular. `src/contexts/MonetizationContext.tsx` (`useAds`/`useCapabilities`) React erişimini sağlar. Detaylar `src/services/monetization/README.md`'de.
+* Reklam ve platform olaylarının (bölüm arası/ödüllü/banner reklam, oynanış başladı/durdu, mutlu an) tek bir arayüzden geçtiği modül. Platform build-time `NEXT_PUBLIC_PLATFORM` env değeriyle seçilir; kodun geri kalanı platform adını değil `getCapabilities()` yeteneklerini sorgular. `src/contexts/MonetizationContext.tsx` (`useAds`/`useCapabilities`) React erişimini sağlar. Android build'i AdMob kullanır (`providers/admob/`, UMP rıza akışı dâhil — bkz. `docs/platforms.md`). Detaylar `src/services/monetization/README.md`'de.
 
 ### 4b. Portal Build'leri (`app/_portal`, `lib/navigation`, `services/levels`) — bkz. `.plans/monetization/02-portal-buildleri.md`
 * CrazyGames/GameDistribution build'leri tek bir statik `index.html` üretir (`next.config.ts` `assetPrefix: './'`, yalnızca bu iki platformda). `app/_portal/PortalShell.tsx`, `capabilities.inMemoryRouting` true olduğunda `app/page.tsx`'ten render edilir ve `lib/navigation`'ın bellek içi router'ına göre `app/_portal/portalRoutes.tsx` tablosundaki ekranı seçer — URL hiç değişmez.

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 import { AdminCard } from './components/AdminCard';
 import { useAdminDashboard } from './hooks/useAdminDashboard';
 
@@ -20,21 +21,21 @@ export default function AdminDashboardPage() {
       path: '/admin/level-parts',
       label: 'Level Parts',
       sub: 'Manage level groups & structure',
-      icon: '⊞', // Grid/Structure unicode
+      icon: 'grid',
       color: '#00c4ff' // Cyan
     },
     {
       path: '/admin/pending-request-levels',
       label: 'Requests',
       sub: 'Review user submitted levels',
-      icon: '⧖', // Hourglass/Pending unicode
+      icon: 'hourglass',
       color: '#ffd700' // Gold
     },
     {
       path: '/admin/support',
       label: 'Support',
       sub: 'Manage support tickets',
-      icon: '✉', // Mail/Message unicode
+      icon: 'mail',
       color: '#fbbf24', // Amber/Orange
       unreadCount: unreadTicketsCount
     },
@@ -42,21 +43,21 @@ export default function AdminDashboardPage() {
       path: '/admin/reports',
       label: 'Reports',
       sub: 'Check level complaints & issues',
-      icon: '⚠', // Warning/Report unicode
+      icon: 'warning',
       color: '#ec4899' // Pink
     },
     {
       path: '/admin/level-analytics',
       label: 'Analytics',
       sub: 'Monitor level quality & telemetry',
-      icon: '📊', // Chart/Analytics unicode
+      icon: 'bar-chart',
       color: '#10b981' // Emerald
     },
     {
       path: '/admin/users',
       label: 'Users',
       sub: 'Manage accounts & bans',
-      icon: '◈', // Core/User entity unicode
+      icon: 'user',
       color: '#9333ea' // Purple
     }
   ];
@@ -128,7 +129,7 @@ export default function AdminDashboardPage() {
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <span>◄</span>
+            <GameIcon name="arrow-left" size={12} color="#00ff88" />
             <span>BACK TO HOME</span>
           </button>
 

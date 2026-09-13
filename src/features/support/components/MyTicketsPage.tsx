@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import {
   subscribeToUserTickets,
   type SupportTicket,
@@ -106,6 +107,9 @@ export function MyTicketsPage() {
               borderRadius: '8px',
               cursor: 'pointer',
               transition: 'all 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = '#00c4ff';
@@ -118,7 +122,8 @@ export function MyTicketsPage() {
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
             }}
           >
-            ← {t('support.create_ticket')}
+            <GameIcon name="arrow-left" size={12} />
+            <span>{t('support.create_ticket')}</span>
           </button>
         </div>
 
@@ -160,7 +165,9 @@ export function MyTicketsPage() {
               boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
             }}
           >
-            <span style={{ fontSize: '36px', opacity: 0.6 }}>✉</span>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <GameIcon name="mail" size={36} color="#9ca3af" style={{ opacity: 0.6 }} />
+            </div>
             <p style={{ marginTop: '16px', fontSize: '14px', color: '#9ca3af', fontWeight: 500 }}>
               {t('support.no_tickets')}
             </p>

@@ -15,7 +15,7 @@ interface ConveyorCellRendererProps {
 }
 
 export const ConveyorCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: ConveyorCellRendererProps) => {
-    const { theme } = useGameTheme();
+    const { theme, themeConfig } = useGameTheme();
     const direction = (cell.customData.direction as Direction) ?? 'up';
     const isPowered = cell.isElectrified;
     
@@ -40,6 +40,7 @@ export const ConveyorCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: C
     }, []);
 
     const dimmed = !isPowered;
+    const accent = themeConfig.accentColor;
 
     if (theme === 'legacy') {
         return (
@@ -71,16 +72,17 @@ export const ConveyorCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: C
             style={{
                 width: 64, height: 64,
                 background: dimmed 
-                    ? 'rgba(139,92,246,0.05)' 
+                    ? 'rgba(15,23,42,0.6)' 
                     : isActiveWorking 
-                    ? 'rgba(139,92,246,0.22)' 
-                    : 'rgba(139,92,246,0.12)',
-                border: `1px solid rgba(139,92,246,${dimmed ? 0.25 : isActiveWorking ? 0.8 : 0.5})`,
+                    ? `${accent}33` 
+                    : `${accent}18`,
+                border: `1px solid ${dimmed ? 'rgba(255,255,255,0.1)' : isActiveWorking ? accent : `${accent}66`}`,
+                borderRadius: theme === 'arcade' ? 0 : 6,
                 boxShadow: dimmed 
                     ? 'inset 0 0 8px rgba(0,0,0,0.4)' 
                     : isActiveWorking
-                    ? 'inset 0 0 20px rgba(139,92,246,0.55), 0 0 14px rgba(139,92,246,0.4)'
-                    : 'inset 0 0 12px rgba(139,92,246,0.25), 0 0 8px rgba(139,92,246,0.15)',
+                    ? `inset 0 0 20px ${accent}80, 0 0 14px ${accent}66`
+                    : `inset 0 0 12px ${accent}33, 0 0 8px ${accent}20`,
                 boxSizing: 'border-box',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 position: 'relative',
@@ -92,13 +94,13 @@ export const ConveyorCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: C
                 width={35} height={35}
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={dimmed ? '#5b3f8a' : isActiveWorking ? '#f5f3ff' : '#c4b5fd'}
+                stroke={dimmed ? '#475569' : isActiveWorking ? '#ffffff' : accent}
                 strokeWidth={isActiveWorking ? "3.2" : "2.5"}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{
                     transform: `rotate(${ROTATION[direction]})`,
-                    filter: dimmed ? 'none' : isActiveWorking ? 'drop-shadow(0 0 8px rgba(167,139,250,1))' : 'drop-shadow(0 0 6px rgba(196,181,253,0.85))',
+                    filter: dimmed ? 'none' : isActiveWorking ? `drop-shadow(0 0 8px ${accent})` : `drop-shadow(0 0 6px ${accent}aa)`,
                     transition: 'stroke-width 200ms ease, stroke 200ms ease, filter 200ms ease',
                 }}
             >

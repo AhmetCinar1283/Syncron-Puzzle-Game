@@ -1,5 +1,7 @@
 'use client';
 
+import { GameIcon } from '@/components/icons';
+
 export interface LevelsHUDProps {
   isMobile: boolean;
   activeTab: 'campaign' | 'custom';
@@ -63,7 +65,7 @@ export function LevelsHUD({
       <div className="flex items-center gap-1.5">
         {totalScore > 0 && (
           <div className="flex items-center gap-1 rounded-lg border border-yellow-400/20 bg-yellow-400/[0.06] px-2 py-1 text-[11px] font-extrabold text-yellow-400">
-            <span>🏆</span>
+            <GameIcon name="trophy" size={14} color="#facc15" />
             <span>{totalScore}</span>
           </div>
         )}

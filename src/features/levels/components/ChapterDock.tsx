@@ -1,5 +1,7 @@
 'use client';
 
+import { GameIcon } from '@/components/icons';
+
 export interface ChapterInfo {
   id: string;
   name: string;
@@ -69,8 +71,9 @@ export function ChapterDock({
                       style={{ width: `${pct}%`, background: isActive ? '#ffd700' : '#00ff88' }}
                     />
                   </div>
-                  <span className="text-[9px] font-bold tabular-nums" style={{ color: isActive ? '#ffd700' : '#475569' }}>
-                    ★{c.completed}/{c.total}
+                  <span className="flex items-center gap-0.5 text-[9px] font-bold tabular-nums" style={{ color: isActive ? '#ffd700' : '#475569' }}>
+                    <GameIcon name="star" size={10} color={isActive ? '#ffd700' : '#475569'} />
+                    {c.completed}/{c.total}
                   </span>
                 </div>
               )}
@@ -83,16 +86,20 @@ export function ChapterDock({
         <button
           onClick={onJumpToCurrent}
           title="Kaldığım seviyeye git"
-          className="relative flex h-10 w-10 items-center justify-center rounded-full border border-yellow-400/30 bg-white/[0.04] text-base text-yellow-400"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full border border-yellow-400/30 bg-white/[0.04] text-yellow-400"
         >
-          🎯
+          <GameIcon name="target" size={20} color="#facc15" />
         </button>
         <button
           onClick={onToggleView}
           title={viewMode === 'map' ? 'Liste görünümü' : 'Harita görünümü'}
-          className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-white/[0.04] text-base text-emerald-400"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-white/[0.04] text-emerald-400"
         >
-          {viewMode === 'map' ? '📋' : '🗺️'}
+          {viewMode === 'map' ? (
+            <GameIcon name="clipboard" size={18} color="#34d399" />
+          ) : (
+            <GameIcon name="map" size={18} color="#34d399" />
+          )}
           {isGamepadConnected && (
             <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#030712] bg-sky-400 text-[8px] font-black text-[#030712]">
               Y

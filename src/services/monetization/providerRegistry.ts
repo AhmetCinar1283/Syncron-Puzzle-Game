@@ -9,11 +9,10 @@ import type { AdProvider, PlatformId } from './types';
 
 type ProviderLoader = () => Promise<AdProvider>;
 
-// AdMob sağlayıcısı Görev 03'te eklenecek; o güne kadar android da noop'a düşer.
 const PROVIDER_LOADERS: Record<PlatformId, ProviderLoader> = {
   web: async () => (await import('./providers/noopProvider')).noopProvider,
   electron: async () => (await import('./providers/noopProvider')).noopProvider,
-  android: async () => (await import('./providers/noopProvider')).noopProvider,
+  android: async () => (await import('./providers/admob/admobProvider')).admobProvider,
   crazygames: async () => (await import('./providers/crazygames/crazyGamesProvider')).crazyGamesProvider,
   gamedistribution: async () => (await import('./providers/gamedistribution/gameDistributionProvider')).gameDistributionProvider,
   mock: async () => (await import('./providers/mock/mockProvider')).mockProvider,

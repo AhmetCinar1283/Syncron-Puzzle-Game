@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 import {
   type TicketCategory,
   CATEGORY_LABELS,
@@ -105,7 +106,7 @@ export function TicketForm({
             gap: '10px',
           }}
         >
-          <span>✕</span>
+          <GameIcon name="close" size={14} color="#ec4899" />
           <span>{errorMsg}</span>
         </div>
       )}

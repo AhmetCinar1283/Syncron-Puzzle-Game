@@ -1,4 +1,5 @@
 import { useEditorContext } from '../../EditorContext';
+import { GameIcon } from '@/components/icons';
 
 /** "ROOMS:" tab strip — switch/rename/delete rooms and "+ Add Room". */
 export default function RoomTabs() {
@@ -66,7 +67,7 @@ export default function RoomTabs() {
                 }}
                 title="Delete room"
               >
-                ✕
+                <GameIcon name="close" size={10} />
               </button>
             )}
           </div>
@@ -84,9 +85,12 @@ export default function RoomTabs() {
           fontWeight: 600,
           cursor: 'pointer',
           transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
         }}
       >
-        + Add Room
+        <GameIcon name="plus" size={11} /> Add Room
       </button>
     </div>
   );

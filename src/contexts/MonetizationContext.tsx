@@ -6,7 +6,7 @@
  */
 'use client';
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import {
   CURRENT_PLATFORM,
   adService,
@@ -30,16 +30,20 @@ interface MonetizationContextType {
   gameplayStop: () => Promise<void>;
   /** "Mutlu an" bildirimi (level tamamlandı gibi). */
   happyTime: () => Promise<void>;
-  /** Reklam sıklığı politikasının sayaçlarını ilerletir. */
-  recordLevelCompleted: () => void;
-  /** Oyuncunun kalıcı toplam tamamlama sayısını "ilk 5 level" kuralı için senkronlar. */
-  syncCompletedTotal: (persistedTotal: number) => void;
+  /** Bir level bittiğinde (kazanma VEYA restart/ölüm) sıklık sayacını ilerletir. */
+  recordLevelFinished: () => void;
   /** Politikaya göre uygunsa bölüm arası reklamı gösterir; her zaman çözülür. */
   requestInterstitial: (ctx?: InterstitialRequestContext) => Promise<InterstitialResult>;
   /** Ödüllü reklamı gösterir; her zaman çözülür. */
   showRewarded: () => Promise<RewardedResult>;
   /** Reklam gösterimi öncesi/sonrası bildirim alır (ör. ses kısma). Aboneliği kaldıran fonksiyonu döner. */
   onAdEvent: (listener: AdEventListener) => () => void;
+  /** Kalıcı alt banner'ı gösterir (platform destekliyorsa). */
+  showBanner: () => Promise<void>;
+  /** Kalıcı alt banner'ı gizler. */
+  hideBanner: () => Promise<void>;
+  /** Banner yüksekliği (CSS px) değiştiğinde haber verir; 0 = banner yok. */
+  onBannerHeight: (listener: (heightPx: number) => void) => () => void;
 }
 
 const MonetizationContext = createContext<MonetizationContextType | undefined>(undefined);
@@ -54,14 +58,22 @@ export function MonetizationProvider({ children }: { children: React.ReactNode }
       gameplayStart: () => adService.gameplayStart(),
       gameplayStop: () => adService.gameplayStop(),
       happyTime: () => adService.happyTime(),
-      recordLevelCompleted: () => adService.recordLevelCompleted(),
-      syncCompletedTotal: (persistedTotal) => adService.syncCompletedTotal(persistedTotal),
+      recordLevelFinished: () => adService.recordLevelFinished(),
       requestInterstitial: (ctx) => adService.requestInterstitial(ctx),
       showRewarded: () => adService.showRewarded(),
       onAdEvent: (listener) => adService.onAdEvent(listener),
+      showBanner: () => adService.showBanner(),
+      hideBanner: () => adService.hideBanner(),
+      onBannerHeight: (listener) => adService.onBannerHeight(listener),
     }),
     [],
   );
+
+  // Sağlayıcıyı erken başlat: Android'de rıza (UMP) akışının İLK AÇILIŞTA
+  // çalışması buna bağlı; diğer platformlarda zararsız bir no-op.
+  useEffect(() => {
+    adService.prewarm();
+  }, []);
 
   return <MonetizationContext.Provider value={value}>{children}</MonetizationContext.Provider>;
 }

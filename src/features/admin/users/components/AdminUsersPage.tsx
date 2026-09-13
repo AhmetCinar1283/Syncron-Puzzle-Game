@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import { AdminGuard } from '@/components/common/AdminGuard';
 import { useAdminUsersDirectory } from '../hooks/useAdminUsersDirectory';
 import { UserDirectoryCard } from './UserDirectoryCard';
@@ -59,11 +60,15 @@ export function AdminUsersPage() {
               cursor: 'pointer',
               letterSpacing: '0.06em',
               transition: 'color 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#9333ea')}
             onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
           >
-            {isTr ? '◄ ADMİN PANELİ' : '◄ ADMIN PANEL'}
+            <GameIcon name="arrow-left" size={11} color="currentColor" />
+            <span>{isTr ? 'ADMİN PANELİ' : 'ADMIN PANEL'}</span>
           </button>
 
           <h1
@@ -112,8 +117,7 @@ export function AdminUsersPage() {
             }}
           >
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              {/* Purple Search Magnifier unicode */}
-              <span style={{ fontSize: '18px', color: '#9333ea', textShadow: '0 0 8px rgba(147, 51, 234, 0.5)' }}>⚲</span>
+              <GameIcon name="search" size={18} color="#9333ea" />
               <input
                 type="text"
                 value={searchQuery}
@@ -139,11 +143,13 @@ export function AdminUsersPage() {
                 onBlur={(e) => (e.currentTarget.style.border = '1px solid rgba(147, 51, 234, 0.25)')}
               />
             </div>
-            <div style={{ fontSize: '10px', color: '#475569', letterSpacing: '0.04em' }}>
-              💡{' '}
-              {isTr
-                ? 'İpuçları: Tam email adresi, GamerTag (# ile) veya tam UID yazarak anında nokta atışı yapabilirsiniz.'
-                : 'Tips: Type exact email, GamerTag (with # prefix), or full UID to perform a high-performance direct match.'}
+            <div style={{ fontSize: '10px', color: '#475569', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <GameIcon name="lightbulb" size={12} color="#ffd700" />
+              <span>
+                {isTr
+                  ? 'İpuçları: Tam email adresi, GamerTag (# ile) veya tam UID yazarak anında nokta atışı yapabilirsiniz.'
+                  : 'Tips: Type exact email, GamerTag (with # prefix), or full UID to perform a high-performance direct match.'}
+              </span>
             </div>
           </div>
 

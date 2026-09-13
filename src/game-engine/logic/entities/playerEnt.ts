@@ -64,7 +64,7 @@ export const playerBehavior: EntityBehavior = {
                 id: `hold_cable:${self.id}`,
                 actionType: 'hold_cable',
                 label: `Hold Cable (${playerLabel})`,
-                icon: '🔌',
+                icon: 'plug',
                 target: { type: 'entity', id: self.id },
             });
         }
@@ -74,7 +74,7 @@ export const playerBehavior: EntityBehavior = {
                 id: `release_cable:${self.id}`,
                 actionType: 'release_cable',
                 label: `Release Cable (${playerLabel})`,
-                icon: '🚫',
+                icon: 'ban',
                 target: { type: 'entity', id: self.id },
             });
         }

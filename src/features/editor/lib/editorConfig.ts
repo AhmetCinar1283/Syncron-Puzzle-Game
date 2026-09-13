@@ -106,26 +106,26 @@ export const CELL_LABEL = new Proxy(RAW_CELL_LABEL, {
 }) as unknown as Record<string, string>;
 
 const RAW_CELL_ICON: Record<string, string> = {
-  empty: '▫', obstacle: '■', forbidden: '✕',
-  target_1: '◎', target_2: '◎', direction_toggle: '⇄', control_switch: '❖', direction_deflector: '⤭', erase: '⌫',
-  ice: '❄',
-  power_node: '⚡',
-  conveyor_up: '▲', conveyor_down: '▼', conveyor_left: '◄', conveyor_right: '►',
-  teleporter_in_A: '⟿A', teleporter_out_A: '⟾A',
-  teleporter_in_B: '⟿B', teleporter_out_B: '⟾B',
-  teleporter_in_C: '⟿C', teleporter_out_C: '⟾C',
-  trampoline_up: '▲', trampoline_down: '▼', trampoline_left: '◄', trampoline_right: '►',
+  empty: 'dot', obstacle: 'wall', forbidden: 'skull',
+  target_1: 'target', target_2: 'target', direction_toggle: 'switch', control_switch: 'switch', direction_deflector: 'deflector', erase: 'trash',
+  ice: 'ice',
+  power_node: 'lightning',
+  conveyor_up: 'arrow-up', conveyor_down: 'arrow-down', conveyor_left: 'arrow-left', conveyor_right: 'arrow-right',
+  teleporter_in_A: 'portal', teleporter_out_A: 'portal',
+  teleporter_in_B: 'portal', teleporter_out_B: 'portal',
+  teleporter_in_C: 'portal', teleporter_out_C: 'portal',
+  trampoline_up: 'arrow-up', trampoline_down: 'arrow-down', trampoline_left: 'arrow-left', trampoline_right: 'arrow-right',
 };
 
 export const CELL_ICON = new Proxy(RAW_CELL_ICON, {
   get(target, prop: string) {
     if (prop in target) return target[prop];
-    if (prop.startsWith('target_')) return '◎';
+    if (prop.startsWith('target_')) return 'target';
     if (prop.startsWith('teleporter_in_')) {
-      return `⟿${prop.substring('teleporter_in_'.length)}`;
+      return 'portal';
     }
     if (prop.startsWith('teleporter_out_')) {
-      return `⟾${prop.substring('teleporter_out_'.length)}`;
+      return 'portal';
     }
     return prop;
   }

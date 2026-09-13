@@ -50,7 +50,7 @@ export default function EditorScreen() {
 
   return (
     <EditorContextProvider value={ctxValue}>
-      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#030712', color: '#e2e8f0', overflow: 'hidden' }}>
+      <div className="h-[100dvh]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#030712', color: '#e2e8f0', overflow: 'hidden' }}>
 
         {/* Top bar */}
         <EditorTopBar editId={editId} isMobile={isMobile} />
@@ -116,7 +116,7 @@ export default function EditorScreen() {
 /** Suspense fallback used by the route (unchanged markup). */
 export function EditorLoadingFallback() {
   return (
-    <div style={{ height: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="h-[100dvh]" style={{ height: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ color: '#1e3a5f', fontSize: 12, letterSpacing: '0.1em' }}>LOADING...</span>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import type { UserProfileData } from '../lib/types';
+import { GameIcon } from '@/components/icons';
 
 export function ProfileSummaryPanel({ profile, isTr }: { profile: UserProfileData; isTr: boolean }) {
   return (
@@ -66,7 +67,10 @@ export function ProfileSummaryPanel({ profile, isTr }: { profile: UserProfileDat
         <span style={{ fontSize: '10px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {isTr ? 'BAĞLANTI TÜRÜ' : 'AUTH PROVIDER'}
         </span>
-        <span style={{ fontSize: '13px', color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>⚡ {profile.authProvider}</span>
+        <span style={{ fontSize: '13px', color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <GameIcon name="lightning" size={12} color="#fbbf24" />
+          <span>{profile.authProvider}</span>
+        </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -79,9 +83,17 @@ export function ProfileSummaryPanel({ profile, isTr }: { profile: UserProfileDat
             color: profile.role === 'admin' ? '#ec4899' : profile.role === 'moderator' ? '#00c4ff' : '#94a3b8',
             fontWeight: 800,
             textTransform: 'uppercase',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
           }}
         >
-          ✦ {profile.role}
+          <GameIcon
+            name="sparkles"
+            size={12}
+            color={profile.role === 'admin' ? '#ec4899' : profile.role === 'moderator' ? '#00c4ff' : '#94a3b8'}
+          />
+          <span>{profile.role}</span>
         </span>
       </div>
 
@@ -89,8 +101,9 @@ export function ProfileSummaryPanel({ profile, isTr }: { profile: UserProfileDat
         <span style={{ fontSize: '10px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {isTr ? 'TOPLAM PUAN' : 'TOTAL SCORE'}
         </span>
-        <span style={{ fontSize: '16px', color: '#00ff88', fontWeight: 900, textShadow: '0 0 8px rgba(0,255,136,0.3)' }}>
-          🏆 {profile.totalScore}
+        <span style={{ fontSize: '16px', color: '#00ff88', fontWeight: 900, textShadow: '0 0 8px rgba(0,255,136,0.3)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <GameIcon name="trophy" size={14} color="#00ff88" />
+          <span>{profile.totalScore}</span>
         </span>
       </div>
 
@@ -98,8 +111,9 @@ export function ProfileSummaryPanel({ profile, isTr }: { profile: UserProfileDat
         <span style={{ fontSize: '10px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {isTr ? 'BİTEN SEVİYE' : 'COMPLETED LEVELS'}
         </span>
-        <span style={{ fontSize: '16px', color: '#00c4ff', fontWeight: 900, textShadow: '0 0 8px rgba(0,196,255,0.3)' }}>
-          🏁 {profile.completedCount}
+        <span style={{ fontSize: '16px', color: '#00c4ff', fontWeight: 900, textShadow: '0 0 8px rgba(0,196,255,0.3)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <GameIcon name="flag" size={14} color="#00c4ff" />
+          <span>{profile.completedCount}</span>
         </span>
       </div>
     </section>

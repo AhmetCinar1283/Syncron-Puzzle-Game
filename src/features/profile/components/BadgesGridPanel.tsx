@@ -1,6 +1,7 @@
 'use client';
 
 import BadgeIcon from '@/components/common/BadgeIcon';
+import { GameIcon } from '@/components/icons';
 import { Badge } from '@/services/api/badgesClient';
 
 interface Props {
@@ -48,7 +49,10 @@ export default function BadgesGridPanel({ t, loadingBadges, badgesError, badges 
           />
         </div>
       ) : badgesError ? (
-        <p style={{ color: '#ff2d55', fontSize: '12px', margin: 0 }}>⚠️ {badgesError}</p>
+        <p style={{ color: '#ff2d55', fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <GameIcon name="warning" size={14} color="#ff2d55" />
+          <span>{badgesError}</span>
+        </p>
       ) : badges.length > 0 ? (
         <div
           style={{

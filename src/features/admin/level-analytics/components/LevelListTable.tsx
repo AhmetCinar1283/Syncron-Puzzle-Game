@@ -1,6 +1,7 @@
 'use client';
 
 import type { AlertRule } from '@/services/firebase/adminLevelAnalytics';
+import { GameIcon } from '@/components/icons';
 import { getViolatedRules } from '../lib/ruleEngine';
 import type { LevelStats, StoredLevelInfo } from '../lib/types';
 
@@ -108,12 +109,19 @@ export function LevelListTable({
                           borderRadius: 100,
                           boxShadow: '0 0 10px rgba(239, 68, 68, 0.15)',
                           animation: 'pulse 2s infinite',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
-                        ⚠️ UYARI ({violated.length})
+                        <GameIcon name="warning" size={12} color="#ef4444" />
+                        <span>UYARI ({violated.length})</span>
                       </span>
                     ) : totalAttempts > 0 ? (
-                      <span style={{ color: '#10b981', fontSize: 11, fontWeight: 700 }}>✓ STABİL</span>
+                      <span style={{ color: '#10b981', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <GameIcon name="check" size={12} color="#10b981" />
+                        <span>STABİL</span>
+                      </span>
                     ) : (
                       <span style={{ color: '#4b5563', fontSize: 11 }}>VERİ YOK</span>
                     )}

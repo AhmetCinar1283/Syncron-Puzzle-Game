@@ -15,7 +15,7 @@ interface TrampolineCellRendererProps {
 }
 
 export const TrampolineCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: TrampolineCellRendererProps) => {
-    const { theme } = useGameTheme();
+    const { theme, themeConfig } = useGameTheme();
     const direction = (cell.customData.direction as Direction) ?? 'up';
     
     const [isActivelyBouncing, setIsActivelyBouncing] = useState(false);
@@ -37,6 +37,9 @@ export const TrampolineCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }:
             if (timerRef.current) clearTimeout(timerRef.current);
         };
     }, []);
+
+    const bounceColor = theme === 'arcade' ? '#facc15' : theme === 'cosmic' ? '#a78bfa' : theme === 'blueprint' ? '#38bdf8' : '#22d3ee';
+    const borderRadius = theme === 'arcade' ? 0 : theme === 'blueprint' ? 2 : 6;
 
     if (theme === 'legacy') {
         return (
@@ -70,11 +73,11 @@ export const TrampolineCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }:
                 width: 64,
                 height: 64,
                 background: isActivelyBouncing ? 'rgba(15, 23, 42, 0.9)' : 'rgba(15, 23, 42, 0.7)',
-                border: `2px solid ${isActivelyBouncing ? '#67e8f9' : '#22d3ee'}`,
-                borderRadius: '10px',
+                border: `2px solid ${isActivelyBouncing ? '#ffffff' : bounceColor}`,
+                borderRadius,
                 boxShadow: isActivelyBouncing
-                    ? 'inset 0 0 24px rgba(34,211,238,0.55), 0 0 16px rgba(34,211,238,0.45)'
-                    : 'inset 0 0 16px rgba(34,211,238,0.25), 0 0 10px rgba(34,211,238,0.2)',
+                    ? `inset 0 0 24px ${bounceColor}88, 0 0 16px ${bounceColor}66`
+                    : `inset 0 0 16px ${bounceColor}40, 0 0 10px ${bounceColor}25`,
                 boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',

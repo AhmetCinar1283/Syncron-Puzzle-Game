@@ -1,5 +1,6 @@
 'use client';
 
+import { GameIcon } from '@/components/icons';
 import type { LevelStats, StoredLevelInfo } from '../lib/types';
 
 function getDifficultyLabel(diffVal: number | undefined) {
@@ -37,9 +38,9 @@ export function DifficultyGapPanel({
   if (selectedLevel.difficulty && playerDiffLabel) {
     const designerVal = selectedLevel.difficulty;
     if (designerVal <= 2 && playerDiffLabel === 'ZOR') {
-      gapWarning = `⚠️ ZORLUK UYUMSUZLUĞU: Tasarımcı bu bölümü "${designerDiffLabel}" planlamış ancak oyuncular çoğunlukla "ZOR" olarak oylamış! Seviye tasarımını hafifletmeyi düşünebilirsiniz.`;
+      gapWarning = `ZORLUK UYUMSUZLUĞU: Tasarımcı bu bölümü "${designerDiffLabel}" planlamış ancak oyuncular çoğunlukla "ZOR" olarak oylamış! Seviye tasarımını hafifletmeyi düşünebilirsiniz.`;
     } else if (designerVal >= 3 && playerDiffLabel === 'KOLAY') {
-      gapWarning = `⚠️ ZORLUK UYUMSUZLUĞU: Tasarımcı bu bölümü "${designerDiffLabel}" planlamış ancak oyuncular çoğunlukla "KOLAY" olarak oylamış! Seviyeyi biraz daha zorlaştırmayı düşünebilirsiniz.`;
+      gapWarning = `ZORLUK UYUMSUZLUĞU: Tasarımcı bu bölümü "${designerDiffLabel}" planlamış ancak oyuncular çoğunlukla "KOLAY" olarak oylamış! Seviyeyi biraz daha zorlaştırmayı düşünebilirsiniz.`;
     }
   }
 
@@ -73,8 +74,9 @@ export function DifficultyGapPanel({
       </div>
 
       {gapWarning && (
-        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 10, padding: '10px 14px', fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>
-          {gapWarning}
+        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 10, padding: '10px 14px', fontSize: 11, color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <GameIcon name="warning" size={14} color="#f59e0b" />
+          <span>{gapWarning}</span>
         </div>
       )}
 

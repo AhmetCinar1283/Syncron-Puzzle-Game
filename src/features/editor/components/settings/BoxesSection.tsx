@@ -4,6 +4,7 @@ import { useEditorContext } from '../../EditorContext';
 import { useT } from '@/contexts/LanguageContext';
 import type { BoxConfig } from '../../lib/editorConfig';
 import { SectionHeading } from './settingsShared';
+import { GameIcon } from '@/components/icons';
 
 /** Per-box cards: place/clear/delete, power requirement, durability, color filter. */
 export default function BoxesSection() {
@@ -28,19 +29,21 @@ export default function BoxesSection() {
               borderRadius: 8,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: '#f97316', fontWeight: 700 }}>▣</span>
+                <span style={{ fontSize: 11, color: '#f97316', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
+                  <GameIcon name="box" size={12} />
+                </span>
                 <button
                   onClick={() => setBoxes((bs) => bs.filter((b) => b.id !== box.id))}
-                  style={{ fontSize: 10, background: 'none', border: 'none', color: '#334155', cursor: 'pointer' }}
-                >✕</button>
+                  style={{ fontSize: 10, background: 'none', border: 'none', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                ><GameIcon name="close" size={10} /></button>
               </div>
-              <div style={{ fontSize: 10, color: box.row !== null ? '#f97316' : '#334155', marginBottom: 6 }}>
+              <div style={{ fontSize: 10, color: box.row !== null ? '#f97316' : '#334155', marginBottom: 6, display: 'flex', alignItems: 'center' }}>
                 {box.row !== null ? `(${box.row}, ${box.col})` : t('editor.not_placed')}
                 {box.row !== null && (
                   <button
                     onClick={() => patchBox(box.id, { row: null, col: null })}
-                    style={{ marginLeft: 4, fontSize: 9, background: 'none', border: 'none', color: '#334155', cursor: 'pointer' }}
-                  >✕</button>
+                    style={{ marginLeft: 4, fontSize: 9, background: 'none', border: 'none', color: '#334155', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                  ><GameIcon name="close" size={9} /></button>
                 )}
               </div>
               <button
@@ -62,7 +65,9 @@ export default function BoxesSection() {
                   onChange={(e) => patchBox(box.id, { requiresPower: e.target.checked })}
                   style={{ accentColor: '#fbbf24', width: 11, height: 11 }}
                 />
-                <span style={{ fontSize: 9, color: box.requiresPower ? '#fbbf24' : '#475569' }}>⚡ {t('editor.box_needs_power')}</span>
+                <span style={{ fontSize: 9, color: box.requiresPower ? '#fbbf24' : '#475569', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <GameIcon name="lightning" size={10} /> {t('editor.box_needs_power')}
+                </span>
               </label>
 
               {/* Durability Setting */}
@@ -72,7 +77,9 @@ export default function BoxesSection() {
                   onChange={(e) => patchBox(box.id, { durabilityEnabled: e.target.checked })}
                   style={{ accentColor: '#ef4444', width: 11, height: 11 }}
                 />
-                <span style={{ fontSize: 9, color: box.durabilityEnabled ? '#ef4444' : '#475569' }}>🪵 Kırılgan Yap</span>
+                <span style={{ fontSize: 9, color: box.durabilityEnabled ? '#ef4444' : '#475569', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <GameIcon name="wood" size={10} /> Kırılgan Yap
+                </span>
               </label>
               {box.durabilityEnabled && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, marginLeft: 16 }}>
@@ -100,7 +107,9 @@ export default function BoxesSection() {
                   onChange={(e) => patchBox(box.id, { colorFilterEnabled: e.target.checked })}
                   style={{ accentColor: '#00c4ff', width: 11, height: 11 }}
                 />
-                <span style={{ fontSize: 9, color: box.colorFilterEnabled ? '#00c4ff' : '#475569' }}>🎨 Renk Filtresi</span>
+                <span style={{ fontSize: 9, color: box.colorFilterEnabled ? '#00c4ff' : '#475569', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <GameIcon name="palette" size={10} /> Renk Filtresi
+                </span>
               </label>
               {box.colorFilterEnabled && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, marginLeft: 16 }}>

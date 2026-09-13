@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 import type { AdminUserProfile as UserProfile } from '@/services/firebase/adminUsers';
 
 export function UserDirectoryCard({
@@ -86,7 +87,7 @@ export function UserDirectoryCard({
 
       {/* Email or Anonymous Notice */}
       <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span>✉</span>
+        <GameIcon name="mail" size={12} color="#94a3b8" />
         <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
           {u.email || (isTr ? 'Anonim Giriş (E-posta yok)' : 'Anonymous Session (No Email)')}
         </span>
@@ -150,11 +151,13 @@ export function UserDirectoryCard({
 
         {/* Score and Completion Metrics */}
         <span style={{ fontSize: '11px', color: '#64748b', marginLeft: 'auto', display: 'flex', gap: '10px' }}>
-          <span>
-            🏆 <b>{u.totalScore}</b>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <GameIcon name="trophy" size={11} color="#00ff88" />
+            <b>{u.totalScore}</b>
           </span>
-          <span>
-            🏁 <b>{u.completedCount}</b>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <GameIcon name="flag" size={11} color="#00c4ff" />
+            <b>{u.completedCount}</b>
           </span>
         </span>
       </div>
@@ -162,7 +165,10 @@ export function UserDirectoryCard({
       {/* Joined Date Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#475569' }}>
         <span>{isTr ? `Kayıt: ${dateStr}` : `Registered: ${dateStr}`}</span>
-        <span style={{ color: '#9333ea', fontWeight: 800 }}>{isTr ? 'GÖRÜNTÜLE ➔' : 'VIEW WORKSPACE ➔'}</span>
+        <span style={{ color: '#9333ea', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span>{isTr ? 'GÖRÜNTÜLE' : 'VIEW WORKSPACE'}</span>
+          <GameIcon name="arrow-right" size={10} color="#9333ea" />
+        </span>
       </div>
     </motion.div>
   );

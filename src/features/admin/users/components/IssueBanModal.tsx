@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 import { getMinDateTime } from '../lib/format';
 
 type BanType = 'platform' | 'tag' | 'social' | 'coop';
@@ -74,8 +75,9 @@ export function IssueBanModal({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.05em' }}>
-                🚫 {isTr ? 'YENİ BAN / KISITLAMA TANIMLA' : 'ISSUE NEW RESTRICTION'}
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <GameIcon name="ban" size={16} color="#ef4444" />
+                <span>{isTr ? 'YENİ BAN / KISITLAMA TANIMLA' : 'ISSUE NEW RESTRICTION'}</span>
               </h3>
               <button
                 onClick={onClose}
@@ -83,17 +85,21 @@ export function IssueBanModal({
                   background: 'none',
                   border: 'none',
                   color: '#475569',
-                  fontSize: '18px',
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 4,
                 }}
               >
-                ✕
+                <GameIcon name="close" size={14} color="#475569" />
               </button>
             </div>
 
             {banError && (
-              <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px' }}>
-                ⚠️ {banError}
+              <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <GameIcon name="warning" size={14} color="#f87171" />
+                <span>{banError}</span>
               </div>
             )}
 

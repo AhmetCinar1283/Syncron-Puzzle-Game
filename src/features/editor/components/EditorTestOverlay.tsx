@@ -22,7 +22,20 @@ interface EditorTestOverlayProps {
 export default function EditorTestOverlay({ testLevel, setTestLevel, solutionSteps }: EditorTestOverlayProps) {
   const asStored = testLevel as unknown as ConverterInput;
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#030712', zIndex: 100, display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="ad-banner-inset"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: '#030712',
+        zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PlayScreen
         key={testLevel.id}
         levelName={testLevel.name}

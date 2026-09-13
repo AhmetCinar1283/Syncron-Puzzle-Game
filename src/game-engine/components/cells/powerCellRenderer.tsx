@@ -1,6 +1,7 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
 import { useGameTheme } from '../../contexts/GameThemeContext';
+import { GameIcon } from '@/components/icons';
 
 interface PowerCellRendererProps {
     cell: Cell;
@@ -10,7 +11,6 @@ interface PowerCellRendererProps {
 
 export const PowerCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: PowerCellRendererProps) => {
     const { theme } = useGameTheme();
-    // Aktif çalışma modu: hücre üzerinde bir nesne varken VEYA yeni ayrılmışken!
     const isOccupied = entityOnCell !== null || prevEntityOnCell !== null;
 
     if (theme === 'legacy') {
@@ -19,28 +19,35 @@ export const PowerCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: Powe
                 width: 64,
                 height: 64,
                 background: 'rgba(251, 191, 36, 0.12)',
-                border: '1px solid rgba(251, 191, 36, 0.6)',
-                boxShadow: 'inset 0 0 14px rgba(251, 191, 36, 0.2), 0 0 8px rgba(251, 191, 36, 0.15)',
+                border: '1px solid rgba(251, 191, 36, 0.5)',
+                boxShadow: 'inset 0 0 12px rgba(251, 191, 36, 0.25)',
                 boxSizing: 'border-box',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
             }}>
-                <span
-                    style={{
-                        fontSize: 19,
-                        lineHeight: 1,
-                        color: '#fbbf24',
-                        textShadow: '0 0 10px rgba(251,191,36,0.9)',
-                        userSelect: 'none',
-                        fontWeight: 'bold',
-                    }}
-                >
-                    ⚡
-                </span>
+                <GameIcon name="lightning" size={20} color="#fbbf24" style={{ filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.9))' }} />
             </div>
         );
+    }
+
+    let powerColor = '#fbbf24';
+    let powerActiveColor = '#fef08a';
+    let powerIcon = '⚡';
+    let borderRadius = '8px';
+
+    if (theme === 'cosmic') {
+        powerColor = '#a78bfa';
+        powerActiveColor = '#ede9fe';
+    } else if (theme === 'blueprint') {
+        powerColor = '#38bdf8';
+        powerActiveColor = '#bae6fd';
+        borderRadius = '2px';
+    } else if (theme === 'arcade') {
+        powerColor = '#facc15';
+        powerActiveColor = '#ffffff';
+        borderRadius = '0px';
     }
 
     return (
@@ -50,11 +57,11 @@ export const PowerCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: Powe
                 width: 64,
                 height: 64,
                 background: isOccupied ? 'rgba(15, 23, 42, 0.9)' : 'rgba(15, 23, 42, 0.75)',
-                border: isOccupied ? '2px solid #fef08a' : '2px solid #fbbf24',
-                borderRadius: '8px',
+                border: isOccupied ? `2px solid ${powerActiveColor}` : `2px solid ${powerColor}`,
+                borderRadius,
                 boxShadow: isOccupied
-                    ? 'inset 0 0 24px rgba(251,191,36,0.75), 0 0 16px rgba(251,191,36,0.55)'
-                    : 'inset 0 0 16px rgba(251,191,36,0.3), 0 0 12px rgba(251,191,36,0.25)',
+                    ? `inset 0 0 24px ${powerColor}80, 0 0 16px ${powerColor}60`
+                    : `inset 0 0 16px ${powerColor}40, 0 0 10px ${powerColor}30`,
                 boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',
@@ -65,28 +72,27 @@ export const PowerCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: Powe
             }}
         >
             <div 
-                className={isOccupied ? 'power-ring-active' : undefined} 
                 style={{
                     position: 'absolute',
                     width: 44,
                     height: 44,
-                    borderRadius: '50%',
-                    border: `2px solid ${isOccupied ? 'rgba(251,191,36,0.85)' : 'rgba(251,191,36,0.45)'}`,
+                    borderRadius: theme === 'arcade' ? 0 : '50%',
+                    border: `1.5px solid ${isOccupied ? `${powerColor}dd` : `${powerColor}55`}`,
                     pointerEvents: 'none',
                 }}
             />
             <span 
-                className={isOccupied ? 'power-bolt-active' : undefined}
                 style={{
-                    fontSize: 24,
-                    color: isOccupied ? '#fef08a' : '#fbbf24',
-                    textShadow: '0 0 10px rgba(251,191,36,0.9), 0 0 20px rgba(251,191,36,0.4)',
+                    color: isOccupied ? powerActiveColor : powerColor,
+                    filter: `drop-shadow(0 0 8px ${powerColor})`,
                     userSelect: 'none',
                     zIndex: 1,
-                    display: 'inline-block',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                 }}
             >
-                ⚡
+                <GameIcon name="lightning" size={24} color={isOccupied ? powerActiveColor : powerColor} />
             </span>
         </div>
     );

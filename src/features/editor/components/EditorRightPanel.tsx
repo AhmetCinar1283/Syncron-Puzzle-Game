@@ -6,6 +6,7 @@ import { Sec, Lbl, NBtn, iStyle } from './EditorUI';
 import { DIFFICULTY_COLORS } from '../lib/editorConfig';
 import { useEditorContext } from '../EditorContext';
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 
 export default function EditorRightPanel({ isMobile, visible }: { isMobile: boolean; visible: boolean }) {
   const t = useT();
@@ -30,7 +31,7 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
   // Dynamic Actions Panel State
   const [newBtnLabel, setNewBtnLabel] = useState('');
   const [newBtnType, setNewBtnType] = useState('toggle_lights');
-  const [newBtnIcon, setNewBtnIcon] = useState('💡');
+  const [newBtnIcon, setNewBtnIcon] = useState('lightbulb');
   const [newBtnTargetType, setNewBtnTargetType] = useState<'room' | 'entity'>('room');
   const [newBtnTargetId, setNewBtnTargetId] = useState('');
 
@@ -164,12 +165,14 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
           {activeRoom?.customData?.staticButtons?.map((btn: any) => (
             <div key={btn.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(30,58,95,0.3)', borderRadius: 6, padding: '4px 8px', fontSize: 11 }}>
-              <span style={{ color: '#00c4ff' }}>{btn.icon} {btn.label}</span>
+              <span style={{ color: '#00c4ff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <GameIcon name={btn.icon} size={12} /> {btn.label}
+              </span>
               <button
                 onClick={() => handleDeleteRoomAction(btn.id)}
-                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 11 }}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ✕
+                <GameIcon name="close" size={10} />
               </button>
             </div>
           ))}
@@ -209,8 +212,8 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
               <input placeholder={newBtnTargetType === 'room' ? activeRoomId : '1'} value={newBtnTargetId} onChange={(e) => setNewBtnTargetId(e.target.value)} style={{ ...iStyle, width: '100%', padding: '3px 6px', fontSize: 11 }} />
             </div>
           </div>
-          <NBtn onClick={handleAddRoomAction} color="#00c4ff" style={{ width: '100%', padding: '4px 0', fontSize: 10 }}>
-            + Add Action
+          <NBtn onClick={handleAddRoomAction} color="#00c4ff" style={{ width: '100%', padding: '4px 0', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <GameIcon name="plus" size={11} /> Add Action
           </NBtn>
         </div>
       </Sec>
@@ -218,11 +221,11 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
       {/* Room boundary portals targets are configured interactively on the canvas */}
 
       {optimalSolution && (
-        <Sec title="⚡ BFS OPTIMAL SOLUTION">
+        <Sec title="BFS OPTIMAL SOLUTION">
           <div style={{ background: '#040914', border: '1px solid rgba(0,196,255,0.25)', borderRadius: 8, padding: 10, boxShadow: '0 0 10px rgba(0,196,255,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#00c4ff' }}>
-                Solvable: <span style={{ color: '#00ff88' }}>{optimalSolutionMoves} Moves</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#00c4ff', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <GameIcon name="lightning" size={12} /> Solvable: <span style={{ color: '#00ff88' }}>{optimalSolutionMoves} Moves</span>
               </span>
               <button
                 onClick={() => setShowSolutionPath(!showSolutionPath)}
@@ -236,9 +239,13 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
                   borderRadius: 4,
                   cursor: 'pointer',
                   transition: 'all 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
                 }}
               >
-                {showSolutionPath ? '👁 Show Path' : '👁 Hide Path'}
+                <GameIcon name={showSolutionPath ? 'eye-off' : 'eye'} size={11} />
+                {showSolutionPath ? 'Hide Path' : 'Show Path'}
               </button>
             </div>
             <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.4, maxHeight: 110, overflowY: 'auto', background: '#060d1a', border: '1px solid rgba(30,58,95,0.4)', borderRadius: 5, padding: '6px 8px', fontFamily: 'monospace' }}>
@@ -256,16 +263,22 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
         {testError && <p style={{ fontSize: 11, color: '#ef4444', marginBottom: 8 }}>{testError}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <button onClick={() => setAiAssistantDialogOpen(true)} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.35)', color: '#a78bfa', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-            🤖 AI Assistant
+            <GameIcon name="robot" size={14} /> AI Assistant
           </button>
           <button onClick={() => setGeneratorDialogOpen(true)} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(0,196,255,0.06)', border: '1px solid rgba(0,196,255,0.35)', color: '#00c4ff', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            ⚡ Generate Level
+            <GameIcon name="lightning" size={14} /> Generate Level
           </button>
           <button onClick={handleTest} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.35)', color: '#00ff88', borderRadius: 8, cursor: 'pointer' }}>
             {t('editor.test_level')}
           </button>
-          <button onClick={handleCopyBoard} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: copied ? 'rgba(0,196,255,0.1)' : 'rgba(0,196,255,0.04)', border: `1px solid ${copied ? 'rgba(0,196,255,0.5)' : 'rgba(0,196,255,0.25)'}`, color: '#00c4ff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s' }}>
-            {copied ? '✓ Copied' : 'Copy Board'}
+          <button onClick={handleCopyBoard} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: copied ? 'rgba(0,196,255,0.1)' : 'rgba(0,196,255,0.04)', border: `1px solid ${copied ? 'rgba(0,196,255,0.5)' : 'rgba(0,196,255,0.25)'}`, color: '#00c4ff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            {copied ? (
+              <>
+                <GameIcon name="check" size={12} /> Copied
+              </>
+            ) : (
+              'Copy Board'
+            )}
           </button>
           <button onClick={onPasteBoard} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(148,163,184,0.04)', border: '1px solid rgba(148,163,184,0.2)', color: '#94a3b8', borderRadius: 8, cursor: 'pointer' }}>
             Paste Board

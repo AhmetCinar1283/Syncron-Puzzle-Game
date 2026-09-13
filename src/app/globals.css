@@ -51,6 +51,67 @@ input, textarea {
   user-select: text;
 }
 
+/* ── Kalıcı alt reklam banner'ı (AdMob) ────────────────────────────────────
+   Banner native olarak WebView'in ÜSTÜNE çizilir, WebView'i küçültmez. Gerçek
+   yüksekliği AdBannerMount `--ad-banner-height` değişkenine yazar ve
+   `has-ad-banner` sınıfını ekler. Banner yokken değişken 0'dır, hiçbir sayfa
+   etkilenmez.
+────────────────────────────────────────────────────────────────────────── */
+:root {
+  --ad-banner-height: 0px;
+  --app-height: calc(100dvh - var(--ad-banner-height));
+}
+
+html.has-ad-banner body {
+  box-sizing: border-box;
+  padding-bottom: var(--ad-banner-height);
+}
+
+/* Tam ekran (position:fixed; inset:0) ekranlar body padding'inden etkilenmez;
+   alt kenarlarını banner kadar yukarı çekmeleri için bu yardımcı sınıfı alır. */
+.ad-banner-inset {
+  bottom: var(--ad-banner-height) !important;
+}
+
+/* ── Sayfa ve bileşenlerin banner altında kalmasını önleyen GLOBAL kurallar ──
+   Sayfa bazında tek tek ad-banner-inset veya padding eklemek yerine;
+   100dvh, 100vh veya tam ekran boyutlanan tüm sayfalar ve bileşenler,
+   banner aktif olduğunda otomatik olarak banner yüksekliği kadar küçülür. */
+html.has-ad-banner .h-\[100dvh\],
+html.has-ad-banner [style*="height: 100dvh"],
+html.has-ad-banner [style*="height:100dvh"] {
+  height: calc(100dvh - var(--ad-banner-height)) !important;
+}
+
+html.has-ad-banner .min-h-\[100dvh\],
+html.has-ad-banner [style*="min-height: 100dvh"],
+html.has-ad-banner [style*="min-height:100dvh"] {
+  min-height: calc(100dvh - var(--ad-banner-height)) !important;
+}
+
+html.has-ad-banner .h-screen {
+  height: calc(100vh - var(--ad-banner-height)) !important;
+}
+
+html.has-ad-banner .min-h-screen {
+  min-height: calc(100vh - var(--ad-banner-height)) !important;
+}
+
+/* Toast bildirimleri ve geliştirici debug paneli banner'ın üstünde konumlanır */
+html.has-ad-banner .toast-container {
+  bottom: calc(16px + var(--ad-banner-height)) !important;
+}
+
+@media (min-width: 640px) {
+  html.has-ad-banner .toast-container {
+    bottom: calc(24px + var(--ad-banner-height)) !important;
+  }
+}
+
+html.has-ad-banner .monetization-debug-panel {
+  bottom: calc(12px + var(--ad-banner-height)) !important;
+}
+
 /* ── Spin (yenile butonu) ─────────────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }

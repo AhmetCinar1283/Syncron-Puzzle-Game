@@ -5,6 +5,7 @@ import GeneratorMiniPreview from './GeneratorMiniPreview';
 import type { GeneratorFormApi } from '../../hooks/useGeneratorForm';
 import type { GeneratedCandidate } from '../../hooks/useEditorUiState';
 import type { LevelData } from '@/game-engine/level-format';
+import { GameIcon } from '@/components/icons';
 
 interface GeneratorCandidatesProps {
   g: GeneratorFormApi;
@@ -73,15 +74,15 @@ export default function GeneratorCandidates({ g, candidates, onGenerate }: Gener
           }}
           color="#00c4ff"
           active
-          style={{ flex: 2, padding: '8px 20px', fontSize: 12, fontWeight: 700 }}
+          style={{ flex: 2, padding: '8px 20px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
         >
-          ✓ APPLY SELECTED
+          <GameIcon name="check" size={14} /> APPLY SELECTED
         </NBtn>
-        <NBtn onClick={handleGenerateClick} style={{ flex: 1, padding: '8px 10px', fontSize: 11 }}>
-          🔁 REGENERATE
+        <NBtn onClick={handleGenerateClick} style={{ flex: 1, padding: '8px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <GameIcon name="repeat" size={12} /> REGENERATE
         </NBtn>
-        <NBtn onClick={() => setCandidates(null)} style={{ flex: 1, padding: '8px 10px', fontSize: 11 }}>
-          ◀ BACK
+        <NBtn onClick={() => setCandidates(null)} style={{ flex: 1, padding: '8px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <GameIcon name="arrow-left" size={12} /> BACK
         </NBtn>
       </div>
     </>

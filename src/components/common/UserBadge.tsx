@@ -7,21 +7,15 @@ import { useCapabilities } from '@/contexts/MonetizationContext';
 import AuthModal from './AuthModal';
 import { useT } from '@/contexts/LanguageContext';
 import { subscribeToUserTickets } from '@/services/firebase/support';
+import { LogIn } from 'lucide-react';
 
 /**
- * Fixed top-right button visible on all pages.
- * - Anonymous  → "Giriş Yap" (emerald neon)
- * - Signed in  → initial letter avatar (sky neon)
- * - Has unread ticket → displays a pulsing green/emerald notification dot.
- * Clicking opens AuthModal.
- *
- * Portal build'lerinde (`capabilities.accountLogin === false`) hiç render edilmez:
- * dış giriş (Google/e-posta) portal kurallarınca yasak, ve `/profile` rotası
- * portal zip'ine hiç dahil edilmiyor — `router.push('/profile')` gerçek bir
- * URL değişikliğine (`next/navigation`, bellek içi router'a değil) neden
- * olduğundan, portal'ın alt dizininde 404'e düşüp oyunu "koparıyordu"
- * (bkz. `.plans/monetization/02-portal-buildleri.md`).
+ * Top-right badge on navigation pages.
+ * Hidden on gameplay, editor, level select, profile, and admin screens
+ * to avoid overlapping game controls, toolbars, or being redundant.
  */
+const HIDDEN_PREFIXES = ['/play', '/editor', '/levels', '/profile', '/admin'];
+
 export default function UserBadge() {
   const t = useT();
   const { user, isAnonymous, loading } = useAuthContext();
@@ -69,12 +63,15 @@ export default function UserBadge() {
     };
   }, [pathname]);
 
-  if (loading || !accountLogin) return null;
+  const isHiddenPage = !pathname || HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+
+  if (loading || !accountLogin || isHiddenPage) return null;
 
   const displayName = user?.displayName ?? user?.email?.split('@')[0] ?? null;
   const initial = displayName?.[0]?.toUpperCase() ?? '?';
   const signed = user !== null && !isAnonymous;
   const active = isFocused || isHovered;
+  const badgeHeight = 34;
 
   return (
     <>
@@ -106,7 +103,7 @@ export default function UserBadge() {
               ? (signed ? (hasUnread ? '#00ff88' : '#00c4ff') : '#00ff88')
               : (signed ? (hasUnread ? '#00ff8870' : '#00c4ff35') : '#00ff8830')
           }`,
-          borderRadius: signed ? (active ? 17 : '50%') : 8,
+          borderRadius: signed ? (active ? (badgeHeight / 2) : '50%') : 8,
           background: signed
             ? (active ? 'rgba(0, 196, 255, 0.22)' : '#00c4ff0d')
             : (active ? 'rgba(0, 255, 136, 0.22)' : '#00ff880d'),
@@ -116,9 +113,9 @@ export default function UserBadge() {
           fontSize: 12,
           fontWeight: 700,
           letterSpacing: (signed && !active) ? 0 : '0.08em',
-          width: signed ? (active ? 'auto' : 34) : 'auto',
-          height: 34,
-          padding: signed ? (active ? '0 10px' : '0') : '0 12px',
+          width: signed ? (active ? 'auto' : badgeHeight) : 'auto',
+          height: badgeHeight,
+          padding: signed ? (active ? '0 12px' : '0') : '0 14px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -150,7 +147,10 @@ export default function UserBadge() {
             </span>
           </div>
         ) : (
-          t('auth.sign_in')
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <LogIn size={13} />
+            <span>{t('auth.sign_in')}</span>
+          </span>
         )}
 
         {/* Pulse unread dot */}

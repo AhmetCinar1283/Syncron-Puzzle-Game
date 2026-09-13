@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import type { RefObject } from 'react';
+import { GameIcon } from '@/components/icons';
 import type { TicketMessage } from '@/services/firebase';
 
 export function TicketMessageFeed({
@@ -73,8 +74,9 @@ export function TicketMessageFeed({
               }}
             >
               {isAdminSender && (
-                <div style={{ fontSize: '9px', fontWeight: 800, color: '#00ff88', letterSpacing: '0.08em', marginBottom: '4px', textTransform: 'uppercase' }}>
-                  ✦ Admin ({msg.senderName})
+                <div style={{ fontSize: '9px', fontWeight: 800, color: '#00ff88', letterSpacing: '0.08em', marginBottom: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <GameIcon name="sparkles" size={10} color="#00ff88" />
+                  <span>Admin ({msg.senderName})</span>
                 </div>
               )}
               {msg.body}

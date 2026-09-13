@@ -10,6 +10,7 @@ import PodiumSection from './components/PodiumSection';
 import LeaderboardListSection from './components/LeaderboardListSection';
 import StandingSection from './components/StandingSection';
 import { useLeaderboardPage } from './hooks/useLeaderboardPage';
+import { GameIcon } from '@/components/icons';
 
 export default function LeaderboardPage() {
   const {
@@ -127,9 +128,13 @@ export default function LeaderboardPage() {
               color: '#ff2d55',
               borderRadius: '8px',
               fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
             }}
           >
-            ⚠️ {t('leaderboard.error')}
+            <GameIcon name="warning" size={16} color="#ff2d55" /> {t('leaderboard.error')}
           </div>
         ) : (
           /* Normal List Render */

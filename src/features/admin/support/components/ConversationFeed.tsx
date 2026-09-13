@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { GameIcon } from '@/components/icons';
 import type { SupportTicket, TicketMessage } from '@/services/firebase';
 
 export function ConversationFeed({
@@ -66,8 +67,9 @@ export function ConversationFeed({
               }}
             >
               {!isAdminSender && (
-                <div style={{ fontSize: '9px', fontWeight: 800, color: '#00c4ff', letterSpacing: '0.08em', marginBottom: '4px', textTransform: 'uppercase' }}>
-                  👤 {ticket.displayName} ({isTr ? 'Kullanıcı' : 'User'})
+                <div style={{ fontSize: '9px', fontWeight: 800, color: '#00c4ff', letterSpacing: '0.08em', marginBottom: '4px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <GameIcon name="user" size={10} color="#00c4ff" />
+                  <span>{ticket.displayName} ({isTr ? 'Kullanıcı' : 'User'})</span>
                 </div>
               )}
               {msg.body}

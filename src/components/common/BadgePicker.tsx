@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import BadgeIcon from './BadgeIcon';
 import { useT } from '@/contexts/LanguageContext';
 import { Badge } from '@/services/api/badgesClient';
+import { GameIcon } from '@/components/icons';
 
 export interface BadgePickerProps {
   isOpen: boolean;
@@ -106,16 +107,17 @@ export default function BadgePicker({
             background: 'none',
             border: 'none',
             color: '#4b5563',
-            fontSize: '20px',
             cursor: 'pointer',
             padding: '4px',
-            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             transition: 'color 0.2s',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#ff2d55')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#4b5563')}
         >
-          ✕
+          <GameIcon name="close" size={16} />
         </button>
 
         {/* Title */}

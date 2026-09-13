@@ -38,13 +38,15 @@ export const TargetCellRenderer = ({ cell }: { cell: Cell }) => {
         );
     }
 
+    const borderRadius = theme === 'arcade' ? '0px' : theme === 'blueprint' ? '2px' : '10px';
+
     return (
         <div style={{
             width: cellSize,
             height: cellSize,
             background: 'rgba(15, 23, 42, 0.65)',
             border: `2px solid rgba(${rgb}, 0.65)`,
-            borderRadius: '10px',
+            borderRadius,
             boxShadow: `inset 0 0 16px rgba(${rgb}, 0.25), 0 0 10px rgba(${rgb}, 0.2)`,
             boxSizing: 'border-box',
             display: 'flex',
@@ -53,9 +55,11 @@ export const TargetCellRenderer = ({ cell }: { cell: Cell }) => {
             position: 'relative',
             overflow: 'hidden'
         }}>
+            {/* Rotating or pulsing decorative ring */}
             <div 
                 className="target-rotate-anim" 
                 style={{
+                    borderRadius: theme === 'arcade' ? 0 : '50%',
                     border: `1.5px dashed rgba(${rgb}, 0.45)`,
                 }}
             />

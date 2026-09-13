@@ -11,6 +11,8 @@ export interface PlatformCapabilities {
   interstitialAds: boolean;
   /** Ödüllü reklam bu platformda gösterilebilir mi. */
   rewardedAds: boolean;
+  /** Kalıcı alt banner bu platformda gösterilebilir mi. */
+  bannerAds: boolean;
   /** Portfolyo/sosyal medya gibi dış linkler açılabilir mi. */
   externalLinks: boolean;
   /** "Reklamları Kaldır" gibi satın alma akışları gösterilebilir mi. */
@@ -33,6 +35,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
   web: {
     interstitialAds: false,
     rewardedAds: false,
+    bannerAds: false,
     externalLinks: true,
     purchases: true,
     donations: true,
@@ -45,6 +48,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
   electron: {
     interstitialAds: false,
     rewardedAds: false,
+    bannerAds: false,
     externalLinks: true,
     purchases: true,
     donations: true,
@@ -54,10 +58,11 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: true,
     inMemoryRouting: false,
   },
-  // Görev 03'te AdMob sağlayıcısı bağlanınca reklam alanları true'ya çekilecek.
+  // AdMob (Capacitor) — bölüm arası, ödüllü ve kalıcı alt banner destekli.
   android: {
-    interstitialAds: false,
-    rewardedAds: false,
+    interstitialAds: true,
+    rewardedAds: true,
+    bannerAds: true,
     externalLinks: true,
     purchases: false,
     donations: false,
@@ -72,6 +77,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
   crazygames: {
     interstitialAds: true,
     rewardedAds: true,
+    bannerAds: false,
     externalLinks: false,
     purchases: false,
     donations: false,
@@ -84,6 +90,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
   gamedistribution: {
     interstitialAds: true,
     rewardedAds: true,
+    bannerAds: false,
     externalLinks: false,
     purchases: false,
     donations: false,
@@ -97,6 +104,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
   mock: {
     interstitialAds: true,
     rewardedAds: true,
+    bannerAds: true,
     externalLinks: true,
     purchases: true,
     donations: true,

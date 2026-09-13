@@ -9,6 +9,7 @@ import { ChapterDock } from './ChapterDock';
 import { LevelDetailPanel } from './LevelDetailPanel';
 import { WarpTransition } from './WarpTransition';
 import { LevelListView } from './LevelListView';
+import { GameIcon } from '@/components/icons';
 
 function LevelsPageContent() {
   const { devTools } = useCapabilities();
@@ -228,7 +229,9 @@ function LevelsPageContent() {
             className="w-full max-w-[420px] rounded-2xl border border-yellow-400/30 bg-[#070a13] p-7 text-center shadow-[0_0_50px_rgba(255,215,0,0.15)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 text-5xl">🏆</div>
+            <div className="mb-4 flex justify-center">
+              <GameIcon name="trophy" size={54} color="#facc15" style={{ filter: 'drop-shadow(0 0 16px rgba(250, 204, 21, 0.4))' }} />
+            </div>
             <h3 className="mb-3 text-lg font-black uppercase tracking-wide text-yellow-400">{t('levels.victory_portal_title')}</h3>
             <p className="mb-6 text-[13px] leading-relaxed text-slate-400">{t('levels.victory_portal_body')}</p>
             <button

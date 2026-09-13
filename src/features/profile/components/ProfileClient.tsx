@@ -2,6 +2,7 @@
 
 import BadgeShowcase from '@/components/common/BadgeShowcase';
 import BadgePicker from '@/components/common/BadgePicker';
+import { GameIcon } from '@/components/icons';
 import { useProfileState } from '../hooks/useProfileState';
 import BackgroundParticles from './BackgroundParticles';
 import ProfileHeaderCard from './ProfileHeaderCard';
@@ -229,7 +230,7 @@ export default function ProfileClient() {
       {isConnected && !pickerOpen && (
         <div style={{
           position: 'fixed',
-          bottom: 16,
+          bottom: 'calc(16px + var(--ad-banner-height))',
           right: 16,
           background: 'rgba(8, 12, 28, 0.85)',
           backdropFilter: 'blur(12px)',
@@ -245,7 +246,13 @@ export default function ProfileClient() {
           zIndex: 10,
           pointerEvents: 'none',
         }}>
-          <span>🎮 D-pad ↑/↓: {lang === 'tr' ? 'Kaydır' : 'Scroll'}</span>
+          <GameIcon name="gamepad" size={12} color="#00ff88" />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            D-pad
+            <GameIcon name="arrow-up" size={9} color="#00ff88" />
+            /
+            <GameIcon name="arrow-down" size={9} color="#00ff88" />: {lang === 'tr' ? 'Kaydır' : 'Scroll'}
+          </span>
         </div>
       )}
     </div>

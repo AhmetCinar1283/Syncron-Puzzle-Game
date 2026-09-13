@@ -22,8 +22,10 @@
     "electron:dist:linux": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder --linux",
     "build:crazygames": "cross-env NEXT_PUBLIC_PLATFORM=crazygames next build && node scripts/portal/package-portal.mjs crazygames",
     "build:gd": "cross-env NEXT_PUBLIC_PLATFORM=gamedistribution next build && node scripts/portal/package-portal.mjs gamedistribution",
+    "build:portal": "node scripts/portal/build-portal.mjs",
     "serve:portal": "node scripts/portal/serve-portal.mjs",
-    "generate:assets": "node scripts/portal/generate-assets.mjs"
+    "generate:assets": "node scripts/portal/generate-assets.mjs",
+    "sync:assets": "python scripts/sync_assets.py"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",

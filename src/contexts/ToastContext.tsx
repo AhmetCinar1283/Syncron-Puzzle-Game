@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { GameIcon } from '@/components/icons';
 
 export interface Toast {
   id: string;
@@ -51,36 +52,16 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return (
-          <svg style={{ width: 18, height: 18, color: '#00ff88', filter: 'drop-shadow(0 0 3px rgba(0,255,136,0.3))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        );
+        return <GameIcon name="check" size={18} color="#00ff88" style={{ filter: 'drop-shadow(0 0 3px rgba(0,255,136,0.3))' }} />;
       case 'error':
-        return (
-          <svg style={{ width: 18, height: 18, color: '#ef4444', filter: 'drop-shadow(0 0 3px rgba(239,68,68,0.3))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        );
+        return <GameIcon name="error" size={18} color="#ef4444" style={{ filter: 'drop-shadow(0 0 3px rgba(239,68,68,0.3))' }} />;
       case 'warning':
-        return (
-          <svg style={{ width: 18, height: 18, color: '#fbbf24', filter: 'drop-shadow(0 0 3px rgba(251,191,36,0.3))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        );
+        return <GameIcon name="warning" size={18} color="#fbbf24" style={{ filter: 'drop-shadow(0 0 3px rgba(251,191,36,0.3))' }} />;
       case 'info':
-        return (
-          <svg style={{ width: 18, height: 18, color: '#00c4ff', filter: 'drop-shadow(0 0 3px rgba(0,196,255,0.3))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
+        return <GameIcon name="lightbulb" size={18} color="#00c4ff" style={{ filter: 'drop-shadow(0 0 3px rgba(0,196,255,0.3))' }} />;
       case 'message':
       default:
-        return (
-          <svg style={{ width: 18, height: 18, color: '#a78bfa', filter: 'drop-shadow(0 0 3px rgba(167,139,250,0.3))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-        );
+        return <GameIcon name="chat" size={18} color="#a78bfa" style={{ filter: 'drop-shadow(0 0 3px rgba(167,139,250,0.3))' }} />;
     }
   };
 
@@ -153,8 +134,6 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
           color: '#475569',
           cursor: 'pointer',
           padding: '4px',
-          fontSize: 12,
-          lineHeight: 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -163,7 +142,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         onMouseEnter={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = '#475569'; }}
       >
-        ✕
+        <GameIcon name="close" size={12} />
       </button>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useT } from '@/contexts/LanguageContext';
 import BadgeIcon from '@/components/common/BadgeIcon';
+import { GameIcon } from '@/components/icons';
 import { Friend } from '@/services/api/friendsClient';
 
 interface BlockedPanelProps {
@@ -39,10 +40,10 @@ export function BlockedPanel({ blocked, loadingBlocked, actionBusy, onUnblockUse
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>👁️</span>
+            <GameIcon name="eye" size={13} color="#4b5563" />
             <span>{t('friends.blocked_title')} ({blocked.length})</span>
           </div>
-          <span style={{ fontSize: '10px' }}>▼</span>
+          <GameIcon name="arrow-down" size={10} color="#6b7280" />
         </summary>
 
         <div style={{ marginTop: '16px' }}>

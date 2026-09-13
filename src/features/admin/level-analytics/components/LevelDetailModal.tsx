@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 import type { AlertRule } from '@/services/firebase/adminLevelAnalytics';
 import { TREND_METRICS } from '../lib/types';
 import type { LevelStats, StoredLevelInfo } from '../lib/types';
@@ -109,7 +110,7 @@ export function LevelDetailModal({
                 cursor: 'pointer',
               }}
             >
-              ✕
+              <GameIcon name="close" size={14} color="#94a3b8" />
             </button>
           </div>
 

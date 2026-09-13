@@ -6,14 +6,24 @@ import { BlockWrapper, CellToolList, ToolBtn, CELL_SIZE, CELL_SIZE_MOB } from '.
 import PalettePlayersBlock from './PalettePlayersBlock';
 import PaletteMechsBlock from './PaletteMechsBlock';
 import PalettePortalsBlock from './PalettePortalsBlock';
+import { GameIcon } from '@/components/icons';
+import type { IconName } from '@/components/icons/types';
 
 const BOARD_BASIC = ['empty', 'obstacle', 'forbidden'];
 
-/** System tools rendered as glyph buttons: [tool, color, label, glyph, active glyph color]. */
-const SYS_TOOLS: [ToolType, string, string, string, string][] = [
-  ['select', '#00c4ff', 'Select & Move', '▣', '#00c4ff'],
-  ['erase', '#64748b', 'Erase', '⌫', '#94a3b8'],
-  ['lock', '#fbbf24', 'Lock / Unlock Cell', '🔒', '#fbbf24'],
+interface SysToolDef {
+  tool: ToolType;
+  color: string;
+  label: string;
+  icon: IconName;
+  activeColor: string;
+}
+
+/** System tools rendered as icon buttons. */
+const SYS_TOOLS: SysToolDef[] = [
+  { tool: 'select', color: '#00c4ff', label: 'Select & Move', icon: 'retro-block', activeColor: '#00c4ff' },
+  { tool: 'erase', color: '#64748b', label: 'Erase', icon: 'erase', activeColor: '#94a3b8' },
+  { tool: 'lock', color: '#fbbf24', label: 'Lock / Unlock Cell', icon: 'lock', activeColor: '#fbbf24' },
 ];
 
 /** Tool palette strip (top bar on portrait, right column on landscape). */
@@ -58,20 +68,21 @@ export default function ToolPalette({ isMobile, isLandscape = false }: { isMobil
             color: canUndo ? '#94a3b8' : '#334155',
             cursor: canUndo ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: small ? 14 : 18,
             transition: 'opacity 0.15s',
           }}
-        >↩</button>
+        >
+          <GameIcon name="arrow-left" size={small ? 14 : 18} color={canUndo ? '#94a3b8' : '#334155'} />
+        </button>
 
         {/* Select / Erase / Lock */}
-        {SYS_TOOLS.map(([tool, color, label, glyph, activeGlyphColor]) => (
+        {SYS_TOOLS.map((item) => (
           <ToolBtn
-            key={tool}
-            tool={tool} active={activeTool === tool}
-            color={color} label={label}
-            onClick={() => setActiveTool(tool)} small={small}
+            key={item.tool}
+            tool={item.tool} active={activeTool === item.tool}
+            color={item.color} label={item.label}
+            onClick={() => setActiveTool(item.tool)} small={small}
           >
-            <span style={{ fontSize: small ? 14 : 18, color: activeTool === tool ? activeGlyphColor : '#334155' }}>{glyph}</span>
+            <GameIcon name={item.icon} size={small ? 14 : 18} color={activeTool === item.tool ? item.activeColor : '#334155'} />
           </ToolBtn>
         ))}
       </BlockWrapper>

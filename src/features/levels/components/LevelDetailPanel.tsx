@@ -2,6 +2,7 @@
 
 import type { StoredLevel, StoredPlayedLevel } from '@/services/db';
 import { DIFFICULTY_COLORS } from '../lib/mapThemes';
+import { GameIcon } from '@/components/icons';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -16,9 +17,10 @@ export interface LevelDetailPanelProps {
   t: (key: string) => string;
 }
 
-function formatTime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+function formatTime(s = 0) {
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}:${rem.toString().padStart(2, '0')}`;
 }
 
 /**
@@ -26,7 +28,16 @@ function formatTime(seconds: number): string {
  * harita/liste kaydırma alanı bu yüksekliği `padding-bottom` olarak zaten hesaba katıyor,
  * yani hiçbir düğüm bu panelin altında kalmaz.
  */
-export function LevelDetailPanel({ level, index, isLocked, playedData, accentColor, isGamepadConnected, onPlay, t }: LevelDetailPanelProps) {
+export function LevelDetailPanel({
+  level,
+  index,
+  isLocked,
+  playedData,
+  accentColor,
+  isGamepadConnected,
+  onPlay,
+  t,
+}: LevelDetailPanelProps) {
   const difficultyColor = level.difficulty ? DIFFICULTY_COLORS[level.difficulty] : accentColor;
 
   return (
@@ -36,7 +47,10 @@ export function LevelDetailPanel({ level, index, isLocked, playedData, accentCol
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600">SEVİYE {index + 1}</span>
-        <span className="truncate text-sm font-bold text-slate-100">{isLocked ? '🔒 Kilitli Bölüm' : level.name}</span>
+        <span className="flex items-center gap-1 truncate text-sm font-bold text-slate-100">
+          {isLocked && <GameIcon name="lock" size={13} color="#94a3b8" />}
+          <span className="truncate">{isLocked ? 'Kilitli Bölüm' : level.name}</span>
+        </span>
         <div className="mt-0.5 flex items-center gap-1.5">
           {level.difficulty && (
             <span
@@ -55,11 +69,14 @@ export function LevelDetailPanel({ level, index, isLocked, playedData, accentCol
       </div>
 
       {playedData && (
-        <div className="flex gap-0.5">
+        <div className="flex items-center gap-1">
           {[1, 2, 3].map((n) => (
-            <span key={n} className="text-sm" style={{ color: n <= (playedData.stars ?? 0) ? '#ffd700' : 'rgba(255,255,255,0.1)' }}>
-              ★
-            </span>
+            <GameIcon
+              key={n}
+              name="star"
+              size={13}
+              color={n <= (playedData.stars ?? 0) ? '#ffd700' : 'rgba(255,255,255,0.15)'}
+            />
           ))}
         </div>
       )}

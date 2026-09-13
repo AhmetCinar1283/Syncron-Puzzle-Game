@@ -6,6 +6,7 @@ import { useT } from '@/contexts/LanguageContext';
 import type { UIButtonType } from '../../logic/types';
 import { REASON_KEYS, TEXT_COLORS } from './constants';
 import type { LostReason } from './constants';
+import { GameIcon } from '@/components/icons';
 
 type ButtonHandler = (buttonType: UIButtonType) => void;
 
@@ -13,52 +14,48 @@ type ButtonHandler = (buttonType: UIButtonType) => void;
 function OverlayCard({ accent, children }: { accent: 'red' | 'green'; children: ReactNode }) {
     const border = accent === 'red' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(0, 255, 136, 0.4)';
     const boxShadow = accent === 'red'
-        ? '0 0 40px rgba(239, 68, 68, 0.15), 0 0 80px rgba(239, 68, 68, 0.05)'
-        : '0 0 40px rgba(0, 255, 136, 0.15), 0 0 80px rgba(0, 255, 136, 0.05)';
+        ? '0 0 40px rgba(239, 68, 68, 0.15), 0 20px 50px rgba(0,0,0,0.8)'
+        : '0 0 40px rgba(0, 255, 136, 0.15), 0 20px 50px rgba(0,0,0,0.8)';
 
     return (
-        <AnimatePresence>
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: 'rgba(3, 7, 18, 0.82)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 100,
+                backdropFilter: 'blur(8px)',
+                padding: 16,
+            }}
+        >
             <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ scale: 0.85, opacity: 0, y: 16 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', damping: 22, stiffness: 320 }}
                 style={{
-                    position: 'fixed',
-                    inset: 0,
+                    backgroundColor: '#0a0f1a',
+                    border,
+                    borderRadius: 20,
+                    padding: 'clamp(20px, 5vw, 32px)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(2, 5, 14, 0.82)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    zIndex: 150,
-                    padding: '16px',
-                    boxSizing: 'border-box',
+                    gap: 12,
+                    boxShadow,
+                    maxWidth: 380,
+                    width: '100%',
                 }}
             >
-                <motion.div
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.7, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                    style={{
-                        background: 'rgba(3, 7, 18, 0.97)',
-                        border,
-                        boxShadow,
-                        borderRadius: 20,
-                        padding: 'clamp(20px, 5vw, 32px) clamp(24px, 6vw, 40px)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 'clamp(10px, 3vw, 14px)',
-                        width: 'min(88vw, 300px)',
-                        boxSizing: 'border-box',
-                    }}
-                >
-                    {children}
-                </motion.div>
+                {children}
             </motion.div>
-        </AnimatePresence>
+        </motion.div>
     );
 }
 
@@ -68,8 +65,8 @@ export function LostOverlay({ reason, message, onButtonPress }: { reason: LostRe
 
     return (
         <OverlayCard accent="red">
-            <div style={{ fontSize: 'clamp(28px, 10vw, 40px)', color: '#ef4444', textShadow: '0 0 16px rgba(239,68,68,0.7)', lineHeight: 1 }}>
-                {cfg.icon}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <GameIcon name={cfg.icon} size={38} color="#ef4444" style={{ filter: 'drop-shadow(0 0 12px rgba(239,68,68,0.7))' }} />
             </div>
             <h2 style={{ fontSize: 'clamp(14px, 4.5vw, 20px)', fontWeight: 800, color: '#ef4444', textShadow: '0 0 16px rgba(239,68,68,0.5)', letterSpacing: '0.05em', textTransform: 'uppercase', margin: 0, textAlign: 'center' }}>
                 {t(cfg.titleKey)}
@@ -106,8 +103,8 @@ export function TestSuccessOverlay({ onButtonPress }: { onButtonPress: ButtonHan
 
     return (
         <OverlayCard accent="green">
-            <div style={{ fontSize: 'clamp(28px, 10vw, 40px)', color: '#00ff88', textShadow: '0 0 16px rgba(0,255,136,0.7)', lineHeight: 1 }}>
-                ✦
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <GameIcon name="sparkles" size={38} color="#00ff88" style={{ filter: 'drop-shadow(0 0 12px rgba(0,255,136,0.7))' }} />
             </div>
             <h2 style={{ fontSize: 'clamp(14px, 4.5vw, 20px)', fontWeight: 800, color: '#00ff88', textShadow: '0 0 16px rgba(0,255,136,0.5)', letterSpacing: '0.05em', textTransform: 'uppercase', margin: 0, textAlign: 'center' }}>
                 {t('win.title')}

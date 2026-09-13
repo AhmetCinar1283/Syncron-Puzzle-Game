@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAppSearchParams, useAppRouter } from '@/lib/navigation';
 import type { UIButtonType } from '@/game-engine/logic/types';
 import type { WorkerResult } from '../lib/types';
@@ -51,45 +51,60 @@ export function usePlayPage() {
 
     // ── Reklam adaptörü ────────────────────────────────────────
     const levelReady = !level.loading && !level.error && !!level.game2State;
-    const { notifyLevelCompleted, beforeNextLevel } = usePlayAds(levelReady);
-    // "Hata veya yeniden başlatma sonrasında reklam yok" kuralı: bu levelde
-    // restart yapıldıysa bir sonraki level geçişinde bölüm arası reklam atlanır.
-    const restartedThisLevelRef = useRef(false);
-    // Yalnızca URL'deki level GERÇEKTEN değiştiğinde sıfırlanır — aynı leveldeki
-    // restart-reload'lar (restartKey) bu bayrağı etkilemez, bilerek.
-    useEffect(() => {
-        restartedThisLevelRef.current = false;
-    }, [levelId]);
+    const { notifyLevelCompleted, beforeLeavingWinScreen, beforeRestart, isRegisteredUser } = usePlayAds(levelReady);
+
+    /**
+     * Bölüm arası reklam GERÇEKTEN gösterildiyse, kapandıktan sonra teşvik kartı
+     * açılır (misafire "hesap aç", kayıtlıya "reklamları kaldır" — bkz.
+     * components/AfterAdPrompt.tsx). Reklam gösterilmediyse hiçbir şey olmaz.
+     */
+    const [showAfterAdPrompt, setShowAfterAdPrompt] = useState(false);
+    const dismissAfterAdPrompt = useCallback(() => setShowAfterAdPrompt(false), []);
 
     // ── UI button handler ─────────────────────────────────────
-    const handleButtonPressed = useCallback((buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
+    const handleButtonPressed = useCallback(async (buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
         if (buttonType === 'next_level') {
             // Kazandı → worker çağır, win overlay göster
             setShowWin(true);
             callWorker();
             notifyLevelCompleted();
         } else if (buttonType === 'restart') {
-            // Update session tracking
+            // Yeniden başlatma da bir "level bitişi"dir: sayacı ilerletir ve
+            // politika uygunsa reklam gösterir. Reklam kapanmadan board sıfırlanmaz.
             recordRestart(details?.isDeath);
-            restartedThisLevelRef.current = true;
+            const result = await beforeRestart();
             reload(); // PlayScreen'i sıfırla
+            if (result.shown) setShowAfterAdPrompt(true);
         } else if (buttonType === 'menu') {
+            // Oyunu yarıda bırakıp çıkmak bir "bitiş" sayılmaz — reklam gösterilmez.
             submitTelemetry('quit');
             router.push('/levels');
         }
-    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted]);
+    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart]);
 
-    // ── Next level navigasyon ─────────────────────────────────
+    // ── Kazanma ekranından ayrılış (sonraki level / menü) ─────
+    // İkisi de aynı reklam kontrolünden geçer: level bitti, ekrandan ayrılıyoruz.
+    const leaveWinScreen = useCallback(async (navigate: () => void) => {
+        const result = await beforeLeavingWinScreen();
+        navigate();
+        if (result.shown) setShowAfterAdPrompt(true);
+    }, [beforeLeavingWinScreen]);
+
     const handleNextLevel = useCallback(async () => {
         if (nextLevelId === null) return;
-        const afterError = workerResult?.success === false || restartedThisLevelRef.current;
-        await beforeNextLevel(afterError);
-        router.push(isPreset
+        await leaveWinScreen(() => router.replace(isPreset
             ? `/play?id=${nextLevelId}&source=preset`
             : `/play?id=${nextLevelId}`
-        );
-    }, [nextLevelId, isPreset, router, beforeNextLevel, workerResult]);
+        ));
+    }, [nextLevelId, isPreset, router, leaveWinScreen]);
 
+    /** Kazanma ekranındaki "Menü" butonu — level bitti, reklam kontrolünden geçer. */
+    const handleMenuFromWin = useCallback(
+        () => leaveWinScreen(() => router.push('/levels')),
+        [leaveWinScreen, router],
+    );
+
+    /** Reklam akışı OLMADAN menüye dönüş (hata ekranı gibi yerler için). */
     const goToLevels = useCallback(() => router.push('/levels'), [router]);
 
     return {
@@ -100,6 +115,10 @@ export function usePlayPage() {
         workerResult,
         handleButtonPressed,
         handleNextLevel,
+        handleMenuFromWin,
         goToLevels,
+        isRegisteredUser,
+        showAfterAdPrompt,
+        dismissAfterAdPrompt,
     };
 }

@@ -8,6 +8,7 @@ import BoxesSection from './BoxesSection';
 import { ConveyorsSection, TrampolinesSection } from './StepCellsSections';
 import ControlSwitchesSection from './ControlSwitchesSection';
 import DeflectorsSection from './DeflectorsSection';
+import { GameIcon } from '@/components/icons';
 
 const CONVEYORS = ['conveyor_up', 'conveyor_down', 'conveyor_left', 'conveyor_right'];
 const TRAMPOLINES = ['trampoline_up', 'trampoline_down', 'trampoline_left', 'trampoline_right'];
@@ -45,25 +46,39 @@ export default function BottomSettingsPanel({ isMobile, visible }: { isMobile: b
       >
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {objects.length > 0 && (
-            <span style={{ fontSize: 11, color: '#00ff88' }}>🟢 {objects.length} player{objects.length > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 11, color: '#00ff88', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <GameIcon name="user" size={12} /> {objects.length} player{objects.length > 1 ? 's' : ''}
+            </span>
           )}
           {boxes.length > 0 && (
-            <span style={{ fontSize: 11, color: '#f97316' }}>▣ {boxes.length} box{boxes.length > 1 ? 'es' : ''}</span>
+            <span style={{ fontSize: 11, color: '#f97316', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <GameIcon name="box" size={12} /> {boxes.length} box{boxes.length > 1 ? 'es' : ''}
+            </span>
           )}
           {conveyorCells.length > 0 && (
-            <span style={{ fontSize: 11, color: '#c4b5fd' }}>◄► {conveyorCells.length} conveyor{conveyorCells.length > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 11, color: '#c4b5fd', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <GameIcon name="arrow-right" size={12} /> {conveyorCells.length} conveyor{conveyorCells.length > 1 ? 's' : ''}
+            </span>
           )}
           {trampolineCells.length > 0 && (
-            <span style={{ fontSize: 11, color: '#22d3ee' }}>▲ {trampolineCells.length} trampoline{trampolineCells.length > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 11, color: '#22d3ee', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <GameIcon name="arrow-up" size={12} /> {trampolineCells.length} trampoline{trampolineCells.length > 1 ? 's' : ''}
+            </span>
           )}
           {controlSwitchCells.length > 0 && (
-            <span style={{ fontSize: 11, color: '#a855f7' }}>❖ {controlSwitchCells.length} control switch{controlSwitchCells.length > 1 ? 'es' : ''}</span>
+            <span style={{ fontSize: 11, color: '#a855f7', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <GameIcon name="switch" size={12} /> {controlSwitchCells.length} control switch{controlSwitchCells.length > 1 ? 'es' : ''}
+            </span>
           )}
           {deflectorCells.length > 0 && (
-            <span style={{ fontSize: 11, color: '#ec4899' }}>⤭ {deflectorCells.length} deflector{deflectorCells.length > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 11, color: '#ec4899', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <GameIcon name="repeat" size={12} /> {deflectorCells.length} deflector{deflectorCells.length > 1 ? 's' : ''}
+            </span>
           )}
         </div>
-        <span style={{ fontSize: 12, color: '#334155', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'none' }}>▼</span>
+        <span style={{ fontSize: 12, color: '#334155', transition: 'transform 0.2s', display: 'inline-flex', alignItems: 'center', transform: expanded ? 'rotate(180deg)' : 'none' }}>
+          <GameIcon name="arrow-down" size={12} />
+        </span>
       </div>
 
       {/* Expanded content */}

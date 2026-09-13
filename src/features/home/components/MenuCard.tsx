@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { GameIcon, IconName } from '@/components/icons';
 
 export function MenuCard({
   id, label, sub, color, onClick, isSelected, onMouseEnter, isHero, isGamepadConnected, isMobile
@@ -9,15 +10,15 @@ export function MenuCard({
   const [hovered, setHovered] = useState(false);
   const active = isSelected || hovered;
 
-  const getIcon = () => {
+  const getIconName = (): IconName => {
     switch (id) {
-      case 'play': return '🎮';
-      case 'levels': return '🏆';
-      case 'editor': return '🛠️';
-      case 'friends': return '👥';
-      case 'controls': return '🕹️';
-      case 'admin': return '⚡';
-      default: return '✦';
+      case 'play': return 'gamepad';
+      case 'levels': return 'trophy';
+      case 'editor': return 'tools';
+      case 'friends': return 'friends';
+      case 'controls': return 'joystick';
+      case 'admin': return 'lightning';
+      default: return 'sparkles';
     }
   };
 
@@ -114,7 +115,7 @@ export function MenuCard({
         transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
         flexShrink: 0,
       }}>
-        {getIcon()}
+        <GameIcon name={getIconName()} size={isHero ? 20 : 16} color={active ? color : '#475569'} />
       </div>
     </button>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 
 export function DesignerSidebar({
   mapTheme,
@@ -21,7 +22,7 @@ export function DesignerSidebar({
 }) {
   const t = useT();
 
-  const presetBtnStyle: React.CSSProperties = { width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', borderRadius: 8, padding: '8px 12px', fontSize: 11, cursor: 'pointer', textAlign: 'left', fontWeight: 600, transition: 'all 0.2s' };
+  const presetBtnStyle: React.CSSProperties = { width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', borderRadius: 8, padding: '8px 12px', fontSize: 11, cursor: 'pointer', textAlign: 'left', fontWeight: 600, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 };
 
   return (
     <div style={{ width: '100%', maxWidth: 300, padding: 24, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 20, boxSizing: 'border-box', overflowY: 'auto' }}>
@@ -56,7 +57,8 @@ export function DesignerSidebar({
             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
           >
-            📈 {t('admin.designer_preset_snake') || 'Kıvrımlı Yol (Snake)'}
+            <GameIcon name="trend-up" size={13} color="#00c4ff" />
+            <span>{t('admin.designer_preset_snake') || 'Kıvrımlı Yol (Snake)'}</span>
           </button>
           <button
             onClick={() => onGeneratePreset('spiral')}
@@ -64,7 +66,8 @@ export function DesignerSidebar({
             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
           >
-            🌀 {t('admin.designer_preset_spiral') || 'Spiral (Dışa Doğru)'}
+            <GameIcon name="portal" size={13} color="#a855f7" />
+            <span>{t('admin.designer_preset_spiral') || 'Spiral (Dışa Doğru)'}</span>
           </button>
           <button
             onClick={() => onGeneratePreset('circle')}
@@ -72,14 +75,18 @@ export function DesignerSidebar({
             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
           >
-            ◯ {t('admin.designer_preset_circle') || 'Çember Düzeni'}
+            <GameIcon name="dot" size={13} color="#00ff88" />
+            <span>{t('admin.designer_preset_circle') || 'Çember Düzeni'}</span>
           </button>
         </div>
       </div>
 
       <div style={{ marginTop: 'auto', background: `${activeThemeColor}06`, border: `1px solid ${activeThemeColor}15`, borderRadius: 8, padding: 12 }}>
-        <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
-          💡 <strong>Nasıl tasarlanır:</strong> Seviye düğmelerini ve portalları sürükleyip yerleştirin. 🌀 (turuncu kenarlı) Çıkış, 🟢 (yeşil kenarlı) Giriş Portalidir.
+        <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+          <GameIcon name="lightbulb" size={14} color="#ffd700" style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            <strong>Nasıl tasarlanır:</strong> Seviye düğmelerini ve portalları sürükleyip yerleştirin. Portalları (turuncu ve yeşil) başlangıç ve bitiş olarak ayarlayın.
+          </span>
         </p>
       </div>
 

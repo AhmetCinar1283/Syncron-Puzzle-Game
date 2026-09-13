@@ -21,7 +21,7 @@ export type Particle = {
 
 // Map of standard Gamepad buttons for visualization
 export const BUTTONS_MAP = [
-  { index: 0, label: 'A / ✕', role: 'confirm' },
+  { index: 0, label: 'A / ╳', role: 'confirm' },
   { index: 1, label: 'B / ◯', role: 'menu' },
   { index: 2, label: 'X / ▢', role: 'restart' },
   { index: 3, label: 'Y / △', role: 'restart' },

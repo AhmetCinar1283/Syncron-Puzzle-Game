@@ -1,6 +1,7 @@
 'use client';
 
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import type { LevelPart } from '@/services/firebase/admin';
 import { getThemeColor } from '../lib/designerThemes';
 import { useMapDesigner } from '../hooks/useMapDesigner';
@@ -67,9 +68,9 @@ export function MapDesignerModal({ part, onClose, onSave }: MapDesignerModalProp
           </h2>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 20, cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            ✕
+            <GameIcon name="close" size={16} color="#64748b" />
           </button>
         </div>
 

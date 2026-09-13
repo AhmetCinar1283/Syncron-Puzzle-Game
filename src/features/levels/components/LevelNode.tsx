@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef } from 'react';
+import { GameIcon } from '@/components/icons';
 
 export interface LevelNodeProps {
   index: number;
@@ -87,7 +88,7 @@ export const LevelNode = forwardRef<HTMLButtonElement, LevelNodeProps>(function 
           boxShadow: isLocked ? 'none' : `0 0 10px ${isCurrent ? 'rgba(255,215,0,0.45)' : `${activeColor}40`}`,
         }}
       >
-        {isLocked ? '🔒' : index + 1}
+        {isLocked ? <GameIcon name="lock" size={13} color="#475569" /> : index + 1}
       </span>
 
       {/* İsim etiketi */}
@@ -101,8 +102,10 @@ export const LevelNode = forwardRef<HTMLButtonElement, LevelNodeProps>(function 
       >
         {label}
         {isCompleted && stars ? (
-          <span className="ml-1" style={{ color: '#ffd700' }}>
-            {'★'.repeat(stars)}
+          <span className="ml-1 inline-flex items-center gap-0.5" style={{ verticalAlign: 'middle' }}>
+            {Array.from({ length: stars }).map((_, i) => (
+              <GameIcon key={i} name="star" size={8} color="#ffd700" />
+            ))}
           </span>
         ) : null}
       </span>

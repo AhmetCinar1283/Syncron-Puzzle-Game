@@ -3,7 +3,7 @@ import type { Direction } from '../../logic/types';
 /** PlayScreen sabitleri (önceden PlayScreen.tsx başındaydı; değerler birebir aynı). */
 
 export const NATIVE_CELL_SIZE = 64;
-export const HUD_HEIGHT = 52; // px — HUD'un sabit yüksekliği
+export const HUD_HEIGHT = 60; // px — HUD'un sabit yüksekliği (ferah, dengeli dikey alan)
 /** Kompakt (mobil) HUD eşiği — window.innerWidth < bu değer. */
 export const COMPACT_BREAKPOINT = 850;
 /** Oda yerleşiminde odalar arası boşluk (calculateRoomLayoutOffsets 3. argümanı). */
@@ -38,13 +38,15 @@ export const OBJECT_NEON: Record<number, { color: string; label: string; glow: s
     2: { color: '#00c4ff', label: 'P2', glow: '0 0 6px rgba(0,196,255,0.7)' },
 };
 
+import { IconName } from '@/components/icons';
+
 export type LostReason = 'forbidden' | 'lava_edge' | 'trail' | 'crushed';
 
-export const REASON_KEYS: Record<LostReason, { icon: string; titleKey: string; msgKey: string }> = {
-    forbidden: { icon: '⚠', titleKey: 'lost.forbidden_title', msgKey: 'lost.forbidden_msg' },
-    lava_edge: { icon: '☠', titleKey: 'lost.lava_title',     msgKey: 'lost.lava_msg' },
-    trail:     { icon: '✗', titleKey: 'lost.trail_title',    msgKey: 'lost.trail_msg' },
-    crushed:   { icon: '💥', titleKey: 'lost.crushed_title', msgKey: 'lost.crushed_msg' },
+export const REASON_KEYS: Record<LostReason, { icon: IconName; titleKey: string; msgKey: string }> = {
+    forbidden: { icon: 'warning',   titleKey: 'lost.forbidden_title', msgKey: 'lost.forbidden_msg' },
+    lava_edge: { icon: 'skull',     titleKey: 'lost.lava_title',     msgKey: 'lost.lava_msg' },
+    trail:     { icon: 'close',     titleKey: 'lost.trail_title',    msgKey: 'lost.trail_msg' },
+    crushed:   { icon: 'explosion', titleKey: 'lost.crushed_title', msgKey: 'lost.crushed_msg' },
 };
 
 export const STEP_DIRECTION_COLORS: Record<string, string> = {

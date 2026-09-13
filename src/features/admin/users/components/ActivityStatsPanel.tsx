@@ -1,6 +1,7 @@
 'use client';
 
 import { CATEGORY_DETAILS, type AuditLogStat } from '../lib/types';
+import { GameIcon } from '@/components/icons';
 
 export function ActivityStatsPanel({
   stats,
@@ -26,8 +27,9 @@ export function ActivityStatsPanel({
         gap: '20px',
       }}
     >
-      <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase' }}>
-        📊 {isTr ? 'KATEGORİSEL ETKİNLİK' : 'ACTIVITY STATISTICS'}
+      <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <GameIcon name="bar-chart" size={14} color="#9333ea" />
+        <span>{isTr ? 'KATEGORİSEL ETKİNLİK' : 'ACTIVITY STATISTICS'}</span>
       </h3>
 
       {totalLogs === 0 ? (

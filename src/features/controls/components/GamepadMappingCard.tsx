@@ -1,4 +1,5 @@
 'use client';
+import { GameIcon } from '@/components/icons';
 
 export function GamepadMappingCard({ t }: { t: (key: string) => string }) {
   return (
@@ -28,7 +29,7 @@ export function GamepadMappingCard({ t }: { t: (key: string) => string }) {
           gap: 8,
         }}
       >
-        <span>🎮</span> {t('controls.gamepad')}
+        <GameIcon name="gamepad" size={20} color="#00ff88" /> {t('controls.gamepad')}
       </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

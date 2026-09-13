@@ -15,16 +15,18 @@ import {
   INITIAL_FREQUENCY_POLICY_STATE,
   evaluateInterstitial,
   onAdShown,
-  onLevelCompleted,
+  onLevelFinished,
   type FrequencyPolicyState,
 } from './policy/frequencyPolicy';
 import { noopProvider } from './providers/noopProvider';
 
 export interface InterstitialRequestContext {
-  /** Bu geçiş bir hata/başarısız doğrulama sonrasında mı gerçekleşiyor. */
-  afterError?: boolean;
-  /** Bu geçiş bir "yeniden başlatma" sonrasında mı gerçekleşiyor. */
-  afterRestart?: boolean;
+  /**
+   * Oyuncu hesap oluşturmuş mu (anonim değil mi). Misafir oyuncuya daha sık
+   * reklam gösterilir — eşikler `policy/policyConfig.ts`'te. Belirtilmezse
+   * misafir varsayılır (daha sık reklam tarafı, güvenli varsayılan).
+   */
+  isRegisteredUser?: boolean;
 }
 
 class AdService {
@@ -32,6 +34,8 @@ class AdService {
   private gameplayActive = false;
   private policyState: FrequencyPolicyState = INITIAL_FREQUENCY_POLICY_STATE;
   private listeners = new Set<AdEventListener>();
+  private fullscreenAdOpen = false;
+  private bannerRequested = false;
 
   /** İlk çağrıda sağlayıcıyı yükler ve başlatır; sonraki çağrılar aynı promise'i paylaşır. */
   private getProvider(): Promise<AdProvider> {
@@ -47,6 +51,23 @@ class AdService {
         });
     }
     return this.providerPromise;
+  }
+
+  /**
+   * Sağlayıcıyı erkenden yükler/başlatır. Android'de rıza (UMP) akışının ilk
+   * açılışta çalışması buna bağlıdır; diğer platformlarda zararsızdır.
+   */
+  prewarm(): void {
+    this.getProvider().catch(() => {});
+  }
+
+  /**
+   * Tam ekran bir reklam şu an açık mı. Fiziksel geri tuşu gibi global
+   * kısayolların reklam açıkken beklenmeyen bir şey yapmaması için kullanılır
+   * (bkz. components/common/BackButtonManager.tsx).
+   */
+  isFullscreenAdOpen(): boolean {
+    return this.fullscreenAdOpen;
   }
 
   private emit(event: AdEvent): void {
@@ -94,21 +115,14 @@ class AdService {
     provider.happyTime();
   }
 
-  /** Bir level tamamlandığında sıklık politikasının sayaçlarını ilerletir. */
-  recordLevelCompleted(): void {
-    this.policyState = onLevelCompleted(this.policyState);
-  }
-
   /**
-   * "İlk 5 level" kuralı oyuncunun TÜM ZAMANLARDAKİ tamamlama sayısına bakar,
-   * yalnızca bu oturumdakine değil. `usePlayAds`, Redux/Dexie'den okuduğu kalıcı
-   * sayıyı burada senkronlar. Asla geriye almaz — bu oturumda `recordLevelCompleted`
-   * ile ilerleyen sayaç, kalıcı kaynak henüz yüklenmeden düşürülmez.
+   * Bir level bittiğinde sıklık politikasının sayacını ilerletir.
+   * BAŞARI ve BAŞARISIZLIK (kazanma / restart-ölüm) ayrımı YOKTUR — ikisi de
+   * bir "bitiş"tir. `requestInterstitial`'dan ÖNCE çağrılmalıdır ki karar bu
+   * bitişi de hesaba katsın.
    */
-  syncCompletedTotal(persistedTotal: number): void {
-    if (persistedTotal > this.policyState.totalCompleted) {
-      this.policyState = { ...this.policyState, totalCompleted: persistedTotal };
-    }
+  recordLevelFinished(): void {
+    this.policyState = onLevelFinished(this.policyState);
   }
 
   /**
@@ -124,7 +138,7 @@ class AdService {
 
     const decision = evaluateInterstitial(
       this.policyState,
-      { adFree: isAdFree(), afterError: ctx.afterError, afterRestart: ctx.afterRestart },
+      { adFree: isAdFree(), isRegisteredUser: ctx.isRegisteredUser ?? false },
       Date.now(),
       DEFAULT_FREQUENCY_POLICY,
     );
@@ -134,6 +148,7 @@ class AdService {
 
     try {
       const provider = await this.getProvider();
+      this.fullscreenAdOpen = true;
       this.emit('before-ad');
       const result = await withTimeout(
         provider.showInterstitial(),
@@ -148,6 +163,7 @@ class AdService {
       console.warn('[monetization] Bölüm arası reklam başarısız/zaman aşımı:', err);
       return { shown: false, reason: 'error' };
     } finally {
+      this.fullscreenAdOpen = false;
       this.emit('after-ad');
     }
   }
@@ -164,6 +180,7 @@ class AdService {
 
     try {
       const provider = await this.getProvider();
+      this.fullscreenAdOpen = true;
       this.emit('before-ad');
       const result = await withTimeout(provider.showRewarded(), AD_TIMEOUTS_MS.rewarded, 'showRewarded');
       if (result.rewarded) {
@@ -174,7 +191,80 @@ class AdService {
       console.warn('[monetization] Ödüllü reklam başarısız/zaman aşımı:', err);
       return { rewarded: false, reason: 'error' };
     } finally {
+      this.fullscreenAdOpen = false;
       this.emit('after-ad');
+    }
+  }
+
+  /**
+   * Kalıcı alt banner'ı gösterir. Platform desteklemiyorsa ya da oyuncu
+   * reklamsız hak kazandıysa hiçbir şey yapmaz; asla throw etmez.
+   */
+  async showBanner(): Promise<void> {
+    if (!getCapabilities(CURRENT_PLATFORM).bannerAds || isAdFree()) return;
+    this.bannerRequested = true;
+    try {
+      const provider = await this.getProvider();
+      await withTimeout(provider.showBanner?.() ?? Promise.resolve(), AD_TIMEOUTS_MS.banner, 'showBanner');
+    } catch (err) {
+      console.warn('[monetization] Banner gösterilemedi:', err);
+    }
+  }
+
+  /** Banner'ı gizler (sayfa kapanışı, reklamsız hak). Asla throw etmez. */
+  async hideBanner(): Promise<void> {
+    if (!this.bannerRequested) return;
+    this.bannerRequested = false;
+    try {
+      const provider = await this.getProvider();
+      await withTimeout(provider.hideBanner?.() ?? Promise.resolve(), AD_TIMEOUTS_MS.banner, 'hideBanner');
+    } catch (err) {
+      console.warn('[monetization] Banner gizlenemedi:', err);
+    }
+  }
+
+  /**
+   * Banner yüksekliği (CSS px) değiştiğinde haber verir; 0 = banner yok.
+   * Aboneliği kaldıran fonksiyonu döner.
+   */
+  onBannerHeight(listener: (heightPx: number) => void): () => void {
+    let active = true;
+    this.getProvider()
+      .then((provider) => {
+        if (!active) return;
+        provider.onBannerHeight?.((heightPx) => {
+          if (active) listener(heightPx);
+        });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+      this.getProvider().then((provider) => provider.onBannerHeight?.(null)).catch(() => {});
+    };
+  }
+
+  /**
+   * Kullanıcıya "reklam tercihleri" girişi sunulmalı mı. Sağlayıcı başlatılmamışsa
+   * ya da desteklemiyorsa `false` döner (buton hiç gösterilmez).
+   */
+  async isAdPrivacyOptionsRequired(): Promise<boolean> {
+    if (!getCapabilities(CURRENT_PLATFORM).interstitialAds) return false;
+    try {
+      const provider = await this.getProvider();
+      return provider.privacyOptionsRequired?.() ?? false;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Rıza tercihleri formunu açar. Açılamazsa `false` döner; asla throw etmez. */
+  async openAdPrivacyOptions(): Promise<boolean> {
+    try {
+      const provider = await this.getProvider();
+      return (await provider.openPrivacyOptions?.()) ?? false;
+    } catch (err) {
+      console.warn('[monetization] Reklam tercihleri formu açılamadı:', err);
+      return false;
     }
   }
 

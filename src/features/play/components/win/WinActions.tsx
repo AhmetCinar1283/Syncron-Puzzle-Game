@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { useT } from '@/contexts/LanguageContext';
 import { useCapabilities } from '@/contexts/MonetizationContext';
+import { GameIcon } from '@/components/icons';
 
 interface WinActionsProps {
     isUserAnonymous: boolean;
@@ -15,7 +16,7 @@ interface WinActionsProps {
     onMenu: () => void;
 }
 
-// Sonraki seviye / menü butonları birebir aynı stile sahipti (iki kopya).
+// Ana eylem: sonraki level varsa o, yoksa menü.
 const PRIMARY_BUTTON_STYLE: CSSProperties = {
     flex: 1.4,
     fontSize: 'clamp(11px, 3vw, 13px)',
@@ -33,7 +34,28 @@ const PRIMARY_BUTTON_STYLE: CSSProperties = {
     whiteSpace: 'nowrap',
 };
 
-/** Kazanma ekranının alt butonları: (anonimse) giriş yap + tekrar / sonraki-menü. */
+// Tekrar ve Menü butonları aynı ikincil stili paylaşır.
+const SECONDARY_BUTTON_STYLE: CSSProperties = {
+    flex: 1,
+    fontSize: 'clamp(11px, 3vw, 13px)',
+    padding: '9px 12px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    color: '#cbd5e1',
+    borderRadius: 10,
+    cursor: 'pointer',
+    fontWeight: 600,
+    letterSpacing: '0.03em',
+    transition: 'all 0.15s',
+    touchAction: 'manipulation',
+    whiteSpace: 'nowrap',
+};
+
+/**
+ * Kazanma ekranının alt butonları: (anonimse) giriş yap + [Tekrar] [Menü]
+ * [Sonraki Level]. "Menü" butonu HER ZAMAN görünür (giriş durumundan ve sonraki
+ * level olup olmamasından bağımsız) — son levelde tek başına ana eylem olur.
+ */
 export function WinActions({ isUserAnonymous, loginFailed, onOpenAuth, onRestart, onNextLevel, onMenu }: WinActionsProps) {
     const t = useT();
     const { accountLogin } = useCapabilities();
@@ -76,7 +98,7 @@ export function WinActions({ isUserAnonymous, loginFailed, onOpenAuth, onRestart
                             gap: 6,
                         }}
                     >
-                        🔑 {t('win.login_to_save')}
+                        <GameIcon name="key" size={14} /> {t('win.login_to_save')}
                     </button>
                     {loginFailed && (
                         <motion.p
@@ -88,9 +110,13 @@ export function WinActions({ isUserAnonymous, loginFailed, onOpenAuth, onRestart
                                 fontWeight: 600,
                                 margin: 0,
                                 textAlign: 'center',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
                             }}
                         >
-                            ⚠️ {t('win.login_failed')}
+                            <GameIcon name="warning" size={12} /> {t('win.login_failed')}
                         </motion.p>
                     )}
                 </div>
@@ -102,34 +128,20 @@ export function WinActions({ isUserAnonymous, loginFailed, onOpenAuth, onRestart
                 width: '100%',
                 justifyContent: 'center',
             }}>
-                <button
-                    type="button"
-                    onClick={onRestart}
-                    style={{
-                        flex: 1,
-                        fontSize: 'clamp(11px, 3vw, 13px)',
-                        padding: '9px 12px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        color: '#cbd5e1',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        letterSpacing: '0.03em',
-                        transition: 'all 0.15s',
-                        touchAction: 'manipulation',
-                        whiteSpace: 'nowrap',
-                    }}
-                >
+                <button type="button" onClick={onRestart} style={SECONDARY_BUTTON_STYLE}>
                     {t('win.restart')}
                 </button>
-                {onNextLevel ? (
+                {/* Menü her zaman var: sonraki level varsa ikincil, yoksa ana eylem. */}
+                <button
+                    type="button"
+                    onClick={onMenu}
+                    style={onNextLevel ? SECONDARY_BUTTON_STYLE : PRIMARY_BUTTON_STYLE}
+                >
+                    {t('win.menu')}
+                </button>
+                {onNextLevel && (
                     <button type="button" onClick={onNextLevel} style={PRIMARY_BUTTON_STYLE}>
                         {t('win.next_level')}
-                    </button>
-                ) : (
-                    <button type="button" onClick={onMenu} style={PRIMARY_BUTTON_STYLE}>
-                        {t('win.menu')}
                     </button>
                 )}
             </div>

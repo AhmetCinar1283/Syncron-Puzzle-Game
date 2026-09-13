@@ -183,7 +183,7 @@ export function MainComparisonChart({
                   style={{ cursor: 'pointer' }}
                   onClick={() => onLevelClick(level.firestoreId)}
                 >
-                  {isViolated ? '⚠️ ' : ''}{level.name}
+                  {isViolated ? '(!) ' : ''}{level.name}
                 </text>
               </g>
             );

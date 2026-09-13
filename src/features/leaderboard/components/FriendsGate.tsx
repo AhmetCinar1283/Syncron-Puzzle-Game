@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { GameIcon } from '@/components/icons';
 
 interface FriendsGateProps {
   t: (key: string) => string;
@@ -26,7 +27,9 @@ export default function FriendsGate({ t, activeColor, variant, onSignIn }: Frien
           boxShadow: `0 0 24px ${activeColor}05`,
         }}
       >
-        <span style={{ fontSize: '36px', display: 'block', marginBottom: '16px' }}>👥</span>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <GameIcon name="friends" size={44} color={activeColor} />
+        </div>
         <p style={{ fontSize: '15px', color: '#9ca3af', marginBottom: '20px' }}>
           {t('leaderboard.login_required')}
         </p>
@@ -73,7 +76,9 @@ export default function FriendsGate({ t, activeColor, variant, onSignIn }: Frien
         boxShadow: `0 0 24px ${activeColor}05`,
       }}
     >
-      <span style={{ fontSize: '36px', display: 'block', marginBottom: '16px' }}>👥</span>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+        <GameIcon name="friends" size={44} color={activeColor} />
+      </div>
       <p style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '20px' }}>
         {t('leaderboard.no_friends')}
       </p>

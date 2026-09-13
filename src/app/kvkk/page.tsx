@@ -2,6 +2,7 @@
 
 import { useAppRouter } from '@/lib/navigation';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
+import AdPrivacyOptionsButton from '@/components/common/AdPrivacyOptionsButton';
 
 export default function KvkkPage() {
   const t = useT();
@@ -129,6 +130,10 @@ export default function KvkkPage() {
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>4. Açık Rızanın Geri Alınması</h2>
               <p>Dilediğiniz zaman açık rızanızı geri çekme ve kişisel verilerinizin ile destek geçmişinizin sistemlerimizden tamamen silinmesini talep etme hakkınız bulunmaktadır. Rızanızı geri çekmeniz durumunda, çevrimiçi ilerleme eşitleme ve destek özellikleri devre dışı kalacak, hesabınız kalıcı olarak silinecektir.</p>
 
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Reklam Kimliği ve Reklam Tercihleri</h2>
+              <p>Oyunun Android sürümünde Google AdMob üzerinden reklam gösterilir. Bu kapsamda cihazınızın reklam kimliği (Advertising ID) gibi tanımlayıcılar Google tarafından işlenebilir ve yurt dışındaki Google sunucularına aktarılabilir. Reklam gösterimi için <strong>açık rıza zorunlu değildir</strong>: rıza vermezseniz reklamlar kişiselleştirilmeden sunulur, oyunun hiçbir özelliği kısıtlanmaz. Tercihinizi aşağıdaki butondan dilediğiniz zaman değiştirebilirsiniz.</p>
+              <AdPrivacyOptionsButton />
+
               <p style={{ marginTop: '20px', color: '#e5e7eb', fontWeight: 600 }}>
                 &quot;Hesap Oluştur&quot; veya &quot;Google ile Devam Et&quot; butonuna basarak kayıt olurken aktif kutucuğu işaretlemeniz halinde, yukarıdaki metni okuduğunuzu, verilerinizin yurt dışındaki Google sunucularına aktarılmasına, destek sisteminde işlenmesine ve skor tablolarında yayınlanmasına özgür iradenizle açık rıza verdiğinizi beyan etmiş olursunuz.
               </p>
@@ -149,6 +154,10 @@ export default function KvkkPage() {
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>4. Revoking Your Consent</h2>
               <p>You reserve the right to withdraw your explicit consent at any time and request permanent deletion of your credentials and ticket history. Revoking this consent will automatically terminate your account session, wipe database backups and support history, and disable online cloud synchronization.</p>
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Advertising ID and Ad Preferences</h2>
+              <p>The Android build of the game serves ads through Google AdMob. Identifiers such as your device Advertising ID may therefore be processed by Google and transferred to Google servers abroad. Explicit consent is <strong>not mandatory</strong> for ads to be served: if you decline, ads are shown without personalisation and no game feature is restricted. You can change your choice at any time with the button below.</p>
+              <AdPrivacyOptionsButton />
 
               <p style={{ marginTop: '20px', color: '#e5e7eb', fontWeight: 600 }}>
                 By checking the active consent checkbox during account creation or Google linking, you state that you have read and understood this document and willingly provide your explicit consent to the abroad transfer, support ticket processing, and leaderboard rendering of your data.

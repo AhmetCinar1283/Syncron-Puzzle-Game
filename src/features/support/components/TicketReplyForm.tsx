@@ -1,5 +1,6 @@
 'use client';
 
+import { GameIcon } from '@/components/icons';
 import { TICKET_REPLY_MAX, type SupportTicket } from '@/services/firebase';
 
 export function TicketReplyForm({
@@ -44,8 +45,9 @@ export function TicketReplyForm({
   return (
     <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
       {errorMsg && (
-        <div style={{ fontSize: '11px', color: '#ec4899', padding: '0 4px' }}>
-          ✕ {errorMsg}
+        <div style={{ fontSize: '11px', color: '#ec4899', padding: '0 4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <GameIcon name="close" size={11} color="#ec4899" />
+          <span>{errorMsg}</span>
         </div>
       )}
 

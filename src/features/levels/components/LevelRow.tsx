@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback, type MouseEvent, type PointerEvent } from 'react';
+import { useState, useRef, useCallback, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import type { StoredLevel, StoredPlayedLevel } from '@/services/db';
 import { useT } from '@/contexts/LanguageContext';
 import { DIFFICULTY_COLORS } from '../lib/mapThemes';
+import { GameIcon } from '@/components/icons';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -14,11 +15,15 @@ function formatTime(seconds: number): string {
 
 function StarDisplay({ stars }: { stars: 1 | 2 | 3 }) {
   return (
-    <span className="text-[11px] tracking-widest">
+    <span className="inline-flex items-center gap-0.5 text-[11px] tracking-widest">
       {[1, 2, 3].map((n) => (
-        <span key={n} style={{ color: n <= stars ? '#ffd700' : '#1e3a5f', textShadow: n <= stars ? '0 0 6px rgba(255,215,0,0.5)' : undefined }}>
-          ★
-        </span>
+        <GameIcon
+          key={n}
+          name="star"
+          size={11}
+          color={n <= stars ? '#ffd700' : '#1e3a5f'}
+          style={{ filter: n <= stars ? 'drop-shadow(0 0 4px rgba(255,215,0,0.5))' : undefined }}
+        />
       ))}
     </span>
   );
@@ -48,7 +53,7 @@ function ContextMenu({ x, y, isPreset, index, total, onEdit, onDelete, onMoveUp,
         className="fixed z-[301] min-w-[170px] rounded-[10px] border border-cyan-400/25 bg-[#0d1425]/85 py-[5px] shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_24px_rgba(0,196,255,0.06)] backdrop-blur-md"
         style={{ left: x, top: y }}
       >
-        <MenuItem color="#00c4ff" icon="✎" label={t('list.edit')} onClick={() => { onEdit(); onClose(); }} />
+        <MenuItem color="#00c4ff" icon={<GameIcon name="pencil" size={14} />} label={t('list.edit')} onClick={() => { onEdit(); onClose(); }} />
         {!isPreset && (
           <>
             <MenuItem color="#9333ea" icon="↑" label="Yukarı taşı" onClick={() => { onMoveUp(); onClose(); }} disabled={index === 0} />
@@ -56,13 +61,13 @@ function ContextMenu({ x, y, isPreset, index, total, onEdit, onDelete, onMoveUp,
           </>
         )}
         <div className="my-1 h-px bg-white/[0.06]" />
-        <MenuItem color="#ef4444" icon="✕" label={t('list.delete')} onClick={() => { onDelete(); onClose(); }} />
+        <MenuItem color="#ef4444" icon={<GameIcon name="close" size={14} />} label={t('list.delete')} onClick={() => { onDelete(); onClose(); }} />
       </div>
     </>
   );
 }
 
-function MenuItem({ color, icon, label, onClick, disabled }: { color: string; icon: string; label: string; onClick: () => void; disabled?: boolean }) {
+function MenuItem({ color, icon, label, onClick, disabled }: { color: string; icon: ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -171,7 +176,7 @@ export function LevelRow({
             <span className="truncate text-[13px] font-bold" style={{ color: locked ? '#475569' : '#f1f5f9' }}>
               {locked ? (
                 <span className="flex items-center gap-1" style={{ color: '#475569' }}>
-                  🔒 {t('levels.locked') || 'Kilitli'}
+                  <GameIcon name="lock" size={13} color="#475569" /> {t('levels.locked') || 'Kilitli'}
                 </span>
               ) : level.name}
             </span>
@@ -202,8 +207,8 @@ export function LevelRow({
           </div>
           {level.trailCollision && (
             <div className="mt-0.5 flex items-center">
-              <span className="rounded border border-red-500/25 bg-red-500/[0.08] px-1 py-0.5 text-[9px] font-extrabold tracking-wide text-red-500">
-                ⚡ {t('editor.trail_collision') || 'TRAIL'}
+              <span className="inline-flex items-center gap-1 rounded border border-red-500/25 bg-red-500/[0.08] px-1 py-0.5 text-[9px] font-extrabold tracking-wide text-red-500">
+                <GameIcon name="lightning" size={11} color="#ef4444" /> {t('editor.trail_collision') || 'TRAIL'}
               </span>
             </div>
           )}
@@ -233,8 +238,8 @@ export function LevelRow({
                     <ArrowBtn onClick={onMoveDown} disabled={index >= total - 1} label="▼" />
                   </div>
                 )}
-                <SmallBtn onClick={onEdit} color="#00c4ff" label="✎" title={t('list.edit')} />
-                <SmallBtn onClick={onDelete} color="#ef4444" label="✕" title={t('list.delete')} />
+                <SmallBtn onClick={onEdit} color="#00c4ff" label={<GameIcon name="pencil" size={13} />} title={t('list.edit')} />
+                <SmallBtn onClick={onDelete} color="#ef4444" label={<GameIcon name="close" size={13} />} title={t('list.delete')} />
               </div>
             )}
 
@@ -266,7 +271,7 @@ export function LevelRow({
                 cursor: locked ? 'not-allowed' : 'pointer',
               }}
             >
-              {locked ? '🔒' : '▶'}
+              {locked ? <GameIcon name="lock" size={13} color="#475569" /> : '▶'}
             </button>
           </div>
         </div>
@@ -296,7 +301,7 @@ function ArrowBtn({ onClick, disabled, label }: { onClick: () => void; disabled:
   );
 }
 
-function SmallBtn({ onClick, color, label, title }: { onClick: () => void; color: string; label: string; title: string }) {
+function SmallBtn({ onClick, color, label, title }: { onClick: () => void; color: string; label: ReactNode; title: string }) {
   return (
     <button
       onClick={onClick}

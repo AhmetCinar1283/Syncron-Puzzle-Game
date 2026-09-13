@@ -1,4 +1,5 @@
 'use client';
+import { GameIcon } from '@/components/icons';
 
 export function KeyboardCard({ t }: { t: (key: string) => string }) {
   return (
@@ -28,7 +29,7 @@ export function KeyboardCard({ t }: { t: (key: string) => string }) {
           gap: 8,
         }}
       >
-        <span>⌨</span> {t('controls.keyboard')}
+        <GameIcon name="keyboard" size={20} color="#00c4ff" /> {t('controls.keyboard')}
       </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import BadgeIcon from '@/components/common/BadgeIcon';
+import { GameIcon } from '@/components/icons';
 import { LeaderboardEntry } from '@/services/api/leaderboardClient';
 import { CategoryId } from '../lib/constants';
 import { ShowcaseBadge } from '../lib/types';
@@ -83,8 +84,8 @@ export default function PodiumSection({ podiumEntries, selfUid, activeCategoryId
               }}
             >
               {isFirst && (
-                <span style={{ fontSize: '20px', marginBottom: '-2px', filter: 'drop-shadow(0 0 6px #ffd700)' }}>
-                  👑
+                <span style={{ display: 'inline-flex', marginBottom: '2px', filter: 'drop-shadow(0 0 6px #ffd700)' }}>
+                  <GameIcon name="crown" size={22} color="#ffd700" />
                 </span>
               )}
               <span

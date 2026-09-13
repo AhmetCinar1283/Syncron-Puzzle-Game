@@ -1,3 +1,5 @@
+import { GameIcon } from '@/components/icons';
+
 // Admin Dashboard için özel buton yapısı (Kare formunda)
 export function AdminCard({
   label,
@@ -9,7 +11,7 @@ export function AdminCard({
 }: {
   label: string;
   sub: string;
-  icon: string;
+  icon: string | React.ReactNode;
   color: string;
   onClick: () => void;
   unreadCount?: number;
@@ -48,9 +50,13 @@ export function AdminCard({
         el.style.transform = 'translateY(0)';
       }}
     >
-      <span style={{ fontSize: 36, opacity: 0.9, textShadow: `0 0 10px ${color}50` }}>
-        {icon}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 36, opacity: 0.9 }}>
+        {typeof icon === 'string' ? (
+          <GameIcon name={icon} size={36} color={color} />
+        ) : (
+          icon
+        )}
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
         <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           {label}

@@ -7,6 +7,7 @@
 import type { AdProvider, AdUnavailableReason, InterstitialResult, RewardedResult } from '../../types';
 import { getMockScenario } from './scenario';
 import { showMockAd } from './mockAdOverlay';
+import { hideMockBanner, onMockBannerHeight, showMockBanner } from './mockBannerOverlay';
 
 const AD_DURATION_MS = 3000;
 /** 'timeout' senaryosunda kasıtlı olarak hiç dönmeyen bir promise — adService'in
@@ -63,5 +64,14 @@ export const mockProvider: AdProvider = {
   },
   happyTime() {
     console.info('[mockProvider] happyTime');
+  },
+  async showBanner(): Promise<void> {
+    showMockBanner();
+  },
+  async hideBanner(): Promise<void> {
+    hideMockBanner();
+  },
+  onBannerHeight(listener) {
+    onMockBannerHeight(listener);
   },
 };

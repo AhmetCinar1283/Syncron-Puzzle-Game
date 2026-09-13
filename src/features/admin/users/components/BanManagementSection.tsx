@@ -1,6 +1,7 @@
 'use client';
 
 import type { ActiveBan, BanRecord } from '@/services/api/adminClient';
+import { GameIcon } from '@/components/icons';
 import { getRemainingTimeText } from '../lib/format';
 
 export function BanManagementSection({
@@ -30,8 +31,9 @@ export function BanManagementSection({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase' }}>
-          🚫 {isTr ? 'BAN / KISITLAMA YÖNETİMİ' : 'BAN & RESTRICTION MANAGEMENT'}
+        <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <GameIcon name="ban" size={14} color="#9333ea" />
+          <span>{isTr ? 'BAN / KISITLAMA YÖNETİMİ' : 'BAN & RESTRICTION MANAGEMENT'}</span>
         </h3>
         <button
           onClick={onIssueBan}

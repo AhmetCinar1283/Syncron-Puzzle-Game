@@ -8,6 +8,7 @@ import { NBtn } from '../EditorUI';
 import { useLevelReorderDrag } from '../../hooks/useLevelReorderDrag';
 import SavedLevelsList from './SavedLevelsList';
 import FirestoreLevelsList from './FirestoreLevelsList';
+import { GameIcon } from '@/components/icons';
 
 interface LevelsManagerDialogProps {
   open: boolean;
@@ -119,11 +120,14 @@ export default function LevelsManagerDialog({ open, onClose }: LevelsManagerDial
               fontSize: 16,
               cursor: 'pointer',
               transition: 'color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
             onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
           >
-            ✕
+            <GameIcon name="close" size={14} />
           </button>
         </div>
 
@@ -141,12 +145,12 @@ export default function LevelsManagerDialog({ open, onClose }: LevelsManagerDial
           }}
         >
           <div style={{ display: 'flex', gap: 6 }}>
-            <NBtn active={activeTab === 'saved'} onClick={() => setActiveTab('saved')} color="#00c4ff">
-              💾 {t('editor.saved_levels')}
+            <NBtn active={activeTab === 'saved'} onClick={() => setActiveTab('saved')} color="#00c4ff" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <GameIcon name="save" size={12} /> {t('editor.saved_levels')}
             </NBtn>
             {isModerator && (
-              <NBtn active={activeTab === 'firestore'} onClick={() => setActiveTab('firestore')} color="#fbbf24">
-                🌐 Firestore
+              <NBtn active={activeTab === 'firestore'} onClick={() => setActiveTab('firestore')} color="#fbbf24" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <GameIcon name="globe" size={12} /> Firestore
               </NBtn>
             )}
           </div>
@@ -165,11 +169,14 @@ export default function LevelsManagerDialog({ open, onClose }: LevelsManagerDial
               borderRadius: 6,
               cursor: 'pointer',
               transition: 'all 0.15s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0, 255, 136, 0.12)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(0, 255, 136, 0.06)')}
           >
-            ➕ {t('common.new_level')}
+            <GameIcon name="plus" size={12} /> {t('common.new_level')}
           </button>
         </div>
 

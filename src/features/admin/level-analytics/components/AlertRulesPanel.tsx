@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 import type { AlertCondition, AlertRule } from '@/services/firebase/adminLevelAnalytics';
 import { METRIC_LABELS, OPERATORS } from '../lib/types';
 
@@ -104,11 +105,14 @@ export function AlertRulesPanel({
                           background: 'transparent',
                           border: 'none',
                           color: '#64748b',
-                          fontSize: 14,
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 4,
                         }}
                       >
-                        🗑
+                        <GameIcon name="trash" size={14} color="#64748b" />
                       </button>
                     </div>
                   </div>

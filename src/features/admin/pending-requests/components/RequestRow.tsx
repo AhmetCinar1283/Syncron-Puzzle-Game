@@ -5,6 +5,7 @@ import type { LevelRequest } from '@/services/firebase/firestore';
 import type { LevelPart } from '@/services/firebase/admin';
 import type { CellType } from '@/game-engine/level-format';
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import { GridPreview } from './GridPreview';
 import { DIFFICULTY_COLORS, timeAgo } from '../lib/helpers';
 
@@ -129,9 +130,14 @@ export function RequestRow({ req, parts, onApprove, onReject }: RequestRowProps)
                 <button
                   onClick={handleApprove}
                   disabled={busy}
-                  style={{ padding: '7px 18px', fontSize: 12, fontWeight: 700, background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.5)', color: '#00ff88', borderRadius: 7, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 18px', fontSize: 12, fontWeight: 700, background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.5)', color: '#00ff88', borderRadius: 7, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
                 >
-                  {busy ? '...' : t('admin.approve_publish')}
+                  {busy ? '...' : (
+                    <>
+                      <GameIcon name="check" size={12} color="#00ff88" />
+                      {t('admin.approve_publish')}
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => setApproving(false)}
@@ -157,9 +163,14 @@ export function RequestRow({ req, parts, onApprove, onReject }: RequestRowProps)
                 <button
                   onClick={handleReject}
                   disabled={busy}
-                  style={{ padding: '7px 18px', fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.5)', color: '#ef4444', borderRadius: 7, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 18px', fontSize: 12, fontWeight: 700, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.5)', color: '#ef4444', borderRadius: 7, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
                 >
-                  {busy ? '...' : t('admin.reject_confirm')}
+                  {busy ? '...' : (
+                    <>
+                      <GameIcon name="close" size={12} color="#ef4444" />
+                      {t('admin.reject_confirm')}
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => setRejecting(false)}

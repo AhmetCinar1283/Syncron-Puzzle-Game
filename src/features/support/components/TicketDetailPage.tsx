@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
+import { GameIcon } from '@/components/icons';
 import { useTicketDetail } from '../hooks/useTicketDetail';
 import { TicketHeaderCard } from './TicketHeaderCard';
 import { TicketMessageFeed } from './TicketMessageFeed';
@@ -98,7 +99,10 @@ function TicketDetailContent() {
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
             }}
           >
-            ← {t('support.my_tickets')}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <GameIcon name="arrow-left" size={13} color="currentColor" />
+              {t('support.my_tickets')}
+            </span>
           </button>
 
           <span style={{ fontSize: '11px', color: '#4b5563', letterSpacing: '0.05em' }}>

@@ -5,6 +5,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
 import { LANGS, type Lang } from '@/lib/i18n';
 import { getUserTagData, requestNewTag } from '@/services/firebase/users';
+import { GameIcon } from '@/components/icons';
 
 interface Props {
   onClose: () => void;
@@ -406,10 +407,11 @@ function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: (
           style={{
             position: 'absolute', top: 12, right: 14,
             background: 'none', border: 'none', color: '#374151',
-            cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4,
+            cursor: 'pointer', padding: 4,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          ✕
+          <GameIcon name="close" size={14} />
         </button>
         {children}
       </div>

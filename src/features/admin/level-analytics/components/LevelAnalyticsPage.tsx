@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
+import { GameIcon } from '@/components/icons';
 import type { AlertCondition } from '@/services/firebase/adminLevelAnalytics';
 import { useLevelAnalyticsData } from '../hooks/useLevelAnalyticsData';
 import type { MetricKey } from '../lib/types';
@@ -94,11 +95,15 @@ export default function LevelAnalyticsPage() {
                 letterSpacing: '0.08em',
                 marginBottom: 12,
                 transition: 'all 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = '#10b98115')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              ◄ BACK TO DASHBOARD
+              <GameIcon name="arrow-left" size={11} color="#10b981" />
+              <span>BACK TO DASHBOARD</span>
             </button>
             <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
               Level <span style={{ color: '#10b981' }}>Analytics</span>
@@ -121,9 +126,13 @@ export default function LevelAnalyticsPage() {
                 fontSize: 12,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
               }}
             >
-              ⚙ {isEditingRules ? 'UYARI KURALLARINI KAPAT' : 'ALARM / UYARI KURALLARI'}
+              <GameIcon name="settings" size={12} color="#10b981" />
+              <span>{isEditingRules ? 'UYARI KURALLARINI KAPAT' : 'ALARM / UYARI KURALLARI'}</span>
             </button>
             <button
               onClick={loadData}
@@ -138,9 +147,19 @@ export default function LevelAnalyticsPage() {
                 fontSize: 12,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
               }}
             >
-              {loading ? 'YÜKLENİYOR...' : '🔄 YENİLE'}
+              {loading ? (
+                'YÜKLENİYOR...'
+              ) : (
+                <>
+                  <GameIcon name="refresh" size={12} color="#030712" />
+                  <span>YENİLE</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -172,9 +191,13 @@ export default function LevelAnalyticsPage() {
               fontWeight: 800,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
-            📋 LİSTE GÖRÜNÜMÜ
+            <GameIcon name="clipboard" size={13} color={viewMode === 'list' ? '#10b981' : '#64748b'} />
+            <span>LİSTE GÖRÜNÜMÜ</span>
           </button>
           <button
             onClick={() => setViewMode('chart')}
@@ -188,9 +211,13 @@ export default function LevelAnalyticsPage() {
               fontWeight: 800,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
-            📊 GRAFİK KARŞILAŞTIRMA
+            <GameIcon name="bar-chart" size={13} color={viewMode === 'chart' ? '#10b981' : '#64748b'} />
+            <span>GRAFİK KARŞILAŞTIRMA</span>
           </button>
         </div>
 

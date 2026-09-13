@@ -1,6 +1,7 @@
 'use client';
 
 import type { ActiveBan } from '@/services/api/adminClient';
+import { GameIcon } from '@/components/icons';
 import { getRemainingTimeText } from '../lib/format';
 
 export function ActiveBanBanner({ activeBans, isTr }: { activeBans: ActiveBan[]; isTr: boolean }) {
@@ -22,7 +23,7 @@ export function ActiveBanBanner({ activeBans, isTr }: { activeBans: ActiveBan[];
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>🚫</span>
+          <GameIcon name="ban" size={18} color="#ef4444" />
           <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#f87171', letterSpacing: '0.05em' }}>
             {isTr ? 'BU HESAP KISITLIDIR:' : 'THIS ACCOUNT IS RESTRICTED:'}
           </h3>
@@ -39,6 +40,9 @@ export function ActiveBanBanner({ activeBans, isTr }: { activeBans: ActiveBan[];
             borderRadius: '6px',
             cursor: 'pointer',
             transition: 'all 0.2s',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
@@ -47,7 +51,8 @@ export function ActiveBanBanner({ activeBans, isTr }: { activeBans: ActiveBan[];
             e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
           }}
         >
-          {isTr ? 'Banları Yönet ↓' : 'Manage Bans ↓'}
+          <span>{isTr ? 'Banları Yönet' : 'Manage Bans'}</span>
+          <GameIcon name="arrow-down" size={10} color="#f87171" />
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '28px' }}>

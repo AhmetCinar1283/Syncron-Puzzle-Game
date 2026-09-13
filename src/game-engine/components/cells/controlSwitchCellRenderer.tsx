@@ -1,6 +1,7 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
 import { useGameTheme } from '../../contexts/GameThemeContext';
+import { GameIcon } from '@/components/icons';
 
 interface ControlSwitchCellRendererProps {
     cell: Cell;
@@ -17,29 +18,21 @@ export const ControlSwitchCellRenderer = ({ cell, entityOnCell, prevEntityOnCell
             <div style={{
                 width: 64,
                 height: 64,
-                background: 'rgba(168, 85, 247, 0.12)',
-                border: '1px solid rgba(168, 85, 247, 0.4)',
-                boxShadow: 'inset 0 0 10px rgba(168, 85, 247, 0.15)',
+                background: 'rgba(192, 132, 252, 0.12)',
+                border: '1px solid rgba(192, 132, 252, 0.5)',
+                boxShadow: 'inset 0 0 12px rgba(168, 85, 247, 0.3)',
                 boxSizing: 'border-box',
+                position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'relative',
             }}>
-                <span
-                    style={{
-                        fontSize: 18,
-                        color: '#c084fc',
-                        textShadow: '0 0 8px rgba(168,85,247,0.7)',
-                        userSelect: 'none',
-                        fontWeight: 'bold',
-                    }}
-                >
-                    ❖
-                </span>
+                <GameIcon name="switch" size={20} color="#c084fc" style={{ filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.7))' }} />
             </div>
         );
     }
+
+    const borderRadius = theme === 'arcade' ? '0px' : theme === 'blueprint' ? '2px' : '10px';
 
     return (
         <div 
@@ -49,7 +42,7 @@ export const ControlSwitchCellRenderer = ({ cell, entityOnCell, prevEntityOnCell
                 height: 64,
                 background: isOccupied ? 'rgba(15, 23, 42, 0.9)' : 'rgba(15, 23, 42, 0.7)',
                 border: isOccupied ? '2px solid #e9d5ff' : '2px solid #a855f7',
-                borderRadius: '10px',
+                borderRadius,
                 boxShadow: isOccupied
                     ? 'inset 0 0 24px rgba(168,85,247,0.75), 0 0 16px rgba(168,85,247,0.5)'
                     : 'inset 0 0 16px rgba(168,85,247,0.25), 0 0 10px rgba(168,85,247,0.2)',
@@ -64,15 +57,16 @@ export const ControlSwitchCellRenderer = ({ cell, entityOnCell, prevEntityOnCell
         >
             <span 
                 style={{ 
-                    fontSize: 20, 
                     color: isOccupied ? '#e9d5ff' : '#c084fc', 
-                    textShadow: '0 0 10px rgba(168,85,247,0.9), 0 0 20px rgba(168,85,247,0.4)', 
+                    filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.7))', 
                     userSelect: 'none', 
-                    fontWeight: 'bold',
-                    zIndex: 1
+                    zIndex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                 }}
             >
-                ❖
+                <GameIcon name="switch" size={20} color={isOccupied ? '#e9d5ff' : '#c084fc'} />
             </span>
             
             {/* Alt tarafta aksiyonun ismini gösteren minik gösterge */}

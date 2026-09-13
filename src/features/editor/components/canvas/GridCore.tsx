@@ -6,87 +6,15 @@ import type { EdgeBehavior } from '@/game-engine/level-format';
 import { EDGE_COLOR } from '../../lib/editorConfig';
 import { useEditorContext } from '../../EditorContext';
 import { getPlayerColor } from '@/game-engine/components/playerColors';
-
-function ObjDot({ color, size, label }: { color: string; size: number; label: string }) {
-  const pad = Math.floor(size * 0.14);
-  const s = size - pad * 2;
-  return (
-    <div style={{
-      position: 'absolute', top: pad, left: pad, width: s, height: s,
-      borderRadius: '50%', background: color,
-      boxShadow: `0 0 8px ${color}, 0 0 16px ${color}55`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      pointerEvents: 'none', zIndex: 10,
-    }}>
-      <span style={{ fontSize: s * 0.38, fontWeight: 900, color: '#000000', lineHeight: 1 }}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-interface BoxDotProps {
-  size: number;
-  requiresPower: boolean;
-  durabilityEnabled?: boolean;
-  durability?: number;
-  colorFilterEnabled?: boolean;
-  colorFilterIndex?: number;
-}
-
-function BoxDot({
-  size,
-  requiresPower,
-  durabilityEnabled,
-  durability,
-  colorFilterEnabled,
-  colorFilterIndex,
-}: BoxDotProps) {
-  const pad = Math.round(size * 0.1);
-  const s = size - pad * 2;
-
-  let themeColor = '#f97316';
-  if (colorFilterEnabled) {
-    themeColor = getPlayerColor(colorFilterIndex ?? 0).hex;
-  }
-
-  return (
-    <div style={{
-      position: 'absolute', top: pad, left: pad, width: s, height: s,
-      borderRadius: 6,
-      background: 'rgba(15,23,35,0.9)',
-      border: `2px solid ${themeColor}`,
-      boxShadow: `0 0 8px ${themeColor}80`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      pointerEvents: 'none', zIndex: 10,
-    }}>
-      <span style={{ fontSize: s * 0.28, color: themeColor, lineHeight: 1, fontWeight: 'bold', userSelect: 'none' }}>▣</span>
-      {requiresPower && (
-        <span style={{ position: 'absolute', top: 1, right: 2, fontSize: s * 0.2, color: '#fbbf24', lineHeight: 1, userSelect: 'none' }}>⚡</span>
-      )}
-      {durabilityEnabled && (
-        <div style={{
-          position: 'absolute', bottom: 1, right: 2,
-          fontSize: s * 0.24, fontWeight: 'bold', color: themeColor,
-          lineHeight: 1, userSelect: 'none', fontFamily: 'monospace'
-        }}>
-          {durability}
-        </div>
-      )}
-      {colorFilterEnabled && (
-        <div style={{
-          position: 'absolute', top: 2, left: 2,
-          width: 5, height: 5, borderRadius: '50%',
-          backgroundColor: themeColor,
-          boxShadow: `0 0 4px ${themeColor}`,
-        }} />
-      )}
-    </div>
-  );
-}
+import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
+import { PlayerGraphic } from '@/game-engine/components/entities/PlayerGraphic';
+import { BoxGraphic } from '@/game-engine/components/entities/BoxGraphic';
+import type { Entity } from '@/game-engine/logic/entityTypes';
+import { GameIcon } from '@/components/icons';
 
 export default function GridCore() {
   const { grid, objects, boxes, cellSize, edges, paintCell, lockedCells, activeRoomId } = useEditorContext();
+  const { themeConfig } = useGameTheme();
   const isPainting = useRef(false);
 
   return (
@@ -97,10 +25,15 @@ export default function GridCore() {
         borderBottomColor: EDGE_COLOR[edges.bottom.type as EdgeBehavior],
         borderLeftColor: EDGE_COLOR[edges.left.type as EdgeBehavior],
         borderRightColor: EDGE_COLOR[edges.right.type as EdgeBehavior],
-        borderRadius: 6, overflow: 'hidden', background: '#060d1a',
-        cursor: 'crosshair', userSelect: 'none',
-        boxShadow: '0 0 40px rgba(0,0,0,0.7)', touchAction: 'none',
+        borderRadius: themeConfig.board.borderRadius ?? 6,
+        overflow: 'hidden',
+        background: themeConfig.board.background ?? '#060d1a',
+        cursor: 'crosshair',
+        userSelect: 'none',
+        boxShadow: themeConfig.board.boxShadow(true),
+        touchAction: 'none',
         position: 'relative',
+        transition: 'background 0.3s, box-shadow 0.3s',
       }}
       onMouseLeave={() => { isPainting.current = false; }}
       onTouchStart={(e) => {
@@ -138,33 +71,115 @@ export default function GridCore() {
                 onMouseUp={() => { isPainting.current = false; }}
               >
                 <GameCellAdapter cellType={cell} cellSize={cellSize} />
-                {cellObjects.map((obj) => (
-                  <ObjDot 
-                    key={obj.id} 
-                    color={getPlayerColor(obj.id - 1).hex} 
-                    size={cellSize} 
-                    label={String(obj.id)} 
-                  />
-                ))}
-                {boxes.map((b) => (b.roomId ?? 'main') === activeRoomId && b.row === r && b.col === c ? (
-                  <BoxDot
-                    key={b.id}
-                    size={cellSize}
-                    requiresPower={b.requiresPower}
-                    durabilityEnabled={b.durabilityEnabled}
-                    durability={b.durability}
-                    colorFilterEnabled={b.colorFilterEnabled}
-                    colorFilterIndex={b.colorFilterIndex}
-                  />
-                ) : null)}
+                
+                {/* 100% In-Game Matching Player Graphic */}
+                {cellObjects.map((obj) => {
+                  const playerEntity = {
+                    id: obj.id,
+                    type: 'player' as const,
+                    position: { row: r, col: c },
+                    physics: { direction: 'up' as const, force: 0, z: 0 },
+                    def: { mass: 1, resistance: 0, isSolid: true },
+                    traits: new Set<never>(),
+                    isElectrified: false,
+                    customData: {
+                      playerIndex: obj.id - 1,
+                      mode: (obj as any).mode ?? 'normal',
+                      isLocked: isLocked,
+                    },
+                  } as Entity;
+
+                  return (
+                    <div
+                      key={obj.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: 64,
+                        height: 64,
+                        transform: `scale(${cellSize / 64})`,
+                        transformOrigin: 'top left',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                      }}
+                    >
+                      <PlayerGraphic entity={playerEntity} />
+                      {/* Player number badge for clear editor identification */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 3,
+                        left: 3,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        background: '#000000',
+                        border: `1.5px solid ${getPlayerColor(obj.id - 1).hex}`,
+                        color: '#ffffff',
+                        fontSize: 10,
+                        fontWeight: 900,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 1,
+                        boxShadow: '0 0 4px rgba(0,0,0,0.9)',
+                        zIndex: 15,
+                        userSelect: 'none',
+                        padding: '0 3px',
+                      }}>
+                        {obj.id}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* 100% In-Game Matching Box Graphic */}
+                {boxes.map((b) => {
+                  if ((b.roomId ?? 'main') !== activeRoomId || b.row !== r || b.col !== c) return null;
+                  const boxEntity = {
+                    id: b.id,
+                    type: 'box' as const,
+                    position: { row: r, col: c },
+                    physics: { direction: 'up' as const, force: 0, z: 0 },
+                    def: { mass: 1, resistance: 0, isSolid: true },
+                    traits: new Set<never>(),
+                    isElectrified: !b.requiresPower,
+                    customData: {
+                      requiresPower: b.requiresPower,
+                      durabilityEnabled: b.durabilityEnabled,
+                      durability: b.durability,
+                      colorFilterEnabled: b.colorFilterEnabled,
+                      colorFilterIndex: b.colorFilterIndex,
+                    },
+                  } as Entity;
+
+                  return (
+                    <div
+                      key={b.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: 64,
+                        height: 64,
+                        transform: `scale(${cellSize / 64})`,
+                        transformOrigin: 'top left',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                      }}
+                    >
+                      <BoxGraphic entity={boxEntity} />
+                    </div>
+                  );
+                })}
+
                 {isLocked && (
                   <div style={{
                     position: 'absolute', top: 2, right: 2, zIndex: 12,
-                    fontSize: Math.max(9, Math.round(cellSize * 0.3)),
                     pointerEvents: 'none', userSelect: 'none',
                     filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))'
                   }}>
-                    🔒
+                    <GameIcon name="lock" size={Math.max(10, Math.round(cellSize * 0.3))} color="#facc15" />
                   </div>
                 )}
               </div>

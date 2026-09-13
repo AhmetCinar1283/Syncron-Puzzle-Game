@@ -16,7 +16,6 @@ import { usePlayInput } from '../hooks/usePlayInput';
 import { PlayHud } from './play-screen/PlayHud';
 import { HudControls } from './play-screen/HudControls';
 import { SolutionSteps, CompactSolutionBar } from './play-screen/SolutionSteps';
-import { LevelInfoBar } from './play-screen/LevelInfoBar';
 import { BoardArea } from './play-screen/BoardArea';
 import { ActionPanel } from './play-screen/ActionPanel';
 import { UIOverlay } from './play-screen/UIOverlay';
@@ -212,8 +211,6 @@ export function PlayScreen({
                 <CompactSolutionBar steps={solutionSteps!} moveCount={moveCount} activeStepRef={activeStepRef} />
             )}
 
-            {/* ── Seviye Özellikleri Göstergesi ──────────────── */}
-            <LevelInfoBar controlMode={controlMode} trailCollision={trailCollision} />
 
             {/* ── Board alanı ───────────── */}
             <BoardArea

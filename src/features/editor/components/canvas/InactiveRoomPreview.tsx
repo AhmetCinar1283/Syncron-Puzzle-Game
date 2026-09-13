@@ -4,6 +4,7 @@ import type { CellType, EdgeBehavior } from '@/game-engine/level-format';
 import { EDGE_COLOR } from '../../lib/editorConfig';
 import type { BoxConfig, ObjConfig } from '../../lib/editorConfig';
 import type { EditorRoom, RoomPositions } from './canvasTypes';
+import { GameIcon } from '@/components/icons';
 
 interface InactiveRoomPreviewProps {
   room: EditorRoom;
@@ -47,7 +48,7 @@ export default function InactiveRoomPreview({ room, offset, cellSize, objects, b
         letterSpacing: '0.08em',
         whiteSpace: 'nowrap',
       }}>
-        {room.name} <span style={{ color: '#00ff88', fontSize: 9, marginLeft: 6, opacity: 0.8 }}>✎ Edit</span>
+        {room.name} <span style={{ color: '#00ff88', fontSize: 9, marginLeft: 6, opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: 3 }}><GameIcon name="pencil" size={10} /> Edit</span>
       </div>
 
       {/* Edge strips for inactive room */}

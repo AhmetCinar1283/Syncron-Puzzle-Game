@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, type RefObject } from 'react';
+import { GameIcon } from '@/components/icons';
 import type { LevelOrderEntry } from '@/services/firebase/admin';
 import { getThemeBackground } from '../lib/designerThemes';
 
@@ -128,7 +129,7 @@ export function DesignerCanvas({
         }}
         title="Entry Portal"
       >
-        🌀
+        <GameIcon name="portal" size={20} color="#fff" />
       </div>
 
       {/* Exit Portal (Yellow border, top portal) */}
@@ -151,8 +152,6 @@ export function DesignerCanvas({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 18,
-          fontWeight: 900,
           cursor: 'move',
           zIndex: 10,
           userSelect: 'none',
@@ -160,7 +159,7 @@ export function DesignerCanvas({
         }}
         title="Exit Portal"
       >
-        🌀
+        <GameIcon name="portal" size={20} color="#fff" />
       </div>
 
       {/* Level Nodes */}

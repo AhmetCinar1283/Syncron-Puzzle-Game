@@ -1,4 +1,5 @@
 import type { T } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 
 export function AdminNotePanel({
   t,
@@ -87,8 +88,9 @@ export function AdminNotePanel({
       </button>
 
       {noteSavedToast && (
-        <span style={{ fontSize: '11px', color: '#00ff88', textAlign: 'center', display: 'block', marginTop: '4px' }}>
-          ✓ {t('support.note_updated')}
+        <span style={{ fontSize: '11px', color: '#00ff88', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
+          <GameIcon name="check" size={12} color="#00ff88" />
+          <span>{t('support.note_updated')}</span>
         </span>
       )}
     </div>

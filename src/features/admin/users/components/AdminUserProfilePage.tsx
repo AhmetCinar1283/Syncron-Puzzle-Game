@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import { AdminGuard } from '@/components/common/AdminGuard';
 import { useAdminUserProfile } from '../hooks/useAdminUserProfile';
 import { ActiveBanBanner } from './ActiveBanBanner';
@@ -117,11 +118,15 @@ export function AdminUserProfilePage() {
               cursor: 'pointer',
               letterSpacing: '0.06em',
               transition: 'color 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#9333ea')}
             onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
           >
-            {isTr ? '◄ KULLANICILAR' : '◄ USERS DIRECTORY'}
+            <GameIcon name="arrow-left" size={11} color="currentColor" />
+            <span>{isTr ? 'KULLANICILAR' : 'USERS DIRECTORY'}</span>
           </button>
 
           <h1
@@ -191,8 +196,9 @@ export function AdminUserProfilePage() {
             </div>
           ) : !profile ? (
             <div style={{ textAlign: 'center', padding: '80px 0', border: '1px dashed #ef4444', borderRadius: '16px' }}>
-              <p style={{ color: '#ef4444', fontSize: '15px' }}>
-                ❌ {isTr ? 'Kullanıcı profili yüklenemedi veya bulunamadı.' : 'Failed to retrieve user profile.'}
+              <p style={{ color: '#ef4444', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <GameIcon name="error" size={16} color="#ef4444" />
+                <span>{isTr ? 'Kullanıcı profili yüklenemedi veya bulunamadı.' : 'Failed to retrieve user profile.'}</span>
               </p>
             </div>
           ) : (

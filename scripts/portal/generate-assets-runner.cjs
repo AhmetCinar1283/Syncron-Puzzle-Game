@@ -12,10 +12,12 @@ app.on('window-all-closed', (e) => {
 });
 
 const ROOT = path.resolve(__dirname, '../..');
+const MASTER_ASSETS_DIR = path.resolve(ROOT, '../assets');
 const TEMPLATES_DIR = path.join(ROOT, 'docs/portals/assets/templates');
 const ASSETS_DIR = path.join(ROOT, 'docs/portals/assets');
 
 const DIRS = [
+  MASTER_ASSETS_DIR,
   path.join(ASSETS_DIR, 'source'),
   path.join(ASSETS_DIR, 'crazygames'),
   path.join(ASSETS_DIR, 'gamedistribution'),
@@ -34,7 +36,7 @@ async function captureWindow(filePath, width, height, transparent = false) {
     show: false,
     frame: false,
     transparent,
-    backgroundColor: transparent ? '#00000000' : '#030712',
+    backgroundColor: transparent ? '#00000000' : '#050505',
     webPreferences: {
       offscreen: true,
       webSecurity: false,
@@ -64,22 +66,25 @@ async function captureWindow(filePath, width, height, transparent = false) {
 
 app.whenReady().then(async () => {
   try {
-    console.log('⚡ Generating Syncron portal visual assets via Electron/Chromium...');
+    console.log('⚡ Generating Syncron visual assets via Electron/Chromium (Retro Arcade 8-Bit)...');
 
     const iconHtmlPath = path.join(TEMPLATES_DIR, 'icon-template.html');
     const iconTransHtmlPath = path.join(TEMPLATES_DIR, 'icon-transparent-template.html');
     const coverHtmlPath = path.join(TEMPLATES_DIR, 'cover-template.html');
+    const splashHtmlPath = path.join(TEMPLATES_DIR, 'splash-template.html');
 
-    // 1. Master Icon (With Theme Background, 1024x1024)
-    console.log('1/6 Rendering Master Icon (1024x1024)...');
+    // 1. Master Icon (1024x1024, Zero Text, Borderless Arcade)
+    console.log('1/7 Rendering Master Icon (1024x1024)...');
     const masterIcon = await captureWindow(iconHtmlPath, 1024, 1024, false);
     const masterIconBuffer = masterIcon.toPNG();
     const masterIconPath = path.join(ASSETS_DIR, 'source/master-icon-1024x1024.png');
     fs.writeFileSync(masterIconPath, masterIconBuffer);
+    fs.writeFileSync(path.join(MASTER_ASSETS_DIR, 'icon.png'), masterIconBuffer);
     console.log('  ✓ Saved:', masterIconPath);
+    console.log('  ✓ Synced to:', path.join(MASTER_ASSETS_DIR, 'icon.png'));
 
     // 2. Icon 512x512 for CrazyGames & GameDistribution
-    console.log('2/6 Generating 512x512 portal icons...');
+    console.log('2/7 Generating 512x512 portal icons...');
     const icon512 = masterIcon.resize({ width: 512, height: 512, quality: 'best' });
     const icon512Buffer = icon512.toPNG();
 
@@ -92,21 +97,39 @@ app.whenReady().then(async () => {
     console.log('  ✓ Saved:', gdIconPath);
 
     // 3. Master Icon Transparent (1024x1024)
-    console.log('3/6 Rendering Master Icon Transparent (1024x1024)...');
+    console.log('3/7 Rendering Master Icon Transparent (1024x1024)...');
     const transIcon = await captureWindow(iconTransHtmlPath, 1024, 1024, true);
+    const transIconBuffer = transIcon.toPNG();
     const transIconPath = path.join(ASSETS_DIR, 'source/master-icon-transparent-1024x1024.png');
-    fs.writeFileSync(transIconPath, transIcon.toPNG());
+    fs.writeFileSync(transIconPath, transIconBuffer);
+    fs.writeFileSync(path.join(MASTER_ASSETS_DIR, 'icon-transparent.png'), transIconBuffer);
     console.log('  ✓ Saved:', transIconPath);
+    console.log('  ✓ Synced to:', path.join(MASTER_ASSETS_DIR, 'icon-transparent.png'));
 
     // 4. Master Cover (1920x1080)
-    console.log('4/6 Rendering Master Cover (1920x1080)...');
+    console.log('4/7 Rendering Master Cover (1920x1080)...');
     const masterCover = await captureWindow(coverHtmlPath, 1920, 1080, false);
+    const masterCoverBuffer = masterCover.toPNG();
     const masterCoverPath = path.join(ASSETS_DIR, 'source/master-cover-1920x1080.png');
-    fs.writeFileSync(masterCoverPath, masterCover.toPNG());
+    fs.writeFileSync(masterCoverPath, masterCoverBuffer);
+    fs.writeFileSync(path.join(MASTER_ASSETS_DIR, 'cover.png'), masterCoverBuffer);
     console.log('  ✓ Saved:', masterCoverPath);
+    console.log('  ✓ Synced to:', path.join(MASTER_ASSETS_DIR, 'cover.png'));
 
-    // 5. CrazyGames Cover (1200x675, 16:9) & GameDistribution Wide Cover (1280x720, 16:9)
-    console.log('5/6 Generating 16:9 Cover Variants...');
+    // 5. Master Splash (1080x1920 Mobile Portrait)
+    if (fs.existsSync(splashHtmlPath)) {
+      console.log('5/7 Rendering Master Splash Screen (1080x1920)...');
+      const masterSplash = await captureWindow(splashHtmlPath, 1080, 1920, false);
+      const masterSplashBuffer = masterSplash.toPNG();
+      const masterSplashPath = path.join(ASSETS_DIR, 'source/master-splash-1080x1920.png');
+      fs.writeFileSync(masterSplashPath, masterSplashBuffer);
+      fs.writeFileSync(path.join(MASTER_ASSETS_DIR, 'splash.png'), masterSplashBuffer);
+      console.log('  ✓ Saved:', masterSplashPath);
+      console.log('  ✓ Synced to:', path.join(MASTER_ASSETS_DIR, 'splash.png'));
+    }
+
+    // 6. CrazyGames Cover (1200x675, 16:9) & GameDistribution Wide Cover (1280x720, 16:9)
+    console.log('6/7 Generating 16:9 Cover Variants...');
     const cgCover = masterCover.resize({ width: 1200, height: 675, quality: 'best' });
     const cgCoverPath = path.join(ASSETS_DIR, 'crazygames/cover-1200x675.png');
     fs.writeFileSync(cgCoverPath, cgCover.toPNG());
@@ -117,17 +140,15 @@ app.whenReady().then(async () => {
     fs.writeFileSync(gdCoverWidePath, gdCoverWide.toPNG());
     console.log('  ✓ Saved:', gdCoverWidePath);
 
-    // 6. GameDistribution Cover Standard (720x480, 3:2)
-    // 3:2 aspect ratio: in 1920x1080, width is 1080 * 1.5 = 1620.
-    // Crop horizontally centered: x = (1920 - 1620) / 2 = 150.
-    console.log('6/6 Generating GameDistribution Standard 3:2 Cover (720x480)...');
+    // 7. GameDistribution Cover Standard (720x480, 3:2)
+    console.log('7/7 Generating GameDistribution Standard 3:2 Cover (720x480)...');
     const cropped32 = masterCover.crop({ x: 150, y: 0, width: 1620, height: 1080 });
     const gdCoverStd = cropped32.resize({ width: 720, height: 480, quality: 'best' });
     const gdCoverStdPath = path.join(ASSETS_DIR, 'gamedistribution/cover-720x480.png');
     fs.writeFileSync(gdCoverStdPath, gdCoverStd.toPNG());
     console.log('  ✓ Saved:', gdCoverStdPath);
 
-    console.log('🎉 All portal assets successfully generated!');
+    console.log('🎉 All portal and master assets successfully generated!');
     app.quit();
   } catch (err) {
     console.error('Error generating assets:', err);

@@ -1,6 +1,7 @@
 'use client';
 
 import type { PlayedLevelEntry, PlayedLevelSort } from '../lib/types';
+import { GameIcon } from '@/components/icons';
 
 export function PlayedLevelsPanel({
   playedLevels,
@@ -28,8 +29,9 @@ export function PlayedLevelsPanel({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase' }}>
-          🏁 {isTr ? 'OYNANAN SEVİYELER' : 'PLAYED LEVELS SUBGRID'}
+        <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 800, letterSpacing: '0.1em', color: '#9333ea', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <GameIcon name="flag" size={14} color="#9333ea" />
+          <span>{isTr ? 'OYNANAN SEVİYELER' : 'PLAYED LEVELS SUBGRID'}</span>
         </h3>
 
         {/* Sort buttons */}
@@ -73,9 +75,12 @@ export function PlayedLevelsPanel({
         >
           {sortedLevels.map((lvl) => {
             const starsString = Array.from({ length: 3 }, (_, i) => (
-              <span key={i} style={{ color: i < lvl.stars ? '#ffd700' : 'rgba(255,255,255,0.08)' }}>
-                ★
-              </span>
+              <GameIcon
+                key={i}
+                name="star"
+                size={12}
+                color={i < lvl.stars ? '#ffd700' : 'rgba(255,255,255,0.1)'}
+              />
             ));
 
             return (
@@ -105,13 +110,15 @@ export function PlayedLevelsPanel({
                 {/* Right hand score / time metrics */}
                 <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#94a3b8' }}>
                   {lvl.timeSpent !== null && (
-                    <span>
-                      ⏱️ <b>{lvl.timeSpent}s</b>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <GameIcon name="timer" size={11} color="#94a3b8" />
+                      <b>{lvl.timeSpent}s</b>
                     </span>
                   )}
                   {lvl.moveCount !== null && (
-                    <span>
-                      👟 <b>{lvl.moveCount}</b>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <GameIcon name="footsteps" size={11} color="#94a3b8" />
+                      <b>{lvl.moveCount}</b>
                     </span>
                   )}
                 </div>

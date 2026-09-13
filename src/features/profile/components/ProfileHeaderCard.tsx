@@ -2,6 +2,7 @@
 
 import { Copy, Check } from 'lucide-react';
 import type { T } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
 import FriendActionButtons from './FriendActionButtons';
 
 interface Stats {
@@ -175,7 +176,7 @@ export default function ProfileHeaderCard({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
             <span style={{ fontWeight: 800, color: '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              ✨ {t('profile.level')} {Math.floor((stats.xp ?? 0) / 1000) + 1}
+              <GameIcon name="sparkles" size={14} color="#a855f7" /> {t('profile.level')} {Math.floor((stats.xp ?? 0) / 1000) + 1}
             </span>
             <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 600 }}>
               {(stats.xp ?? 0) % 1000} / 1000 {t('profile.xp')}
@@ -259,12 +260,35 @@ export default function ProfileHeaderCard({
             fontSize: '13px',
             fontWeight: 700,
             color: '#9ca3af',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
           }}
         >
-          {queryScoreCat === 'stars' && `⭐ ${queryScore} Stars`}
-          {queryScoreCat === 'levels' && `🏔 ${queryScore} Levels`}
-          {queryScoreCat === 'records' && `🏅 ${queryScore} Records`}
-          {queryScoreCat === 'creators' && `🏗 ${queryScore} Points`}
+          {queryScoreCat === 'stars' && (
+            <>
+              <GameIcon name="star" size={14} color="#ffd700" />
+              <span>{queryScore} Stars</span>
+            </>
+          )}
+          {queryScoreCat === 'levels' && (
+            <>
+              <GameIcon name="mountain" size={14} color="#00c4ff" />
+              <span>{queryScore} Levels</span>
+            </>
+          )}
+          {queryScoreCat === 'records' && (
+            <>
+              <GameIcon name="medal" size={14} color="#f59e0b" />
+              <span>{queryScore} Records</span>
+            </>
+          )}
+          {queryScoreCat === 'creators' && (
+            <>
+              <GameIcon name="architect" size={14} color="#10b981" />
+              <span>{queryScore} Points</span>
+            </>
+          )}
         </div>
       )}
     </div>

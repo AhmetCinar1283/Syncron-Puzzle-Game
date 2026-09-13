@@ -91,7 +91,7 @@ export function useHomePage() {
     }
     // Arkadaşlar girişe bağlı bir özellik — portallar yalnızca misafir oynanışa izin verir.
     if (accountLogin) {
-      opts.push({ id: 'friends', label: `👥 ${t('friends.title')}`, sub: t('home.friends_sub'), color: '#ec4899', onClick: () => router.push('/friends') });
+      opts.push({ id: 'friends', label: t('friends.title'), sub: t('home.friends_sub'), color: '#ec4899', onClick: () => router.push('/friends') });
     }
     opts.push({ id: 'controls', label: t('home.controls'), sub: t('home.controls_sub'), color: '#fbbf24', onClick: () => router.push('/controls') });
     if (devTools && user?.role === 'admin') {

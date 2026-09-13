@@ -89,6 +89,8 @@ export const TeleportCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: T
         );
     }
 
+    const borderRadius = theme === 'arcade' ? '0px' : theme === 'blueprint' ? '2px' : '12px';
+
     return (
         <div 
             id={`cell-${cell.id}`}
@@ -99,7 +101,7 @@ export const TeleportCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: T
                     ? (isIn ? 'rgba(236, 72, 153, 0.25)' : 'rgba(20, 184, 166, 0.25)') 
                     : 'rgba(15, 23, 42, 0.7)',
                 border: `2px solid rgba(${rgb}, ${isActivelyTeleporting ? 1.0 : isIn ? 0.7 : 0.4})`,
-                borderRadius: '12px',
+                borderRadius,
                 boxShadow: isActivelyTeleporting
                     ? `inset 0 0 24px rgba(${rgb}, 0.7), 0 0 16px rgba(${rgb}, 0.5)`
                     : isIn

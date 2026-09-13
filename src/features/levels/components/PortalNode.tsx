@@ -1,4 +1,5 @@
 'use client';
+import { GameIcon } from '@/components/icons';
 
 export interface PortalNodeProps {
   x: number;
@@ -16,17 +17,15 @@ export function PortalNode({ x, y, kind, isUnlocked, title, onActivate }: Portal
 
   return (
     <button
-      type="button"
       onClick={onActivate}
       title={title}
-      aria-label={title}
-      className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
+      className="absolute flex items-center justify-center rounded-full transition-transform active:scale-95"
       style={{
         left: `${x}%`,
         top: `${y}%`,
         width: size,
         height: size,
-        zIndex: 10,
+        transform: 'translate(-50%, -50%)',
         color,
         background:
           kind === 'start'
@@ -42,7 +41,7 @@ export function PortalNode({ x, y, kind, isUnlocked, title, onActivate }: Portal
         className="flex h-full w-full items-center justify-center"
         style={{ animation: kind === 'start' || isUnlocked ? 'portalSpin 4s linear infinite' : undefined }}
       >
-        <span style={{ fontSize: kind === 'start' ? 22 : 24 }}>🌀</span>
+        <GameIcon name="portal" size={kind === 'start' ? 24 : 26} color={color} />
       </span>
     </button>
   );

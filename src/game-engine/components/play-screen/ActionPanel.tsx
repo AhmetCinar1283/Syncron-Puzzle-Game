@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useT } from '@/contexts/LanguageContext';
 import type { GameActionButton } from '../../logic/actions/types';
+import { GameIcon } from '@/components/icons';
 
 interface ActionPanelProps {
     /** Son snapshot'ın availableActions'ı; undefined/boş → "aksiyon yok" yazısı. */
@@ -79,7 +80,7 @@ export function ActionPanel({ actions, disabled, onExecute }: ActionPanelProps) 
                                     textShadow: `0 0 6px ${textColor}`,
                                 }}
                             >
-                                <span>{action.icon || '⚡'}</span>
+                                <GameIcon name={action.icon || 'lightning'} size={14} color={textColor} />
                                 <span>{action.label}</span>
                             </motion.button>
                         );

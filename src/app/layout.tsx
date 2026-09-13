@@ -7,6 +7,7 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import FirestoreSync from "@/components/common/FirestoreSync";
 import UserBadge from "@/components/common/UserBadge";
 import BackButtonManager from "@/components/common/BackButtonManager";
+import AdBannerMount from "@/components/common/AdBannerMount";
 import StoreProvider from "@/store/StoreProvider";
 import { GameThemeProvider } from "@/game-engine/contexts/GameThemeContext";
 import { MonetizationProvider } from "@/contexts/MonetizationContext";
@@ -158,6 +159,7 @@ export default function RootLayout({
                     <FirestoreSync />
                     <UserBadge />
                     <BackButtonManager />
+                    <AdBannerMount />
                     {children}
                     <MonetizationDebugPanel />
                   </MonetizationProvider>

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { GameIcon } from '@/components/icons';
 
 export function AuthRequiredPanel({
   isTr,
@@ -31,7 +32,12 @@ export function AuthRequiredPanel({
         gap: '20px',
       }}
     >
-      <span style={{ fontSize: '48px', textShadow: '0 0 16px rgba(236, 72, 153, 0.4)' }}>⚠</span>
+      <GameIcon
+        name="warning"
+        size={48}
+        color="#ec4899"
+        style={{ filter: 'drop-shadow(0 0 16px rgba(236, 72, 153, 0.4))' }}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#ec4899', margin: 0 }}>
           {isTr ? 'Üye Girişi Gerekli' : 'Authentication Required'}
