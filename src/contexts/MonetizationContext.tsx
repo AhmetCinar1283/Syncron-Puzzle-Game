@@ -11,11 +11,17 @@ import {
   CURRENT_PLATFORM,
   adService,
   getCapabilities,
+  getRewardedAvailability,
+  runRewardedAction,
   type AdEventListener,
   type InterstitialRequestContext,
   type InterstitialResult,
   type PlatformCapabilities,
+  type RewardedActionId,
+  type RewardedActionOutcome,
+  type RewardedAvailability,
   type RewardedResult,
+  type RunRewardedActionParams,
 } from '@/services/monetization';
 
 interface MonetizationContextType {
@@ -36,6 +42,10 @@ interface MonetizationContextType {
   requestInterstitial: (ctx?: InterstitialRequestContext) => Promise<InterstitialResult>;
   /** Ödüllü reklamı gösterir; her zaman çözülür. */
   showRewarded: () => Promise<RewardedResult>;
+  /** Bir ödüllü aksiyonun şu an nasıl sunulacağı (reklam / ücretsiz / engelli). */
+  getRewardedAvailability: (actionId: RewardedActionId, scopeKey: string) => RewardedAvailability;
+  /** Ödüllü aksiyon akışını (reklam → claim → kota) yürütür; her zaman çözülür. */
+  runRewardedAction: <T>(params: RunRewardedActionParams<T>) => Promise<RewardedActionOutcome<T>>;
   /** Reklam gösterimi öncesi/sonrası bildirim alır (ör. ses kısma). Aboneliği kaldıran fonksiyonu döner. */
   onAdEvent: (listener: AdEventListener) => () => void;
   /** Kalıcı alt banner'ı gösterir (platform destekliyorsa). */
@@ -61,6 +71,8 @@ export function MonetizationProvider({ children }: { children: React.ReactNode }
       recordLevelFinished: () => adService.recordLevelFinished(),
       requestInterstitial: (ctx) => adService.requestInterstitial(ctx),
       showRewarded: () => adService.showRewarded(),
+      getRewardedAvailability,
+      runRewardedAction,
       onAdEvent: (listener) => adService.onAdEvent(listener),
       showBanner: () => adService.showBanner(),
       hideBanner: () => adService.hideBanner(),

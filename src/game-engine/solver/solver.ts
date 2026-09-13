@@ -1,10 +1,11 @@
-import { convertToGame2State } from '@/game-engine/logic/converter';
-import { processSingleTick } from '@/game-engine/logic/engine/intentLoop';
-import { checkWinCondition } from '@/game-engine/logic/winCondition';
-import type { Entity } from '@/game-engine/logic/entityTypes';
-import type { Cell } from '@/game-engine/logic/cellTypes';
-import type { ActionIntent, RoomState } from '@/game-engine/logic/types';
-import type { LevelBounds } from '@/game-engine/logic/engine/getNextTopologyPosition';
+// Göreli import: bu dosya Cloudflare Worker'da (syncron-worker/src/services/hint) da
+// derlenir; worker paketleyicisi `@/` takma adını çözmez.
+import { convertToGame2State } from '../logic/converter';
+import { processSingleTick } from '../logic/engine/intentLoop';
+import { checkWinCondition } from '../logic/winCondition';
+import type { Entity } from '../logic/entityTypes';
+import type { ActionIntent, RoomState } from '../logic/types';
+import type { LevelBounds } from '../logic/engine/getNextTopologyPosition';
 import type { LevelData, Direction, Position } from '../level-format';
 
 export interface SolverResult {
@@ -12,6 +13,12 @@ export interface SolverResult {
   solution: (Direction | 'switch_room')[] | null;
   statesExplored: number;
   moveCount: number;
+  /**
+   * Yalnızca `solveFromState` doldurur: arama derinlik/düğüm sınırına takılmadan
+   * TÜM erişilebilir durumları taradı mı. `solvable:false` iken `exhausted:true`
+   * → durum gerçekten çözümsüz; `false` → "bilinmiyor" (sunucu ipucu motoru kullanır).
+   */
+  exhausted?: boolean;
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -99,8 +106,9 @@ function serializeState(
 /**
  * Executes a single movement command rawDirection in game2 physics.
  * Replicates the multi-tick fixed point loop inside useGameEngine and PlayScreen.
+ * Sunucudaki ipucu motoru hamle geçmişini bununla oynatır (çözücüyle birebir aynı fizik).
  */
-function transition(
+export function transition(
   entities: Entity[],
   rooms: Record<string, RoomState>,
   action: Direction | 'switch_room',
@@ -481,6 +489,7 @@ export function solveFromState(
       solution: [],
       statesExplored: 0,
       moveCount: 0,
+      exhausted: true,
     };
   }
 
@@ -505,15 +514,21 @@ export function solveFromState(
   const canSwitchRooms = controlMode === 'selected_room' && roomKeys.length > 1;
 
   let statesExplored = 0;
+  // Arama bir sınıra takılıp bazı durumları taramadan bittiyse true olur.
+  let truncated = false;
+  // shift() O(n) olduğu için kuyruk başı indeksle ilerletilir.
+  let head = 0;
 
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current) break;
+  while (head < queue.length) {
+    const current = queue[head];
+    queue[head] = undefined as unknown as (typeof queue)[number]; // bellek serbest kalsın
+    head++;
 
     const { entities: currEntities, rooms: currRooms, controlledRoomIds: currControlled, path } = current;
     statesExplored++;
 
     if (statesExplored >= maxStates) {
+      truncated = true;
       break;
     }
 
@@ -533,6 +548,7 @@ export function solveFromState(
           solution: fullSolution,
           statesExplored,
           moveCount,
+          exhausted: true,
         };
       }
 
@@ -551,6 +567,8 @@ export function solveFromState(
             controlledRoomIds: next.controlledRoomIds,
             path: [...path, action],
           });
+        } else {
+          truncated = true;
         }
       }
     }
@@ -561,6 +579,7 @@ export function solveFromState(
     solution: null,
     statesExplored,
     moveCount: 0,
+    exhausted: !truncated,
   };
 }
 

@@ -197,6 +197,26 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                                 +{result.scoreDelta} PTS
                             </motion.span>
                         )}
+                        {!loading && result?.hintUsed && (
+                            <motion.span
+                                key="hint-badge"
+                                initial={{ opacity: 0, y: 3 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                title={t('hint.win_notice_detail')}
+                                style={{
+                                    color: '#facc15',
+                                    background: 'rgba(250, 204, 21, 0.1)',
+                                    border: '1px solid rgba(250, 204, 21, 0.35)',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '1px 7px',
+                                    borderRadius: 999,
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                {t('hint.win_notice')}
+                            </motion.span>
+                        )}
                         {!loading && result?.success === false && result.reason === 'offline' && (
                             <motion.span
                                 key="offline-badge"

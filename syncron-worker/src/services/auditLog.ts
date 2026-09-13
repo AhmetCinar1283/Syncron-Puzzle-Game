@@ -14,7 +14,7 @@
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AuditCategory = 'game' | 'support' | 'account' | 'payment' | 'admin';
+export type AuditCategory = 'game' | 'support' | 'account' | 'payment' | 'admin' | 'reward';
 
 export type AuditAction =
   // Game actions

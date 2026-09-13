@@ -20,6 +20,7 @@ import { runBadgeDistribution } from './scheduled/badgeDistribution';
 import { runAnonymousCleanup } from './scheduled/anonymousCleanup';
 import { storeRouter } from './routes/store';
 import { donorApiRouter } from './routes/donorApi';
+import { rewardsRouter } from './routes/rewards';
 
 const app = new Hono<AppContext>();
 
@@ -73,6 +74,7 @@ app.route('/', friendsRouter);
 app.route('/', playedLevelsRouter); // GET /played-levels, DELETE /admin/levels/:id
 app.route('/', storeRouter);
 app.route('/', donorApiRouter);
+app.route('/', rewardsRouter);     // POST /rewards/claim
 
 // ─── Error handlers ───────────────────────────────────────────────────────────
 // Worker içerisinde yakalanamayan genel hataları (500) yönetir ve JSON yanıtı döner.

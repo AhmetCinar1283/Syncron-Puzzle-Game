@@ -212,6 +212,19 @@ export function LevelDetailModal({
                     : '-'
                   }
                 />
+                <SummaryMetricCard
+                  label="İpucu Kullanılan Deneme"
+                  color="#c084fc"
+                  value={latestStats && latestStats.total_attempts > 0
+                    ? `${(((latestStats.hinted_attempts ?? 0) / latestStats.total_attempts) * 100).toFixed(1)}%`
+                    : '0%'
+                  }
+                />
+                <SummaryMetricCard
+                  label="Toplam İpucu"
+                  color="#a855f7"
+                  value={`${latestStats?.total_hints ?? 0}`}
+                />
               </div>
 
               <VersionComparisonTable versionStats={versionStats} currentVersion={selectedLevel.version} />

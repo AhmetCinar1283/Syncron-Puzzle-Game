@@ -14,6 +14,8 @@ export interface WorkerResult {
     isNewBestSolution?: boolean;
     isBestSolution?: boolean;
     isGoodSolution?: boolean;
+    /** Bu tamamlamada ipucu kullanıldı (sunucu: yıldız ≤2, rekorlara sayılmaz). */
+    hintUsed?: boolean;
     /**
      * `success:false` iken UI'nin hangi mesajı göstereceğini ayırt eder.
      * `offline`: sunucuya hiç ulaşılamadı (skor asla yerelde hesaplanmaz —
@@ -35,6 +37,8 @@ export interface LevelSession {
     startTime: number;
     restarts: number;
     deaths: number;
+    /** Bu oturumda gösterilen ipucu sayısı. */
+    hintsUsed: number;
     levelId: string | null;
     version: number;
 }

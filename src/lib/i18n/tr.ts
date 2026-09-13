@@ -274,6 +274,37 @@ const tr: Record<string, string> = {
   'ads.cta_later': 'DAHA SONRA',
   'ads.cta_premium_soon': 'Reklamsız paket çok yakında!',
 
+  // Ödüllü aksiyonlar (ortak)
+  'rewarded.watch_ad': 'Reklam İzle',
+  'rewarded.use_free': 'Ücretsiz Kullan',
+  'rewarded.cancel': 'Vazgeç',
+  'rewarded.close': 'Kapat',
+  'rewarded.busy': 'Hazırlanıyor…',
+  'rewarded.free_remaining': 'Bu level için {n} ücretsiz hakkın var.',
+  'rewarded.decline_quota': 'Bu level için ücretsiz hakkını kullandın.',
+  'rewarded.decline_disabled': 'Bu özellik şu an kullanılamıyor.',
+  'rewarded.decline_busy': 'Başka bir işlem sürüyor, biraz bekle.',
+  'rewarded.decline_claim_failed': 'Ödül doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene.',
+  'rewarded.decline_unavailable': 'Bu durum için şu an hazırlanamadı. Birkaç hamle sonra tekrar dene.',
+  'rewarded.decline_rate_limited': 'Çok sık denedin. Biraz bekleyip tekrar dene.',
+  'rewarded.decline_no_fill': 'Şu an gösterilecek reklam yok. Biraz sonra tekrar dene.',
+  'rewarded.decline_closed': 'Reklam tamamlanmadığı için ödül verilmedi.',
+  'rewarded.decline_error': 'Reklam şu an gösterilemedi. Biraz sonra tekrar dene.',
+
+  // Ödüllü ipucu
+  'hint.button': 'İpucu',
+  'hint.dialog_title': 'İpucu Al',
+  'hint.dialog_body': 'Çözüme kaç adım kaldığını ve bulunduğun durumdan sonraki 5 adımı gösterir.',
+  'hint.score_notice': 'İpucu kullanılan çözüm en fazla 2 yıldız alır ve rekorlara sayılmaz.',
+  'hint.computing': 'İpucu hazırlanıyor…',
+  'hint.banner_steps': 'Çözüme {n} adım kaldı',
+  'hint.next_steps': 'Sıradaki adımlar',
+  'hint.step_switch_room': 'Oda değiştir',
+  'hint.banner_undo': 'Buradan çözüm yok — {u} kez geri al, sonra {n} adım',
+  'hint.banner_restart': 'Buradan çözüm yok — baştan başla, sonra {n} adım',
+  'hint.win_notice': 'İPUCU · MAKS 2★',
+  'hint.win_notice_detail': 'İpucu kullanıldığı için bu çözüm en fazla 2 yıldız alır ve rekorlara sayılmaz.',
+
   // Çevrimdışı (monetization) — önbellekteki leveller çevrimdışı oynanabilir, skor asla
   'play.offline_score_not_saved': 'Çevrimdışısınız — bu skor kaydedilmedi.',
   'play.level_not_downloaded': 'Bu bölüm henüz indirilmedi. Bir kez online iken açman gerekiyor.',

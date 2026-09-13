@@ -6,6 +6,7 @@ import { LoadingScreen } from './LoadingScreen';
 import { ErrorScreen } from './ErrorScreen';
 import { WinResultOverlay } from './WinResultOverlay';
 import { AfterAdPrompt } from './AfterAdPrompt';
+import { HintDialog } from './HintDialog';
 
 /** `/play` view'i — tüm akış `usePlayPage` içinde. useSearchParams nedeniyle Suspense altında render edilmeli. */
 export function PlayContent() {
@@ -22,6 +23,9 @@ export function PlayContent() {
         isRegisteredUser,
         showAfterAdPrompt,
         dismissAfterAdPrompt,
+        hint,
+        onMoveExecuted,
+        onUndoExecuted,
     } = usePlayPage();
 
     // ── Render ───────────────────────────────────────────────
@@ -57,10 +61,14 @@ export function PlayContent() {
                 initialControlledRooms={game2State.initialControlledRooms}
                 levelEdges={level.levelEdges}
                 trailCollision={level.trailCollision}
-                onMoveExecuted={session.handleMoveExecuted}
-                onUndoExecuted={session.handleUndoExecuted}
+                onMoveExecuted={onMoveExecuted}
+                onUndoExecuted={onUndoExecuted}
                 onButtonPressed={handleButtonPressed}
+                hint={hint.screenHint}
             />
+
+            {/* Ödüllü ipucu onay kartı */}
+            <HintDialog dialog={hint.dialog} />
 
             {/* Kazanma result overlay — position:fixed olduğu için scale wrapper dışına çıkar */}
             {showWin && (

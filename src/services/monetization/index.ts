@@ -17,3 +17,19 @@ export { adService, type InterstitialRequestContext } from './adService';
 export { setAdFreeSource, isAdFree, type AdFreeSource } from './entitlement';
 export { DEFAULT_FREQUENCY_POLICY, type FrequencyPolicyConfig } from './policy/policyConfig';
 export type { FrequencyPolicyState } from './policy/frequencyPolicy';
+export {
+  runRewardedAction,
+  getRewardedAvailability,
+  type RunRewardedActionParams,
+} from './rewarded/rewardedActionService';
+export { REWARDED_ACTIONS, type RewardedActionId } from './rewarded/rewardedActionsConfig';
+export type {
+  RewardClaimResult,
+  RewardGrantVia,
+  RewardPrepareResult,
+  RewardedAccessMode,
+  RewardedActionConfig,
+  RewardedActionOutcome,
+  RewardedAvailability,
+  RewardedDeclineReason,
+} from './rewarded/types';

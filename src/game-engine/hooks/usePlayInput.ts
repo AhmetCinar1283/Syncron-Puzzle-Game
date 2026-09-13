@@ -9,11 +9,16 @@ import { KEY_TO_DIRECTION, SWIPE_THRESHOLD } from '../components/play-screen/con
 interface UsePlayInputArgs {
     /** Render sırasında güncellenen ref; oyun bittiyse yön girdileri yok sayılır. */
     isGameOverRef: RefObject<boolean>;
+    /** `true` iken tüm oyun girdileri yok sayılır (ör. ipucu kartı açık). */
+    inputLockedRef?: RefObject<boolean>;
     triggerMove: (direction: Direction) => void;
     handleButtonPress: (buttonType: UIButtonType) => void;
     cycleControlledRoom: () => void;
     handleUndo: () => void;
-    handleStepForward: () => void;
+    /** Yalnızca editör test modunda verilir (F). */
+    handleStepForward?: () => void;
+    /** Yalnızca ipucu destekli oyuncu modunda verilir (H). */
+    handleHint?: () => void;
 }
 
 /**
@@ -26,14 +31,17 @@ interface UsePlayInputArgs {
  */
 export function usePlayInput({
     isGameOverRef,
+    inputLockedRef,
     triggerMove,
     handleButtonPress,
     cycleControlledRoom,
     handleUndo,
     handleStepForward,
+    handleHint,
 }: UsePlayInputArgs) {
     // ── Klavye kontrolü ────────────────────────────────────────────────────
     const handleKey = useCallback((e: KeyboardEvent) => {
+        if (inputLockedRef?.current) return;
         if (e.key === 'r' || e.key === 'R') {
             e.preventDefault();
             handleButtonPress('restart');
@@ -57,9 +65,14 @@ export function usePlayInput({
             handleUndo();
             return;
         }
-        if (e.key === 'f' || e.key === 'F') {
+        if ((e.key === 'f' || e.key === 'F') && handleStepForward) {
             e.preventDefault();
             handleStepForward();
+            return;
+        }
+        if ((e.key === 'h' || e.key === 'H') && handleHint) {
+            e.preventDefault();
+            handleHint();
             return;
         }
 
@@ -68,7 +81,7 @@ export function usePlayInput({
         if (!rawDirection) return;
         e.preventDefault();
         triggerMove(rawDirection);
-    }, [triggerMove, handleButtonPress, cycleControlledRoom, handleUndo, handleStepForward, isGameOverRef]);
+    }, [triggerMove, handleButtonPress, cycleControlledRoom, handleUndo, handleStepForward, handleHint, isGameOverRef, inputLockedRef]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKey);
@@ -78,15 +91,17 @@ export function usePlayInput({
     // ── Gamepad ────────────────────────────────────────────────────────────
     useGamepad({
         onMove: useCallback((dir: Direction) => {
-            if (isGameOverRef.current) return;
+            if (isGameOverRef.current || inputLockedRef?.current) return;
             triggerMove(dir);
-        }, [triggerMove, isGameOverRef]),
+        }, [triggerMove, isGameOverRef, inputLockedRef]),
         onRestart: useCallback(() => {
+            if (inputLockedRef?.current) return;
             handleButtonPress('restart');
-        }, [handleButtonPress]),
+        }, [handleButtonPress, inputLockedRef]),
         onMenu: useCallback(() => {
+            if (inputLockedRef?.current) return;
             handleButtonPress('menu');
-        }, [handleButtonPress]),
+        }, [handleButtonPress, inputLockedRef]),
     });
 
     // ── Swipe (Touch) Kontrolü ─────────────────────────────────────────────
@@ -102,7 +117,7 @@ export function usePlayInput({
     }, []);
 
     const handleTouchEnd = useCallback((e: ReactTouchEvent) => {
-        if (!touchStartRef.current || isGameOverRef.current) return;
+        if (!touchStartRef.current || isGameOverRef.current || inputLockedRef?.current) return;
         const touch = e.changedTouches[0];
         const dx = touch.clientX - touchStartRef.current.x;
         const dy = touch.clientY - touchStartRef.current.y;
@@ -118,7 +133,7 @@ export function usePlayInput({
         }
 
         triggerMove(direction);
-    }, [triggerMove, isGameOverRef]);
+    }, [triggerMove, isGameOverRef, inputLockedRef]);
 
     return { handleTouchStart, handleTouchMove, handleTouchEnd };
 }

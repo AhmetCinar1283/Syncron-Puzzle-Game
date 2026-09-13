@@ -71,6 +71,7 @@ export async function runAnonymousCleanup(env: Env): Promise<void> {
       try {
         await env.AUDIT_DB.batch([
           env.AUDIT_DB.prepare(`DELETE FROM audit_logs           WHERE uid = ?`).bind(uid),
+          env.AUDIT_DB.prepare(`DELETE FROM reward_grants        WHERE uid = ?`).bind(uid),
           env.AUDIT_DB.prepare(`DELETE FROM user_period_scores   WHERE uid = ?`).bind(uid),
           env.AUDIT_DB.prepare(`DELETE FROM user_world_records   WHERE uid = ?`).bind(uid),
           env.AUDIT_DB.prepare(`DELETE FROM creator_scores       WHERE uid = ?`).bind(uid),

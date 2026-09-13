@@ -14,7 +14,7 @@ Oyuncu takıldığında ödüllü reklam izleyerek, **mevcut durumundan** gidile
 > (a) yıldız 2 ile sınırlanır ve `bestMoveCount` rekoruna sayılmaz — *önerilen*,
 > (b) normal sayılır, sadece işaretlenir,
 > (c) başka bir kural.
-> Agent başlamadan önce burası doldurulmalıdır. Karar: **\_\_\_\_\_\_\_\_**
+> Agent başlamadan önce burası doldurulmalıdır. Karar: **(a) — 2026-09-13. XP normal verilir. Uygulama: `syncron-worker/src/services/hintScoring.ts`, rapor: `raporlar/04-rapor.md`.**
 
 - **Telemetri.** Hangi levelde ne kadar ipucu kullanıldığı mevcut level telemetrisine eklenir (bkz. migration `0010_level_telemetry.sql`). Bu veri level zorluk ayarı için değerlidir.
 

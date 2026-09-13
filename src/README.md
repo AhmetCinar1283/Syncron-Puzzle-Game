@@ -13,9 +13,9 @@ src/
 │   └── common/          # Uygulama genelinde kullanılan ortak bileşenler ve korumalar (AuthModal, AdminGuard, BackButtonManager, ...).
 ├── contexts/            # React Context API ile yönetilen global durumlar (Oturum, Dil).
 ├── hooks/               # API, gamepad, arkadaşlık vb. işlevleri sarmalayan React kancaları.
-├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls).
+├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls, rewarded-actions).
 │   └── <isim>/          #   components/ (sunum), hooks/ (state+efekt), lib/ (saf yardımcılar), index.ts (public API).
-├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü ve prosedürel üretici).
+├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü ve prosedürel üretici) + hint/ (sunucudan gelen ipucunun gösterimi; hesaplama worker'da).
 ├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı), levels/ (kampanya bölüm listesi önbelleği) — eski app/src/lib/{api,firebase,db,sync}.
 ├── lib/                 # i18n/, userStorage.ts, navigation/ (next/navigation adaptörü — portal'da bellek içi router), assetUrl.ts, saf yardımcı fonksiyonlar.
 └── store/               # Redux durum yönetimi (User state, Store yapılandırması).
@@ -40,6 +40,13 @@ src/
 
 ### 4. Reklam Adaptör Katmanı (`services/monetization`)
 * Reklam ve platform olaylarının (bölüm arası/ödüllü/banner reklam, oynanış başladı/durdu, mutlu an) tek bir arayüzden geçtiği modül. Platform build-time `NEXT_PUBLIC_PLATFORM` env değeriyle seçilir; kodun geri kalanı platform adını değil `getCapabilities()` yeteneklerini sorgular. `src/contexts/MonetizationContext.tsx` (`useAds`/`useCapabilities`) React erişimini sağlar. Android build'i AdMob kullanır (`providers/admob/`, UMP rıza akışı dâhil — bkz. `docs/platforms.md`). Detaylar `src/services/monetization/README.md`'de.
+
+### 4a. Ödüllü Aksiyonlar ve İpucu — bkz. `.plans/monetization/04-odullu-ipucu.md`
+* **İpucu istemcide hesaplanmaz.** Worker hamle geçmişini oynatıp çözer; içerik yalnızca sunucu erişim hakkını doğruladıktan sonra gelir (`syncron-worker/src/services/hint`, `.../services/rewards`).
+* **`services/monetization/rewarded/`**: aksiyondan bağımsız akış — sunucu hazırlar → (gerekiyorsa) ödüllü reklam → sunucu teslim eder; yapılandırma `rewardedActionsConfig.ts`'te. `services/api/rewardsClient.ts`: `/rewards/prepare|claim|cancel`.
+* **`features/rewarded-actions/`**: `useRewardedAction` hook'u + `RewardedActionDialog` — 05 (level atlama) aynı parçaları kullanır.
+* **`game-engine/hint/`**: yalnızca gösterim — `ServerHint` ("çözüme N adım" + sıradaki 5 adım), oyuncu takip ettikçe ilerletme.
+* **`features/play/hooks/usePlayHint.ts`**: `/play` ipucu akışı. Skor kuralı: `syncron-worker/src/services/hintScoring.ts`.
 
 ### 4b. Portal Build'leri (`app/_portal`, `lib/navigation`, `services/levels`) — bkz. `.plans/monetization/02-portal-buildleri.md`
 * CrazyGames/GameDistribution build'leri tek bir statik `index.html` üretir (`next.config.ts` `assetPrefix: './'`, yalnızca bu iki platformda). `app/_portal/PortalShell.tsx`, `capabilities.inMemoryRouting` true olduğunda `app/page.tsx`'ten render edilir ve `lib/navigation`'ın bellek içi router'ına göre `app/_portal/portalRoutes.tsx` tablosundaki ekranı seçer — URL hiç değişmez.

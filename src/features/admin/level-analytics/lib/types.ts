@@ -9,6 +9,10 @@ export interface LevelStats {
   quits: number;
   total_restarts: number;
   total_deaths: number;
+  /** Oturumlarda kullanılan toplam ipucu (0011 migration öncesi worker'da yok). */
+  total_hints?: number;
+  /** En az bir ipucu kullanılan oturum sayısı. */
+  hinted_attempts?: number;
   avg_time_win: number;
   likes: number;
   dislikes: number;

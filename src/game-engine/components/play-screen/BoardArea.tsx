@@ -1,6 +1,6 @@
 'use client';
 
-import type { RefObject, TouchEvent as ReactTouchEvent } from 'react';
+import type { ReactNode, RefObject, TouchEvent as ReactTouchEvent } from 'react';
 import GameBoard from '../GameBoard';
 import type { LevelEdges } from '../../logic/engine/getNextTopologyPosition';
 import type { useGameEngine } from '../../hooks/useGameEngine';
@@ -21,6 +21,10 @@ interface BoardAreaProps {
     onTouchStart: (e: ReactTouchEvent) => void;
     onTouchMove: (e: ReactTouchEvent) => void;
     onTouchEnd: (e: ReactTouchEvent) => void;
+    /** Board ile birlikte ölçeklenen katman (native koordinatlar — ör. ipucu işareti). */
+    boardOverlay?: ReactNode;
+    /** Board alanının üstünde ölçeklenmeden çizilen katman (ör. ipucu şeridi). */
+    areaOverlay?: ReactNode;
 }
 
 /** Ölçeklenmiş board alanı: swipe girdisini yakalar, GameBoard'u native boyutta çizip scale eder. */
@@ -37,6 +41,8 @@ export function BoardArea({
     onTouchStart,
     onTouchMove,
     onTouchEnd,
+    boardOverlay,
+    areaOverlay,
 }: BoardAreaProps) {
     return (
         <div
@@ -72,6 +78,8 @@ export function BoardArea({
                     onAnimationEnd={onAnimationEnd}
                 />
 
+                {boardOverlay}
+
                 {isAnimating && (
                     <div style={{
                         position: 'absolute', bottom: 6, right: 6,
@@ -83,6 +91,8 @@ export function BoardArea({
                     }} />
                 )}
             </div>
+
+            {areaOverlay}
         </div>
     );
 }

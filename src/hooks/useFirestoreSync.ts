@@ -48,6 +48,7 @@ export function useFirestoreSync() {
             restarts: session.restarts,
             deaths: session.deaths,
             movesCount: 0,
+            hintsUsed: typeof session.hintsUsed === 'number' ? session.hintsUsed : 0,
           });
         }
       } catch (err) {

@@ -13,6 +13,7 @@ export interface LevelTelemetryParams {
   restarts: number;
   deaths: number;
   movesCount: number;
+  hintsUsed: number;
 }
 
 export interface LevelFeedbackParams {
@@ -33,8 +34,8 @@ export async function insertTelemetry(
   await db
     .prepare(
       `INSERT INTO level_telemetry
-         (id, uid, level_id, version, outcome, time_spent, restarts, deaths, moves_count)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+         (id, uid, level_id, version, outcome, time_spent, restarts, deaths, moves_count, hints_used)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
     )
     .bind(
       params.id,
@@ -46,6 +47,7 @@ export async function insertTelemetry(
       params.restarts,
       params.deaths,
       params.movesCount,
+      params.hintsUsed,
     )
     .run();
 }
@@ -88,6 +90,8 @@ export interface AggregatedLevelAnalytics {
   quits: number;
   total_restarts: number;
   total_deaths: number;
+  total_hints: number;
+  hinted_attempts: number;
   avg_time_win: number;
   likes: number;
   dislikes: number;
@@ -109,6 +113,8 @@ export async function getLevelAnalytics(db: D1Database): Promise<AggregatedLevel
       COUNT(DISTINCT CASE WHEN t.outcome = 'quit' THEN t.id END) as quits,
       SUM(t.restarts) as total_restarts,
       SUM(t.deaths) as total_deaths,
+      SUM(t.hints_used) as total_hints,
+      COUNT(DISTINCT CASE WHEN t.hints_used > 0 THEN t.id END) as hinted_attempts,
       AVG(CASE WHEN t.outcome = 'win' THEN t.time_spent END) as avg_time_win,
       COALESCE(f.likes, 0) as likes,
       COALESCE(f.dislikes, 0) as dislikes,

@@ -19,6 +19,9 @@ policy/                 — reklam sıklığı politikası (saf, birim testli): 
                           "level bitişi" (kazanma VEYA ölüm/restart) sayacı +
                           süre eşiği, misafir/kayıtlı için ayrı değerler
 offer.ts                — "reklamları kaldır" teklifinin fiyatı (07'ye kadar yer tutucu)
+rewarded/               — aksiyondan bağımsız "ödüllü aksiyon" akışı: erişim kararı
+                          (reklamsız / reklam / level başına ücretsiz) → sunucu hazırlar →
+                          ödüllü reklam → sunucu teslim eder (bkz. features/rewarded-actions/README.md)
 providers/               — sağlayıcı uygulamaları
 ```
 

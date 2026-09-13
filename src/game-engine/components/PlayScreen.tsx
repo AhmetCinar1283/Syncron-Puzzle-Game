@@ -13,6 +13,7 @@ import { useGameOverSound } from '../hooks/useGameOverSound';
 import { useBoardScale } from '../hooks/useBoardScale';
 import { usePlayScreenActions } from '../hooks/usePlayScreenActions';
 import { usePlayInput } from '../hooks/usePlayInput';
+import { usePlayScreenHint, type PlayScreenHint } from '../hooks/usePlayScreenHint';
 import { PlayHud } from './play-screen/PlayHud';
 import { HudControls } from './play-screen/HudControls';
 import { SolutionSteps, CompactSolutionBar } from './play-screen/SolutionSteps';
@@ -20,6 +21,12 @@ import { BoardArea } from './play-screen/BoardArea';
 import { ActionPanel } from './play-screen/ActionPanel';
 import { UIOverlay } from './play-screen/UIOverlay';
 import { LevelNotesModal } from './play-screen/LevelNotesModal';
+import { HintButton } from './play-screen/hint/HintButton';
+import { HintBoardMarker } from './play-screen/hint/HintBoardMarker';
+import { HintBanner } from './play-screen/hint/HintBanner';
+import { HINT_KEYFRAMES } from './play-screen/hint/hintStyles';
+
+export type { PlayScreenHint } from '../hooks/usePlayScreenHint';
 
 /**
  * Props API'si KİLİTLİ: `/play` (features/play) ve `/editor` test modu aynı
@@ -40,6 +47,11 @@ interface PlayScreenProps {
     isTestMode?: boolean;
     gameNotes?: string;
     solutionSteps?: string[] | null;
+    /**
+     * İpucu desteği (yalnızca `/play`). Verilirse HUD'da ipucu butonu ve aktif
+     * ipucunun board işareti çizilir. Test modunda yok sayılır ("adım ileri" var).
+     */
+    hint?: PlayScreenHint;
 }
 
 /**
@@ -65,6 +77,7 @@ export function PlayScreen({
     isTestMode,
     gameNotes,
     solutionSteps,
+    hint,
 }: PlayScreenProps) {
     const { theme, toggleTheme } = useGameTheme();
     const { play, muted, toggleMute } = useSoundManager();
@@ -138,14 +151,31 @@ export function PlayScreen({
         onAnimationEnd();
     }, [onAnimationEnd]);
 
+    // ── İpucu (yalnızca oyuncu modu) ────────────────────────────────────────
+    const playerHint = isTestMode ? undefined : hint;
+    const { requestHint, visibleHint, hudHighlight } = usePlayScreenHint({
+        hint: playerHint,
+        isAnimating,
+        isGameOver,
+    });
+    // İpucu kartı açıkken oyun girdisi kilitli (ipucu tam o durum için hazırlanır).
+    const inputLocked = !!playerHint?.inputLocked;
+    const inputLockedRef = useRef(inputLocked);
+    useEffect(() => {
+        inputLockedRef.current = inputLocked;
+    }, [inputLocked]);
+
     // ── Girdi: klavye + gamepad + swipe ─────────────────────────────────────
+    // "Adım ileri" çözücüyü ücretsiz çalıştırdığı için yalnızca editör test modunda açık.
     const { handleTouchStart, handleTouchMove, handleTouchEnd } = usePlayInput({
         isGameOverRef,
+        inputLockedRef,
         triggerMove,
         handleButtonPress,
         cycleControlledRoom,
         handleUndo,
-        handleStepForward,
+        handleStepForward: isTestMode ? handleStepForward : undefined,
+        handleHint: playerHint ? requestHint : undefined,
     });
 
     const pendingUi = uiEvents.length > 0 ? uiEvents[uiEvents.length - 1] : null;
@@ -200,8 +230,18 @@ export function PlayScreen({
                         undoDisabled={isAnimating || !canUndo}
                         onUndo={handleUndo}
                         stepDisabled={isAnimating || isGameOver}
-                        onStepForward={handleStepForward}
+                        onStepForward={isTestMode ? handleStepForward : undefined}
                         onRestart={() => handleButtonPress('restart')}
+                        highlight={hudHighlight}
+                        hintButton={playerHint ? (
+                            <HintButton
+                                isCompact={isCompact}
+                                disabled={!!playerHint.disabled || isAnimating || isGameOver}
+                                busy={playerHint.busy}
+                                badge={playerHint.badge}
+                                onClick={requestHint}
+                            />
+                        ) : null}
                     />
                 }
             />
@@ -226,7 +266,19 @@ export function PlayScreen({
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
+                boardOverlay={visibleHint ? (
+                    <HintBoardMarker
+                        hint={visibleHint}
+                        entities={getEntities()}
+                        rooms={rooms}
+                        controlMode={controlMode}
+                        controlledRoomIds={controlledRoomIds}
+                    />
+                ) : null}
+                areaOverlay={visibleHint ? <HintBanner hint={visibleHint} /> : null}
             />
+
+            {visibleHint && <style>{HINT_KEYFRAMES}</style>}
 
             {/* ── Action Panel ──────────────── */}
             <ActionPanel

@@ -24,7 +24,7 @@ interface UseLevelCompletionArgs {
  */
 export function useLevelCompletion({ firestoreId, levelId, session, setWorkerResult }: UseLevelCompletionArgs) {
     const dispatch = useAppDispatch();
-    const { moveHistoryRef, startTimeRef, submitTelemetry } = session;
+    const { moveHistoryRef, startTimeRef, hintsUsedRef, submitTelemetry } = session;
 
     return useCallback(async () => {
         const levelKey = firestoreId || (levelId !== null ? String(levelId) : null);
@@ -82,6 +82,7 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
                 levelId: firestoreId,
                 moves: moveHistoryRef.current,
                 timeSpent,
+                hintsUsed: hintsUsedRef.current,
             });
             if (result.ok && result.data) {
                 const data = result.data;
@@ -125,5 +126,5 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
             // verebilir) ama burada elimizdeki en iyi sinyal; asıl hata zaten loglandı.
             setWorkerResult({ success: false, reason: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error' });
         }
-    }, [firestoreId, levelId, submitTelemetry, dispatch, moveHistoryRef, startTimeRef, setWorkerResult]);
+    }, [firestoreId, levelId, submitTelemetry, dispatch, moveHistoryRef, startTimeRef, hintsUsedRef, setWorkerResult]);
 }

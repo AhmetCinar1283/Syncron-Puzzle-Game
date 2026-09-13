@@ -18,6 +18,8 @@ export interface TelemetryPayload {
   restarts: number;
   deaths: number;
   movesCount: number;
+  /** Oturumda kullanılan ipucu sayısı (level zorluk analizi için). */
+  hintsUsed: number;
 }
 
 /**
@@ -56,6 +58,11 @@ export interface CompleteLevelPayload {
   levelId: string;
   moves: string[];
   timeSpent: number;
+  /**
+   * Bu denemede kullanılan ipucu sayısı. Sunucu kendi grant kayıtlarına bakar;
+   * bu değer yalnızca skoru düşürebilir (bkz. docs/scoring.md → Hints).
+   */
+  hintsUsed: number;
 }
 
 export interface CompleteLevelResult<T = any> {

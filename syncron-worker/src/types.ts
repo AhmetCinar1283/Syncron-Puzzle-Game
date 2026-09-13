@@ -39,6 +39,8 @@ export interface CompleteLevelResponse {
   stars: StarCount;
   scoreDelta: number;
   xpDelta: number;
+  /** Bu tamamlamada ipucu kullanıldı (yıldız ≤2, rekorlara sayılmaz — services/hintScoring.ts). */
+  hintUsed: boolean;
 }
 
 export interface PeriodIds {

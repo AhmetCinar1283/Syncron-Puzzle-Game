@@ -13,6 +13,9 @@ export const completeLevelSchema = z.object({
     .max(MOVES_LIMIT, `Too many moves (max ${MOVES_LIMIT})`),
   timeSpent: z.number({ required_error: 'Invalid timeSpent' })
     .min(0, 'Invalid timeSpent'),
+  // İstemcinin beyan ettiği ipucu sayısı. Yalnızca skoru DÜŞÜREBİLİR; asıl
+  // karar sunucudaki reward_grants kayıtlarından verilir (services/hintScoring.ts).
+  hintsUsed: z.number().int().min(0).max(1000).default(0),
 });
 
 export const telemetrySchema = z.object({
@@ -24,6 +27,7 @@ export const telemetrySchema = z.object({
   restarts: z.number().int().min(0).default(0),
   deaths: z.number().int().min(0).default(0),
   movesCount: z.number().int().min(0).default(0),
+  hintsUsed: z.number().int().min(0).max(1000).default(0),
 });
 
 export const feedbackSchema = z.object({

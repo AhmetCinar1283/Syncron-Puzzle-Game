@@ -31,6 +31,7 @@ export function persistActiveSession(session: LevelSession): void {
         startTime: session.startTime,
         restarts: session.restarts,
         deaths: session.deaths,
+        hintsUsed: session.hintsUsed,
         lastActiveTime: Date.now(),
     }));
 }

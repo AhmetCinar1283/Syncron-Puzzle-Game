@@ -15,6 +15,7 @@ import { writeAuditLog } from '../services/auditLog';
 import { updateLeaderboardData } from '../services/leaderboard';
 import { checkActiveBan } from '../services/banService';
 import { upsertPlayedLevel, getPlayedLevel } from '../services/playedLevels';
+import { resolveHintUsage, capStarsForHint, personalBestMoveCount, finalizeHintUsage } from '../services/hintScoring';
 import type { CompleteLevelResponse } from '../types';
 
 export const gameRouter = new Hono<AppContext>();
@@ -47,7 +48,7 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
     return c.json({ success: false, error }, 400);
   }
 
-  const { levelId, moves, timeSpent } = validation.data;
+  const { levelId, moves, timeSpent, hintsUsed } = validation.data;
 
   // 3. Get admin access token
   let adminToken: string;
@@ -82,11 +83,14 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
   }
 
   // 6. Parallel reads — played_levels now in D1 (not Firestore)
-  const [existingPlayedRow, solutionStats, userDoc] = await Promise.all([
+  const [existingPlayedRow, solutionStats, userDoc, hintUsage] = await Promise.all([
     getPlayedLevel(c.env.AUDIT_DB, uid, levelId),
     getSolutionStats(projectId, levelId, adminToken),
     fsGet(projectId, `users/${uid}`, adminToken),
+    // İpucu kullanımı sunucu kayıtlarından okunur; istemci beyanı yalnızca skoru düşürebilir.
+    resolveHintUsage(c.env.AUDIT_DB, uid, levelId, hintsUsed),
   ]);
+  const { hinted } = hintUsage;
   const { bestMoveCount, worstTopMoveCount, bestHolderUid } = solutionStats;
 
   let displayName = 'Player';
@@ -107,13 +111,11 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
   // 7. Compute stars and score delta
   const isFirstCompletion = existingPlayedRow === null;
   const existingStars = existingPlayedRow?.stars ?? 0;
-  const newStars = computeStars(moves.length, bestMoveCount);
+  const newStars = capStarsForHint(computeStars(moves.length, bestMoveCount), hinted);
   const scoreDelta = Math.max(0, newStars - existingStars);
 
   const bestStars = Math.max(newStars, existingStars);
-  const existingMoveCount = isFirstCompletion
-    ? moves.length
-    : Math.min(moves.length, existingPlayedRow?.move_count ?? moves.length);
+  const existingMoveCount = personalBestMoveCount(moves.length, existingPlayedRow?.move_count, hinted);
 
   // 8a. Write played_levels to D1 (canonical store — replaces Firestore subcollection)
   // The returned `wasFirstCompletion` is the authoritative first-completion flag:
@@ -132,6 +134,14 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
   } catch (e) {
     console.error('[D1] played_levels upsert error:', e);
     return c.json({ success: false, error: 'Failed to save progress' }, 500);
+  }
+
+  // İlerleme kaydedildi → bu tamamlamaya uygulanan ipucu grant'lerini kapat.
+  // Başarısız olursa grant'ler açık kalır ve bir sonraki tamamlamayı da sınırlar (güvenli taraf).
+  try {
+    await finalizeHintUsage(c.env.AUDIT_DB, uid, hintUsage);
+  } catch (e) {
+    console.error('[D1] reward_grants consume error:', e);
   }
 
   // Compute XP delta: 100 * difficulty for first completion, 20 for replaying
@@ -204,17 +214,19 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
     }
   }
 
-  // 9. Update solutions
-  const isNewBestSolution = bestMoveCount === null || moves.length < bestMoveCount;
-  const isBestSolution    = bestMoveCount !== null && moves.length === bestMoveCount;
-  const isGoodSolution    = !isNewBestSolution && !isBestSolution && (
+  // 9. Update solutions — ipuçlu çözüm global en iyi çözüm listesine ve rozetlerine girmez.
+  const isNewBestSolution = !hinted && (bestMoveCount === null || moves.length < bestMoveCount);
+  const isBestSolution    = !hinted && bestMoveCount !== null && moves.length === bestMoveCount;
+  const isGoodSolution    = !hinted && !isNewBestSolution && !isBestSolution && (
     worstTopMoveCount === null || moves.length <= worstTopMoveCount
   );
 
-  try {
-    await updateSolutions(projectId, levelId, uid, moves, adminToken);
-  } catch (e) {
-    console.error('Solutions update error:', e);
+  if (!hinted) {
+    try {
+      await updateSolutions(projectId, levelId, uid, moves, adminToken);
+    } catch (e) {
+      console.error('Solutions update error:', e);
+    }
   }
 
   // 10. Write audit log (non-blocking — never delays the response)
@@ -226,6 +238,7 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
       scoreDelta,
       isFirst:      isFirstCompletion,
       isNewBest:    isNewBestSolution,
+      hinted,
     }).catch((err) => console.error('[AuditLog] level.complete write failed:', err)),
   );
 
@@ -253,6 +266,7 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
     stars: bestStars as 1 | 2 | 3,
     scoreDelta,
     xpDelta,
+    hintUsed: hinted,
   };
 
   return c.json(response);
@@ -275,7 +289,7 @@ gameRouter.post('/game/telemetry', firebaseAuth, async (c) => {
     return c.json({ success: false, error }, 400);
   }
 
-  const { id, levelId, version, outcome, timeSpent, restarts, deaths, movesCount } = validation.data;
+  const { id, levelId, version, outcome, timeSpent, restarts, deaths, movesCount, hintsUsed } = validation.data;
 
   try {
     const { insertTelemetry } = await import('../services/telemetry');
@@ -289,6 +303,7 @@ gameRouter.post('/game/telemetry', firebaseAuth, async (c) => {
       restarts,
       deaths,
       movesCount,
+      hintsUsed,
     });
     return c.json({ success: true });
   } catch (err) {

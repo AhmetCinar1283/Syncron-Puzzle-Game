@@ -29,6 +29,11 @@ export function usePlaySession() {
     // Date.now() yazıyor ve PlayScreen/kazanma akışı ancak yükleme bittikten sonra var.
     const startTimeRef = useRef(0);
     const sessionRef = useRef<LevelSession | null>(null);
+    /**
+     * Yüklenen level için gösterilen ipucu sayısı. Oturumdan (sessionRef) ayrı tutulur
+     * çünkü kullanıcı seviyelerinde oturum yoktur ama kazanma akışı yine okur.
+     */
+    const hintsUsedRef = useRef(0);
 
     /** Yeni yükleme / restart: hamle geçmişi ve süre sayacı sıfırlanır. */
     const resetTracking = useCallback(() => {
@@ -38,12 +43,14 @@ export function usePlaySession() {
 
     /** Seviye yüklendiğinde çağrılır; firestoreId yoksa oturum null olur. */
     const beginSession = useCallback((firestoreId: string | undefined, version: number) => {
+        hintsUsedRef.current = 0;
         if (firestoreId) {
             sessionRef.current = {
                 id: generateUUID(),
                 startTime: Date.now(),
                 restarts: 0,
                 deaths: 0,
+                hintsUsed: 0,
                 levelId: firestoreId,
                 version,
             };
@@ -71,6 +78,7 @@ export function usePlaySession() {
             restarts: currentSession.restarts,
             deaths: currentSession.deaths,
             movesCount,
+            hintsUsed: currentSession.hintsUsed,
         });
     }, []);
 
@@ -87,8 +95,16 @@ export function usePlaySession() {
         }
     }, []);
 
+    /**
+     * Motorun "geri al"ı son YÖN hamlesinden önceki durumu geri yükler; oda seçimi de
+     * o anki hâline döner. Oda değiştirme motor geçmişine ayrı kayıt açmadığı için
+     * son yön hamlesinden sonraki oda değiştirmeler de geri alınmış olur — hamle
+     * geçmişi motorla aynı kalsın diye onlar da düşülür (sunucu bu geçmişi oynatır).
+     */
     const handleUndoExecuted = useCallback(() => {
-        moveHistoryRef.current.pop();
+        const history = moveHistoryRef.current;
+        while (history.length > 0 && history[history.length - 1] === SWITCH_ROOM_MOVE) history.pop();
+        history.pop();
     }, []);
 
     /** Restart butonu: ölümse deaths, değilse restarts artar; sonra izleme sıfırlanır. */
@@ -105,8 +121,18 @@ export function usePlaySession() {
         startTimeRef.current = Date.now();
     }, []);
 
+    /** Oyuncuya bir ipucu gösterildi (telemetri + tamamlama isteği için sayılır). */
+    const recordHintUsed = useCallback(() => {
+        hintsUsedRef.current += 1;
+        if (sessionRef.current) {
+            sessionRef.current.hintsUsed += 1;
+            persistActiveSession(sessionRef.current);
+        }
+    }, []);
+
     return {
         moveHistoryRef,
+        hintsUsedRef,
         startTimeRef,
         resetTracking,
         beginSession,
@@ -114,6 +140,7 @@ export function usePlaySession() {
         handleMoveExecuted,
         handleUndoExecuted,
         recordRestart,
+        recordHintUsed,
     };
 }
 

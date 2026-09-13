@@ -2,12 +2,14 @@
 
 import { useCallback, useState } from 'react';
 import { useAppSearchParams, useAppRouter } from '@/lib/navigation';
-import type { UIButtonType } from '@/game-engine/logic/types';
+import type { Direction, UIButtonType } from '@/game-engine/logic/types';
 import type { WorkerResult } from '../lib/types';
 import { usePlaySession } from './usePlaySession';
 import { useLevelLoader } from './useLevelLoader';
 import { useLevelCompletion } from './useLevelCompletion';
 import { usePlayAds } from './usePlayAds';
+import { usePlayHint } from './usePlayHint';
+import { DIRECTION_TO_MOVE, SWITCH_ROOM_MOVE } from '../lib/session';
 
 /**
  * `/play` sayfasının tüm state/akışı: URL param → seviye yükleme → oyun izleme →
@@ -28,7 +30,7 @@ export function usePlayPage() {
     const [showWin, setShowWin] = useState(false);
     const [workerResult, setWorkerResult] = useState<WorkerResult | null>(null);
 
-    const { resetTracking, beginSession, submitTelemetry, recordRestart } = session;
+    const { resetTracking, beginSession, submitTelemetry, recordRestart, recordHintUsed, handleMoveExecuted, handleUndoExecuted, moveHistoryRef } = session;
 
     const level = useLevelLoader({
         levelId,
@@ -49,6 +51,27 @@ export function usePlayPage() {
         setWorkerResult,
     });
 
+    // ── Ödüllü ipucu ───────────────────────────────────────────
+    const getMoves = useCallback(() => moveHistoryRef.current, [moveHistoryRef]);
+    const hint = usePlayHint({
+        firestoreId: level.firestoreId,
+        levelVersion: level.levelVersion,
+        getMoves,
+        onHintShown: recordHintUsed,
+    });
+    const { onMoveExecuted: hintOnMove, onUndoExecuted: hintOnUndo, onRestart: hintOnRestart, reset: resetHint } = hint;
+
+    /** Hamle: telemetri/hamle geçmişi + ipucunun ilerletilmesi (aynı hamle kodu). */
+    const onMoveExecuted = useCallback((direction: Direction | 'switch_room') => {
+        handleMoveExecuted(direction);
+        hintOnMove(direction === 'switch_room' ? SWITCH_ROOM_MOVE : DIRECTION_TO_MOVE[direction]);
+    }, [handleMoveExecuted, hintOnMove]);
+
+    const onUndoExecuted = useCallback(() => {
+        handleUndoExecuted();
+        hintOnUndo();
+    }, [handleUndoExecuted, hintOnUndo]);
+
     // ── Reklam adaptörü ────────────────────────────────────────
     const levelReady = !level.loading && !level.error && !!level.game2State;
     const { notifyLevelCompleted, beforeLeavingWinScreen, beforeRestart, isRegisteredUser } = usePlayAds(levelReady);
@@ -65,6 +88,7 @@ export function usePlayPage() {
     const handleButtonPressed = useCallback(async (buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
         if (buttonType === 'next_level') {
             // Kazandı → worker çağır, win overlay göster
+            resetHint();
             setShowWin(true);
             callWorker();
             notifyLevelCompleted();
@@ -72,6 +96,7 @@ export function usePlayPage() {
             // Yeniden başlatma da bir "level bitişi"dir: sayacı ilerletir ve
             // politika uygunsa reklam gösterir. Reklam kapanmadan board sıfırlanmaz.
             recordRestart(details?.isDeath);
+            hintOnRestart();
             const result = await beforeRestart();
             reload(); // PlayScreen'i sıfırla
             if (result.shown) setShowAfterAdPrompt(true);
@@ -80,7 +105,7 @@ export function usePlayPage() {
             submitTelemetry('quit');
             router.push('/levels');
         }
-    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart]);
+    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart, resetHint, hintOnRestart]);
 
     // ── Kazanma ekranından ayrılış (sonraki level / menü) ─────
     // İkisi de aynı reklam kontrolünden geçer: level bitti, ekrandan ayrılıyoruz.
@@ -120,5 +145,8 @@ export function usePlayPage() {
         isRegisteredUser,
         showAfterAdPrompt,
         dismissAfterAdPrompt,
+        hint,
+        onMoveExecuted,
+        onUndoExecuted,
     };
 }

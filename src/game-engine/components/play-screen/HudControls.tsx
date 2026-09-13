@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useT } from '@/contexts/LanguageContext';
 import { ThemeSelectorModal } from './ThemeSelectorModal';
 import { getThemeConfig, GameTheme } from '../../themes/themeConfig';
@@ -15,8 +15,13 @@ interface HudControlsProps {
     undoDisabled: boolean;
     onUndo: () => void;
     stepDisabled: boolean;
-    onStepForward: () => void;
+    /** Verilmezse "adım ileri" butonu çizilmez (yalnızca editör test modunda verilir). */
+    onStepForward?: () => void;
     onRestart: () => void;
+    /** "Adım ileri"nin yerine oturan ipucu butonu (yalnızca oyuncu modunda). */
+    hintButton?: ReactNode;
+    /** Aktif ipucu geri almayı / yeniden başlatmayı öneriyorsa ilgili buton nabız atar. */
+    highlight?: 'undo' | 'restart' | null;
 }
 
 /**
@@ -34,6 +39,8 @@ export function HudControls({
     stepDisabled,
     onStepForward,
     onRestart,
+    hintButton,
+    highlight = null,
 }: HudControlsProps) {
     const t = useT();
     const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
@@ -159,6 +166,7 @@ export function HudControls({
                     opacity: undoDisabled ? 0.35 : 1,
                     transition: 'all 0.15s ease',
                     flexShrink: 0,
+                    animation: highlight === 'undo' ? HIGHLIGHT_ANIMATION : undefined,
                 }}
                 onMouseEnter={(e) => {
                     if (undoDisabled) return;
@@ -183,7 +191,10 @@ export function HudControls({
                 <RotateCcw size={iconSize} />
             </button>
 
-            {/* Adım İleri (Step Forward) - F kısayolu */}
+            {hintButton}
+
+            {/* Adım İleri (Step Forward) - F kısayolu — yalnızca editör test modu */}
+            {onStepForward && (
             <button
                 onClick={onStepForward}
                 disabled={stepDisabled}
@@ -227,6 +238,7 @@ export function HudControls({
             >
                 <StepForward size={iconSize} />
             </button>
+            )}
 
             {/* Yeniden Başlat (Restart) - R kısayolu */}
             <button
@@ -247,6 +259,7 @@ export function HudControls({
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     flexShrink: 0,
+                    animation: highlight === 'restart' ? HIGHLIGHT_ANIMATION : undefined,
                 }}
                 onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.06)';
@@ -270,3 +283,6 @@ export function HudControls({
         </div>
     );
 }
+
+/** İpucu vurgusu — keyframes: hint/hintStyles.ts (PlayScreen ipucu aktifken ekler). */
+const HIGHLIGHT_ANIMATION = 'hint-button-pulse 1.1s ease-out infinite';

@@ -274,6 +274,37 @@ const en: Record<string, string> = {
   'ads.cta_later': 'LATER',
   'ads.cta_premium_soon': 'The ad-free pack is coming very soon!',
 
+  // Rewarded actions (shared)
+  'rewarded.watch_ad': 'Watch Ad',
+  'rewarded.use_free': 'Use Free',
+  'rewarded.cancel': 'Cancel',
+  'rewarded.close': 'Close',
+  'rewarded.busy': 'Preparing…',
+  'rewarded.free_remaining': 'You have {n} free use(s) left for this level.',
+  'rewarded.decline_quota': 'You have used your free use for this level.',
+  'rewarded.decline_disabled': 'This feature is not available right now.',
+  'rewarded.decline_busy': 'Something else is in progress, please wait.',
+  'rewarded.decline_claim_failed': 'The reward could not be verified. Check your connection and try again.',
+  'rewarded.decline_unavailable': 'This could not be prepared right now. Try again after a few moves.',
+  'rewarded.decline_rate_limited': 'Too many attempts. Wait a moment and try again.',
+  'rewarded.decline_no_fill': 'No ad is available right now. Please try again shortly.',
+  'rewarded.decline_closed': 'The ad was not completed, so no reward was given.',
+  'rewarded.decline_error': 'The ad could not be shown right now. Please try again shortly.',
+
+  // Rewarded hint
+  'hint.button': 'Hint',
+  'hint.dialog_title': 'Get a Hint',
+  'hint.dialog_body': 'Shows how many steps are left to the solution and the next 5 steps from where you are.',
+  'hint.score_notice': 'A solution that uses a hint earns at most 2 stars and does not count toward records.',
+  'hint.computing': 'Preparing hint…',
+  'hint.banner_steps': '{n} steps to the solution',
+  'hint.next_steps': 'Next steps',
+  'hint.step_switch_room': 'Switch room',
+  'hint.banner_undo': 'No solution from here — undo {u} time(s), then {n} steps',
+  'hint.banner_restart': 'No solution from here — start over, then {n} steps',
+  'hint.win_notice': 'HINT · MAX 2★',
+  'hint.win_notice_detail': 'A hint was used, so this solution earns at most 2 stars and does not count toward records.',
+
   // Offline (monetization) — bundled/cached levels can be played offline, but score never is
   'play.offline_score_not_saved': 'You\'re offline — this score wasn\'t saved.',
   'play.level_not_downloaded': 'This level hasn\'t been downloaded yet. Open it once while online.',
