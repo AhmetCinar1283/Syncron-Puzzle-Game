@@ -5,8 +5,9 @@ import type { ReactNode } from 'react';
 import GameCellAdapter from '@/game-engine/components/GameCellAdapter';
 import { CELL_COLOR, CELL_LABEL, type ToolType } from '../../lib/editorConfig';
 
-export const CELL_SIZE = 36;
-export const CELL_SIZE_MOB = 28;
+export const CELL_SIZE = 34;
+// Dokunmatikte parmakla isabetli seçim için daha büyük hedef alanı.
+export const CELL_SIZE_MOB = 38;
 
 interface ToolBtnProps {
   tool: ToolType;
@@ -77,12 +78,12 @@ export function CellToolList({ types, activeTool, setActiveTool, small }: {
   );
 }
 
-/** Labelled group box of the palette (row on portrait, column on landscape). */
-export function BlockWrapper({ label, isLandscape, children }: { label: string; isLandscape: boolean; children: ReactNode }) {
+/** Labelled group box of the palette (`vertical` = palette rendered as a side column). */
+export function BlockWrapper({ label, vertical, children }: { label: string; vertical: boolean; children: ReactNode }) {
   return (
     <div style={{
       display: 'flex',
-      flexDirection: isLandscape ? 'column' : 'row',
+      flexDirection: vertical ? 'column' : 'row',
       alignItems: 'center',
       gap: 6,
       padding: '6px 8px',
@@ -102,18 +103,18 @@ export function BlockWrapper({ label, isLandscape, children }: { label: string; 
         display: 'block',
         textAlign: 'center',
         writingMode: 'horizontal-tb',
-        marginBottom: isLandscape ? 4 : 0,
-        marginRight: isLandscape ? 0 : 4,
-        borderBottom: isLandscape ? '1px solid rgba(0, 196, 255, 0.2)' : 'none',
-        borderRight: isLandscape ? 'none' : '1px solid rgba(0, 196, 255, 0.2)',
-        paddingBottom: isLandscape ? 4 : 0,
-        paddingRight: isLandscape ? 0 : 6,
+        marginBottom: vertical ? 4 : 0,
+        marginRight: vertical ? 0 : 4,
+        borderBottom: vertical ? '1px solid rgba(0, 196, 255, 0.2)' : 'none',
+        borderRight: vertical ? 'none' : '1px solid rgba(0, 196, 255, 0.2)',
+        paddingBottom: vertical ? 4 : 0,
+        paddingRight: vertical ? 0 : 6,
       }}>
         {label}
       </span>
       <div style={{
         display: 'flex',
-        flexDirection: isLandscape ? 'column' : 'row',
+        flexDirection: vertical ? 'column' : 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 4,

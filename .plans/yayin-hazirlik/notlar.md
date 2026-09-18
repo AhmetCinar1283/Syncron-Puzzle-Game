@@ -95,3 +95,20 @@ ileriye dönük** çalışır — o güne kadarki kayıtlardan ham IP kurtarıla
 `/privacy` §7, `/kvkk` §5 ve `/terms` §3 metinleri yeniden yazılmalıdır.
 
 **Proje sahibi ham IP istiyorsa bunu yayına çıkmadan söylemelidir.**
+
+### §2 GÜNCELLEME (2026-09-18) — binding uygulandı
+
+§2'nin yukarıdaki "yapılacaklar" listesi **uygulandı**. İki düzeltme:
+
+- **Adım 2 (panelden kural ayarlanır) geçersiz.** Binding tamamen `wrangler.jsonc` ile
+  tanımlanıyor, panel kaynağı değil. Panel işi yalnızca *doğrulamaya* indi —
+  adım adım `raporlar/06-rate-limit-binding-rapor.md` §4'te.
+- **Platform sınırı:** Cloudflare'in "simple" rate limit binding'i period olarak yalnızca
+  10 veya 60 saniye kabul ediyor. Bu yüzden sıkı kademenin **dakikalık 30 limiti paylaşılan
+  sayaçta**, **saatlik 600 tavanı ise bellek içi katmanda (isolate başına)** kaldı.
+  Asıl koruma olan dakikalık limit artık gerçekten paylaşılmış durumda.
+
+**Saatlik tavanı da paylaşılan yapma kararı:** şimdilik YAPILMIYOR. Tek yolu Durable Object
+ve bedeli her istekte bir DO çağrısı — dakikalık limit zaten paylaşıldığı için kazanç bu
+maliyeti karşılamıyor. Trafik büyüyüp saatlik tavan gerçekten aşılmaya başlarsa yeniden
+değerlendirilir.

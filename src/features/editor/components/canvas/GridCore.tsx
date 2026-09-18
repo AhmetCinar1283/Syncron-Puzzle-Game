@@ -15,7 +15,33 @@ import { GameIcon } from '@/components/icons';
 export default function GridCore() {
   const { grid, objects, boxes, cellSize, edges, paintCell, lockedCells, activeRoomId } = useEditorContext();
   const { themeConfig } = useGameTheme();
-  const isPainting = useRef(false);
+
+  // Boyama durumu tek bir pointer üzerinden yürür. Fare ve dokunma için ayrı
+  // dinleyiciler kullanmak, dokunmatikte tarayıcının ürettiği "taklit fare"
+  // olayları yüzünden aynı hücreyi iki kez tetikliyordu (parmağı kaldırınca
+  // duvarın silinmesi). Pointer Events + `touch-action: none` ile tek olay
+  // akışı kalır ve tıklama tam olarak bir kez işlenir.
+  const activePointerId = useRef<number | null>(null);
+  const lastCell = useRef<string | null>(null);
+
+  /** Ekran koordinatındaki hücreyi bulur (çocuk katmanlar pointer-events:none). */
+  const cellAt = (clientX: number, clientY: number): { row: number; col: number } | null => {
+    const el = document.elementFromPoint(clientX, clientY);
+    const cell = el?.closest('[data-cell]') as HTMLElement | null;
+    if (!cell) return null;
+    const row = Number(cell.dataset.row);
+    const col = Number(cell.dataset.col);
+    if (Number.isNaN(row) || Number.isNaN(col)) return null;
+    return { row, col };
+  };
+
+  const endPaint = (e?: React.PointerEvent<HTMLDivElement>) => {
+    if (e && activePointerId.current !== null) {
+      try { e.currentTarget.releasePointerCapture(activePointerId.current); } catch { /* zaten serbest */ }
+    }
+    activePointerId.current = null;
+    lastCell.current = null;
+  };
 
   return (
     <div
@@ -35,26 +61,34 @@ export default function GridCore() {
         position: 'relative',
         transition: 'background 0.3s, box-shadow 0.3s',
       }}
-      onMouseLeave={() => { isPainting.current = false; }}
-      onTouchStart={(e) => {
+      onPointerDown={(e) => {
+        // Sadece birincil düğme/parmak boyar; ikinci parmak (pinch) yok sayılır.
+        if (activePointerId.current !== null) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        const hit = cellAt(e.clientX, e.clientY);
+        if (!hit) return;
         e.preventDefault();
-        const touch = e.touches[0];
-        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-        const cell = el?.closest('[data-cell]') as HTMLElement | null;
-        if (!cell) return;
-        isPainting.current = true;
-        paintCell(Number(cell.dataset.row), Number(cell.dataset.col), false);
+        activePointerId.current = e.pointerId;
+        lastCell.current = `${hit.row},${hit.col}`;
+        // Pointer yakalama: parmak/fare hücreden çıksa da hareketler bize gelir,
+        // ayrıca dokunmada sonradan gelen taklit fare olayları engellenir.
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* destek yoksa sorun değil */ }
+        paintCell(hit.row, hit.col, false);
       }}
-      onTouchMove={(e) => {
-        e.preventDefault();
-        if (!isPainting.current) return;
-        const touch = e.touches[0];
-        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-        const cell = el?.closest('[data-cell]') as HTMLElement | null;
-        if (!cell) return;
-        paintCell(Number(cell.dataset.row), Number(cell.dataset.col), true);
+      onPointerMove={(e) => {
+        if (activePointerId.current !== e.pointerId) return;
+        const hit = cellAt(e.clientX, e.clientY);
+        if (!hit) return;
+        const key = `${hit.row},${hit.col}`;
+        // Aynı hücrede kalan küçük titremeler tekrar boyamayı tetiklemesin.
+        if (lastCell.current === key) return;
+        lastCell.current = key;
+        paintCell(hit.row, hit.col, true);
       }}
-      onTouchEnd={() => { isPainting.current = false; }}
+      onPointerUp={endPaint}
+      onPointerCancel={endPaint}
+      onLostPointerCapture={() => { activePointerId.current = null; lastCell.current = null; }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {grid.map((row, r) => (
         <div key={r} style={{ display: 'flex' }}>
@@ -66,9 +100,6 @@ export default function GridCore() {
                 key={c}
                 style={{ position: 'relative' }}
                 data-cell="" data-row={r} data-col={c}
-                onMouseDown={(e) => { e.preventDefault(); isPainting.current = true; paintCell(r, c, false); }}
-                onMouseEnter={() => { if (isPainting.current) paintCell(r, c, true); }}
-                onMouseUp={() => { isPainting.current = false; }}
               >
                 <GameCellAdapter cellType={cell} cellSize={cellSize} />
                 

@@ -1,5 +1,6 @@
-﻿import { describe, expect, it } from 'vitest';
-import { normalizePath, getHierarchicalBackRoute } from './BackButtonManager';
+﻿import { beforeEach, describe, expect, it } from 'vitest';
+import { normalizePath, getHierarchicalBackRoute, getEditorBackRoute } from './BackButtonManager';
+import { __resetRouteHistory, recordRouteVisit } from '@/lib/routeHistory';
 
 describe('BackButtonManager - normalizePath', () => {
   it('trailing slash barındıran yolları temizler', () => {
@@ -38,7 +39,6 @@ describe('BackButtonManager - getHierarchicalBackRoute', () => {
     expect(getHierarchicalBackRoute('/levels')).toBe('/');
     expect(getHierarchicalBackRoute('/levels/')).toBe('/');
     expect(getHierarchicalBackRoute('/profile')).toBe('/');
-    expect(getHierarchicalBackRoute('/editor')).toBe('/');
     expect(getHierarchicalBackRoute('/friends')).toBe('/');
     expect(getHierarchicalBackRoute('/controls')).toBe('/');
     expect(getHierarchicalBackRoute('/admin')).toBe('/');
@@ -52,5 +52,29 @@ describe('BackButtonManager - getHierarchicalBackRoute', () => {
 
   it('kök dizin için hiyerarşik yönlendirme null olmalıdır (çıkış/varsayılan)', () => {
     expect(getHierarchicalBackRoute('/')).toBeNull();
+  });
+});
+
+describe('BackButtonManager - editör geri hedefi', () => {
+  beforeEach(() => {
+    __resetRouteHistory();
+  });
+
+  it('kayıt yoksa ana menüye düşer', () => {
+    expect(getEditorBackRoute()).toBe('/');
+    expect(getHierarchicalBackRoute('/editor')).toBe('/');
+  });
+
+  it('editöre gelinen sayfaya döner', () => {
+    recordRouteVisit('/admin/level-parts');
+    recordRouteVisit('/editor');
+    expect(getEditorBackRoute()).toBe('/admin/level-parts');
+    expect(getHierarchicalBackRoute('/editor')).toBe('/admin/level-parts');
+  });
+
+  it('uygulama dışı/bilinmeyen yolları hedef olarak kabul etmez', () => {
+    recordRouteVisit('/kvkk');
+    recordRouteVisit('/editor');
+    expect(getEditorBackRoute()).toBe('/');
   });
 });

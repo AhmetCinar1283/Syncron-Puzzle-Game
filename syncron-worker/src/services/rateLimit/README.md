@@ -46,19 +46,39 @@ Kararın HTTP'ye çevrilmesi (`429`, `Retry-After`, güvenlik izi)
 - `audit_logs`'a `category: 'security'` / `action: 'security.rate_limit_exceeded'`
   kaydı yazılır (`services/securitySignals.ts`). Otomatik yasaklama **yoktur**.
 
-## AÇIK KARAR — mekanizma (proje sahibine soruldu, cevap bekleniyor)
+## Mekanizma — iki katman (KARAR VERİLDİ, uygulandı)
 
-Bugünkü uygulama **bellek içidir** ve sayaç Worker isolate'ine bağlıdır.
-Cloudflare aynı anda çok sayıda isolate çalıştırdığı ve isolate'leri geri
-dönüştürdüğü için bu limit **kesin değildir**: kaba kötüye kullanımı ve döngüye
-giren istemciyi keser, kararlı/dağıtık bir saldırıyı kesmez.
+Sayaç iki katmanda tutulur ve sıralama **tek bir yerde**, `resolveStore.ts` içinde
+kurulur. Çağrı yerleri ve kademe tablosu bunu bilmez.
 
-Kesinlik için **Cloudflare Rate Limiting binding**'i gerekir; bu `wrangler.jsonc`
-içine binding eklemeyi ve panelden ayar yapmayı gerektirdiği için ajan tek başına
-yapmaz (bkz. `00-ilkeler.md` §5). Karar geldiğinde yapılacak iş:
+| Sıra | Katman | Dosya | Kapsam | Neden |
+|---|---|---|---|---|
+| 1 | Bellek içi ön filtre | `store.ts` | isolate başına | Ucuz. Döngüye girmiş istemciyi kenara hiç çıkmadan keser. |
+| 2 | Cloudflare Rate Limiting binding | `cloudflareRateLimitStore.ts` | hesap/kenar geneli | Paylaşılan gerçek. Dağıtık saldırgan da aynı kovaya düşer. |
 
-1. `store.ts` yanına `cloudflareRateLimitStore.ts` yaz (aynı `RateLimitStore` arayüzü).
-2. `middleware/rateLimiter.ts` içindeki `sharedRateLimitStore` referansını `c.env`'den
-   çözülen depoyla değiştir.
+İlk reddeden kazanır; ön filtre reddederse binding **hiç çağrılmaz**
+(`layeredStore.ts`).
 
-**Çağrı yerlerinin hiçbiri değişmez.** Kademe tablosu da değişmez.
+### Binding adı nereden gelir?
+
+Binding adı kuralın **sayılarından** türetilir (`lib/bindingName.ts`):
+`RL_<limit>_PER_<saniye>S` → ör. 30/dk = `RL_30_PER_60S`. Böylece kod içinde
+"kademe → binding" diye ikinci bir tablo tutulmaz; tek gerçek kaynak
+`lib/policy.ts` olarak kalır.
+
+Yeni bir eşik eklemek: `lib/policy.ts`'e satır + `wrangler.jsonc` → `ratelimits`
+listesine aynı adla binding. **Kodda tek satır değişmez.**
+
+### Platform sınırı — saatlik tavan binding'e giremez
+
+Cloudflare'in "simple" hız limiti binding'i `period` olarak yalnızca **10 veya 60
+saniye** kabul eder. Bu yüzden `strict` kademesinin ikinci tavanı (600/saat)
+binding ile ifade **edilemez** ve bellek içi katmanda kalır (yani saatlik tavan
+hâlâ isolate başınadır). Dakikalık tavan (30/dk) paylaşılan sayaçla uygulandığı
+için asıl koruma oradadır.
+
+### Binding yoksa ne olur?
+
+Yerel `wrangler dev`, vitest ve binding'siz bir deploy'da sistem **korumasız
+kalmaz**: bellek içi katman aynen çalışır, durum isolate başına **bir kez**
+`console.warn` ile loglanır (sessizce geçilmez).

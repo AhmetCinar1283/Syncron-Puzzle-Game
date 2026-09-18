@@ -5,6 +5,23 @@ const en: Record<string, string> = {
   'common.cancel': 'Cancel',
   'common.new_level': 'New Level',
 
+  // Navigation / page names (back button labels)
+  'nav.levels': 'Levels',
+  'nav.play': 'Game',
+  'nav.daily': 'Daily',
+  'nav.profile': 'Profile',
+  'nav.friends': 'Friends',
+  'nav.leaderboard': 'Leaderboard',
+  'nav.controls': 'Controls',
+  'nav.admin': 'Admin',
+  'nav.level_parts': 'Parts',
+  'nav.daily_calendar': 'Daily Calendar',
+  'nav.pending_levels': 'Pending Levels',
+  'nav.level_analytics': 'Level Analytics',
+  'nav.reports': 'Reports',
+  'nav.support': 'Support',
+  'nav.users': 'Users',
+
   // Difficulty
   'difficulty.1': 'Novice',
   'difficulty.2': 'Journeyman',

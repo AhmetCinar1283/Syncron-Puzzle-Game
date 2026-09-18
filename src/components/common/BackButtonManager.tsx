@@ -10,30 +10,41 @@ import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 import { adService } from '@/services/monetization';
+import { getPreviousRoute, normalizePath, recordRouteVisit } from '@/lib/routeHistory';
+import { isKnownAppRoute } from '@/lib/routeLabels';
+
+// Yol normalizasyonu artık `lib/routeHistory` içinde yaşıyor; mevcut içe aktarımlar
+// bozulmasın diye buradan yeniden dışa aktarılır.
+export { normalizePath };
 
 /**
- * URL yollarını trailing-slash, arama parametreleri ve boşluklardan arındırıp normalize eder.
- * Örneğin: '/play/' -> '/play', '/play?id=2' -> '/play', '' -> '/'
+ * Editör birden çok sayfadan açılabildiği için geri tuşu sabit bir hedefe değil,
+ * gerçekten gelinen sayfaya dönmelidir. Kayıt yoksa ana menüye düşer.
  */
-export function normalizePath(path: string | null | undefined): string {
-  if (!path) return '/';
-  const clean = path.split('?')[0].replace(/\/+$/, '');
-  return clean === '' ? '/' : clean;
+export function getEditorBackRoute(previousPath?: string | null): string {
+  const prev = previousPath ?? getPreviousRoute('/editor');
+  if (prev && prev !== '/editor' && isKnownAppRoute(prev)) return prev;
+  return '/';
 }
 
 /**
  * Verilen mevcut sayfadan geri tuşuna basıldığında gidilmesi gereken hiyerarşik üst sayfayı belirler.
  * Yönlendirme gerektirmeyen (varsayılan geçmiş veya çıkış) durumlar için null döner.
  */
-export function getHierarchicalBackRoute(currentPath: string | null | undefined): string | null {
+export function getHierarchicalBackRoute(
+  currentPath: string | null | undefined,
+  previousPath?: string | null,
+): string | null {
   const norm = normalizePath(currentPath);
   if (norm === '/play') {
     return '/levels';
   }
+  if (norm === '/editor') {
+    return getEditorBackRoute(previousPath);
+  }
   if (
     norm === '/levels' ||
     norm === '/profile' ||
-    norm === '/editor' ||
     norm === '/friends' ||
     norm === '/controls' ||
     norm === '/admin' ||
@@ -60,6 +71,12 @@ export default function BackButtonManager() {
     lastPathnameRef.current = pathname;
     routerRef.current = router;
   }, [pathname, router]);
+
+  // Ziyaret geçmişini kaydeder: editör gibi çok girişli sayfalar geri tuşunda
+  // gerçekten gelinen sayfaya dönebilsin diye.
+  useEffect(() => {
+    recordRouteVisit(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();

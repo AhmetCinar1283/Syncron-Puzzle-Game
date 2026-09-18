@@ -34,6 +34,7 @@ syncron-worker/
 │   │   ├── levelLifecycle.ts # Bölüm silme/geri getirme kaskadı (soft delete) ve liderlik sayacı geri alma ifadeleri.
 │   │   ├── rateLimit/      # Paylaşılan hız limiti (yayin-hazirlik/03): kademe tablosu (veri), saf pencere, mekanizma arayüzü (bkz. services/rateLimit/README.md).
 │   │   ├── securityEvents/ # Adli iz (yayin-hazirlik/05): olay katalogu (veri), karmalanmış IP + UA, 30 gün saklama (bkz. services/securityEvents/README.md).
+│   │   ├── levelTelemetry/ # Telemetri yazımının görünürlüğü (yayin-hazirlik/08): yazma doğrulaması, hata sınıflandırması, sessiz kopukluğa karşı audit_logs izi (bkz. services/levelTelemetry/README.md).
 │   │   ├── securitySignals.ts # Kötüye kullanım sinyalleri → audit_logs (category: 'security'). Yalnızca yazar, ban vermez.
 │   │   └── ...
 │   ├── scheduled/      # Zamanlanmış görevlerin (Cron) kodları.

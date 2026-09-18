@@ -28,6 +28,22 @@ export interface Env {
    * İsteğe bağlı: eksikliği Worker'ı düşürmez, yalnızca izi zayıflatır.
    */
   SECURITY_IP_SALT?: string;
+  /**
+   * Cloudflare Rate Limiting binding'leri. Ad sözleşmesi `RL_<limit>_PER_<saniye>S`
+   * ve tanımları `wrangler.jsonc` → `ratelimits` bölümündedir; kod adı kuralın
+   * sayılarından türetir (services/rateLimit/lib/bindingName.ts).
+   *
+   * Neden tek tek alan değil de desenli indeks? Her eşik için ayrı bir alan
+   * yazmak, `lib/policy.ts` kademe tablosunun bu dosyada ikinci bir kopyasını
+   * doğururdu; yeni bir kademe her eklendiğinde burası da değişmek zorunda
+   * kalırdı. Desen sayesinde yeni eşik yalnızca policy tablosu + wrangler
+   * yapılandırması işidir.
+   *
+   * İsteğe bağlıdır: binding tanımlı değilse (yerel geliştirme, test) hız limiti
+   * bellek içi katmanla çalışmaya devam eder ve durum loglanır
+   * (bkz. services/rateLimit/resolveStore.ts).
+   */
+  [rateLimiterBinding: `RL_${string}`]: RateLimit | undefined;
 }
 
 export interface CompleteLevelRequest {

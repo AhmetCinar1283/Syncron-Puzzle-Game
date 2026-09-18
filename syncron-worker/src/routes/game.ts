@@ -304,25 +304,28 @@ gameRouter.post('/game/telemetry', firebaseAuth, rateLimit('game-telemetry'), as
 
   const { id, levelId, version, outcome, timeSpent, restarts, deaths, movesCount, hintsUsed } = validation.data;
 
-  try {
-    const { insertTelemetry } = await import('../services/telemetry');
-    await insertTelemetry(c.env.AUDIT_DB, {
-      id,
-      uid,
-      levelId,
-      version,
-      outcome,
-      timeSpent,
-      restarts,
-      deaths,
-      movesCount,
-      hintsUsed,
-    });
-    return c.json({ success: true });
-  } catch (err) {
-    console.error('[Telemetry] Failed to insert telemetry:', err);
+  // Yazma + başarısızlığın görünür kaydı servis katmanında (bkz.
+  // services/levelTelemetry/recordTelemetry.ts). Route yalnızca HTTP'ye çevirir.
+  const { recordLevelTelemetry } = await import('../services/levelTelemetry/recordTelemetry');
+  const result = await recordLevelTelemetry(c.env.AUDIT_DB, {
+    id,
+    uid,
+    levelId,
+    version,
+    outcome,
+    timeSpent,
+    restarts,
+    deaths,
+    movesCount,
+    hintsUsed,
+  });
+
+  // `duplicate`: aynı oturum ikinci kez gönderildi — satır zaten yazılı,
+  // istemcinin yeniden denemesi idempotenttir, hata değildir.
+  if (result.status === 'failed') {
     return c.json({ success: false, error: 'Failed to save telemetry' }, 500);
   }
+  return c.json({ success: true });
 });
 
 // Feedback submission endpoint

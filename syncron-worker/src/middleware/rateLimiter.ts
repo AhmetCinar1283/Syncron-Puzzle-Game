@@ -8,7 +8,7 @@
 import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
 import type { AppContext } from '../types';
-import { evaluateRateLimit, sharedRateLimitStore, type RateLimitEndpointId } from '../services/rateLimit';
+import { evaluateRateLimit, resolveRateLimitStore, type RateLimitEndpointId } from '../services/rateLimit';
 import { recordRateLimitExceeded } from '../services/securitySignals';
 import { trackSecurityEvent } from './securityTrail';
 
@@ -29,6 +29,8 @@ export interface RateLimitMiddlewareOptions {
  *   kalmaz ve gözden geçirmek imkânsızlaşır.
  * Yeni bir uç nokta eklenince bu dosya değişmek zorunda mı? HAYIR — bu dosyada
  *   hiçbir uç nokta adı geçmez; `RateLimitEndpointId` birliği tabloda büyür.
+ * Mekanizma (bellek içi ön filtre + Cloudflare binding) burada SEÇİLMEZ;
+ *   `services/rateLimit/resolveStore.ts` tek kompozisyon noktasıdır.
  * Değer eksik/null gelirse? Kimlik çözülemezse uid kapsamlı kurallar atlanır
  *   (bkz. `rateLimitService.ts`); depo patlarsa istek GEÇER (fail-open) —
  *   hız limitleyicinin kendisi kesinti sebebi olmamalıdır.
@@ -42,7 +44,7 @@ export function rateLimit(
   return createMiddleware<AppContext>(async (c, next) => {
     let outcome;
     try {
-      outcome = await evaluateRateLimit(sharedRateLimitStore, {
+      outcome = await evaluateRateLimit(resolveRateLimitStore(c.env), {
         endpoint,
         identity: identify(c),
         now: Date.now(),

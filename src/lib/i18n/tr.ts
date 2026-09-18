@@ -5,6 +5,23 @@ const tr: Record<string, string> = {
   'common.cancel': 'İptal',
   'common.new_level': 'Yeni Level',
 
+  // Navigation / page names (geri tuşu etiketleri)
+  'nav.levels': 'Leveller',
+  'nav.play': 'Oyun',
+  'nav.daily': 'Günlük',
+  'nav.profile': 'Profil',
+  'nav.friends': 'Arkadaşlar',
+  'nav.leaderboard': 'Sıralama',
+  'nav.controls': 'Kontroller',
+  'nav.admin': 'Admin',
+  'nav.level_parts': 'Bölümler',
+  'nav.daily_calendar': 'Günlük Takvim',
+  'nav.pending_levels': 'Bekleyen Leveller',
+  'nav.level_analytics': 'Level Analizi',
+  'nav.reports': 'Raporlar',
+  'nav.support': 'Destek',
+  'nav.users': 'Kullanıcılar',
+
   // Difficulty
   'difficulty.1': 'Çaylak',
   'difficulty.2': 'Kalfa',

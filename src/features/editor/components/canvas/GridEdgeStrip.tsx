@@ -5,7 +5,10 @@ import { EDGE_OPTIONS, EDGE_COLOR, EDGE_LABEL } from '../../lib/editorConfig';
 import type { EdgeBehavior } from '@/game-engine/level-format';
 import { useEditorContext } from '../../EditorContext';
 
-const STRIP = 8; // px width/height of the clickable strip
+const STRIP = 8; // görünen renkli şeridin kalınlığı
+// Dokunmatikte 8px'lik bir şeridi parmakla tutturmak zor; görünen şerit aynı
+// kalırken tıklama alanı görünmez bir kapsayıcıyla genişletilir.
+const HIT = 20;
 
 interface StripProps {
   side: 'top' | 'bottom' | 'left' | 'right';
@@ -19,43 +22,54 @@ function EdgeStrip({ side, behavior, onCycle }: StripProps) {
   const label = EDGE_LABEL[behavior];
 
   const isHoriz = side === 'top' || side === 'bottom';
-  const pos: React.CSSProperties = {
+  // Görünmez tıklama alanı yalnızca DIŞARI doğru büyür; ızgaranın üstüne
+  // taşarsa hücre boyamayı yutardı.
+  const hitPos: React.CSSProperties = {
     position: 'absolute',
-    ...(side === 'top' ? { top: -STRIP - 2, left: 0, right: 0, height: STRIP } : {}),
-    ...(side === 'bottom' ? { bottom: -STRIP - 2, left: 0, right: 0, height: STRIP } : {}),
-    ...(side === 'left' ? { left: -STRIP - 2, top: 0, bottom: 0, width: STRIP } : {}),
-    ...(side === 'right' ? { right: -STRIP - 2, top: 0, bottom: 0, width: STRIP } : {}),
+    ...(side === 'top' ? { top: -HIT - 2, left: 0, right: 0, height: HIT, alignItems: 'flex-end' } : {}),
+    ...(side === 'bottom' ? { bottom: -HIT - 2, left: 0, right: 0, height: HIT, alignItems: 'flex-start' } : {}),
+    ...(side === 'left' ? { left: -HIT - 2, top: 0, bottom: 0, width: HIT, justifyContent: 'flex-end' } : {}),
+    ...(side === 'right' ? { right: -HIT - 2, top: 0, bottom: 0, width: HIT, justifyContent: 'flex-start' } : {}),
   };
 
   return (
     <div
       title={`${side}: ${label} — click to cycle`}
       onClick={onCycle}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       style={{
-        ...pos,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...hitPos,
+        cursor: 'pointer',
+        touchAction: 'manipulation',
+        zIndex: 5,
+      }}
+    >
+      <div style={{
+        width: isHoriz ? '100%' : STRIP,
+        height: isHoriz ? STRIP : '100%',
         background: color,
         opacity: hovered ? 1 : 0.55,
-        cursor: 'pointer',
         borderRadius: isHoriz ? '4px 4px 0 0' : '4px 0 0 4px',
         transition: 'opacity 0.15s',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 5,
-      }}
-    >
-      {hovered && (
-        <span style={{
-          fontSize: 8, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap',
-          textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-          transform: isHoriz ? 'none' : 'rotate(-90deg)',
-          letterSpacing: '0.06em',
-        }}>
-          {label}
-        </span>
-      )}
+      }}>
+        {hovered && (
+          <span style={{
+            fontSize: 8, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap',
+            textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+            transform: isHoriz ? 'none' : 'rotate(-90deg)',
+            letterSpacing: '0.06em',
+          }}>
+            {label}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

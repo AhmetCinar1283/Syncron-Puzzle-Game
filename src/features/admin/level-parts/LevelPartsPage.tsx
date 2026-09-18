@@ -29,6 +29,7 @@ export default function LevelPartsPage() {
     handleUpdatePartName,
     handleUpdatePartUnlock,
     handleDeletePart,
+    handleReorderLevels,
     handleReorderLevel,
     handleDeleteLevel,
     handleReset,
@@ -46,11 +47,29 @@ export default function LevelPartsPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: '#030712', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
-      {/* Top bar */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(3,7,18,0.97)', borderBottom: '1px solid rgba(0,196,255,0.15)' }}>
+      {/* Top bar (Sticky) */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 24px',
+          background: 'rgba(3,7,18,0.92)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(0,196,255,0.18)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        }}
+      >
         <button
           onClick={() => router.push('/admin')}
-          style={{ background: 'none', border: 'none', color: '#334155', fontSize: 12, cursor: 'pointer', letterSpacing: '0.06em' }}
+          style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', letterSpacing: '0.06em', transition: 'color 0.15s ease' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#00c4ff')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
         >
           ← Admin
         </button>
@@ -92,6 +111,7 @@ export default function LevelPartsPage() {
               onUpdateName={(name) => handleUpdatePartName(part.partId, name)}
               onUpdateUnlock={(req) => handleUpdatePartUnlock(part.partId, req)}
               onDelete={() => handleDeletePart(part.partId, part.name)}
+              onReorderLevels={(newLevels) => handleReorderLevels(part.partId, newLevels)}
               onReorderLevel={(levelId, dir) => handleReorderLevel(part.partId, levelId, dir)}
               onDeleteLevel={(levelId) => handleDeleteLevel(part.partId, levelId)}
               onEditLevel={handleEditLevel}

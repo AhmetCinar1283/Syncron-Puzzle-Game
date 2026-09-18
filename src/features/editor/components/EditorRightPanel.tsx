@@ -7,6 +7,7 @@ import { DIFFICULTY_COLORS } from '../lib/editorConfig';
 import { useEditorContext } from '../EditorContext';
 import { useT } from '@/contexts/LanguageContext';
 import { GameIcon } from '@/components/icons';
+import EditorAlternatives from './EditorAlternatives';
 
 export default function EditorRightPanel({ isMobile, visible }: { isMobile: boolean; visible: boolean }) {
   const t = useT();
@@ -15,7 +16,6 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
     pendingW, setPendingW, pendingH, setPendingH, applyResize,
     trailCollision, setTrailCollision,
     showSolutionPath, setShowSolutionPath,
-    testError, handleTest,
     handleCopyBoard, handlePasteBoard, copied,
     isModerator, parts, selectedPartId, setSelectedPartId,
     firestoreEditId, setFirestoreEditId, publishStatus, doPublish,
@@ -96,11 +96,18 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
 
   return (
     <div style={{
-      width: isMobile ? '100%' : 220, flexShrink: 0,
+      width: isMobile ? '100%' : 232,
+      maxWidth: '100%',
+      flexShrink: 0,
       borderLeft: isMobile ? 'none' : '1px solid rgba(30,58,95,0.4)',
-      overflowY: 'auto', padding: '12px 14px',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      padding: isMobile ? '12px 14px 28px' : '12px 14px',
       display: isMobile ? (visible ? 'block' : 'none') : 'block',
     }}>
+
+      {/* Üretilen alternatifler (varsa) — eskiden ayrı bir sol sütundu */}
+      <EditorAlternatives />
 
       <Sec title={t('editor.level_info')}>
         <Lbl>{t('editor.name')}</Lbl>
@@ -260,18 +267,14 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
       )}
 
       <Sec title={t('editor.actions')}>
-        {testError && <p style={{ fontSize: 11, color: '#ef4444', marginBottom: 8 }}>{testError}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <button onClick={() => setAiAssistantDialogOpen(true)} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.35)', color: '#a78bfa', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+          <button onClick={() => setAiAssistantDialogOpen(true)} style={{ padding: '11px 9px', minHeight: 42, fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.35)', color: '#a78bfa', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
             <GameIcon name="robot" size={14} /> AI Assistant
           </button>
-          <button onClick={() => setGeneratorDialogOpen(true)} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(0,196,255,0.06)', border: '1px solid rgba(0,196,255,0.35)', color: '#00c4ff', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <button onClick={() => setGeneratorDialogOpen(true)} style={{ padding: '11px 9px', minHeight: 42, fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(0,196,255,0.06)', border: '1px solid rgba(0,196,255,0.35)', color: '#00c4ff', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <GameIcon name="lightning" size={14} /> Generate Level
           </button>
-          <button onClick={handleTest} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.35)', color: '#00ff88', borderRadius: 8, cursor: 'pointer' }}>
-            {t('editor.test_level')}
-          </button>
-          <button onClick={handleCopyBoard} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: copied ? 'rgba(0,196,255,0.1)' : 'rgba(0,196,255,0.04)', border: `1px solid ${copied ? 'rgba(0,196,255,0.5)' : 'rgba(0,196,255,0.25)'}`, color: '#00c4ff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <button onClick={handleCopyBoard} style={{ padding: '11px 9px', minHeight: 42, fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: copied ? 'rgba(0,196,255,0.1)' : 'rgba(0,196,255,0.04)', border: `1px solid ${copied ? 'rgba(0,196,255,0.5)' : 'rgba(0,196,255,0.25)'}`, color: '#00c4ff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
             {copied ? (
               <>
                 <GameIcon name="check" size={12} /> Copied
@@ -280,7 +283,7 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
               'Copy Board'
             )}
           </button>
-          <button onClick={onPasteBoard} style={{ padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(148,163,184,0.04)', border: '1px solid rgba(148,163,184,0.2)', color: '#94a3b8', borderRadius: 8, cursor: 'pointer' }}>
+          <button onClick={onPasteBoard} style={{ padding: '11px 9px', minHeight: 42, fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'rgba(148,163,184,0.04)', border: '1px solid rgba(148,163,184,0.2)', color: '#94a3b8', borderRadius: 8, cursor: 'pointer' }}>
             Paste Board
           </button>
           {pasteError && <p style={{ fontSize: 10, color: '#ef4444', margin: 0 }}>{pasteError}</p>}
@@ -309,7 +312,7 @@ export default function EditorRightPanel({ isMobile, visible }: { isMobile: bool
           )}
           <button
             onClick={doPublish}
-            style={{ width: '100%', padding: '9px', fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: publishStatus ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.06)', border: `1px solid ${publishStatus ? 'rgba(251,191,36,0.7)' : 'rgba(251,191,36,0.35)'}`, color: '#fbbf24', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ width: '100%', padding: '11px 9px', minHeight: 42, fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', background: publishStatus ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.06)', border: `1px solid ${publishStatus ? 'rgba(251,191,36,0.7)' : 'rgba(251,191,36,0.35)'}`, color: '#fbbf24', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s' }}
           >
             {publishStatus || (firestoreEditId ? t('editor.update_firestore') : t('editor.publish_firestore'))}
           </button>

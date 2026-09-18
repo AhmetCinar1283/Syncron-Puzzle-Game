@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import type { RefObject } from 'react';
 import { useEditorContext } from '../../EditorContext';
 import { calculateRoomLayoutOffsets } from '@/game-engine/logic/engine/rooms';
 import { usePortalDrag } from '../../hooks/usePortalDrag';
@@ -13,6 +14,8 @@ import PortalHandles from './PortalHandles';
 interface EditorCanvasProps {
   isMobile: boolean;
   visible: boolean;
+  /** Hücre boyutu hesabı için ölçülen kaydırma alanı (bkz. useEditorLayout). */
+  areaRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -20,7 +23,7 @@ interface EditorCanvasProps {
  * others previewed), solution path, portal connections and drag handles.
  * Layer order (DOM + z-index) is unchanged from the pre-split component.
  */
-export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
+export default function EditorCanvas({ isMobile, visible, areaRef }: EditorCanvasProps) {
   const {
     rooms,
     setRooms,
@@ -60,27 +63,23 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
   return (
     <div style={{
       flex: 1,
+      minWidth: 0,
       display: isMobile ? (visible ? 'flex' : 'none') : 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'flex-start', // Fixes overflow alignment cut-off
-      overflow: 'auto',
-      padding: '12px 8px 8px',
+      overflow: 'hidden',
       width: '100%',
     }}>
-      {/* Room Switcher Panel */}
+      {/* Room Switcher Panel — sabit başlık, ızgaranın alanını yemez */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 12,
-        padding: '8px 16px',
-        marginBottom: 16,
+        gap: 10,
+        padding: '7px 12px',
+        margin: '8px 8px 0',
         background: 'rgba(30, 41, 59, 0.4)',
         border: '1px solid rgba(0, 196, 255, 0.15)',
         borderRadius: 8,
-        width: '100%',
-        maxWidth: 700,
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         flexShrink: 0,
       }}>
@@ -90,12 +89,29 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
         <ActiveRoomSettings />
       </div>
 
+      {/* Ölçülen kaydırma alanı: hücre boyutu bu kutunun gerçek ölçüsünden çıkar */}
+      <div
+        ref={areaRef}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          scrollbarGutter: 'stable',
+          WebkitOverflowScrolling: 'touch',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          padding: '10px 8px 8px',
+        }}
+      >
       {/* Rooms Layout Canvas */}
       <div ref={canvasRef} style={{
         position: 'relative',
         width: totalWidth,
         height: totalHeight,
-        margin: '24px auto',
+        // Çerçevenin dışına taşan satır/sütun kontrolleri ve kenar şeritleri için pay
+        margin: '48px auto 40px',
         flexShrink: 0,
       }}>
         {showSolutionPath && optimalSolutionTrajectory && (
@@ -141,9 +157,10 @@ export default function EditorCanvas({ isMobile, visible }: EditorCanvasProps) {
         <PortalHandles liveRooms={liveRooms} roomPositions={roomPositions} onStartDrag={startPortalDrag} />
       </div>
 
-      <p style={{ fontSize: 9, color: '#1e3a5f', margin: '12px 0 0', letterSpacing: '0.06em', alignSelf: 'center', flexShrink: 0 }}>
-        Paint · click same = clear · drag = fill · click edge strip = cycle wall/portal/lava
-      </p>
+        <p style={{ fontSize: 9, color: '#1e3a5f', margin: '12px 0 0', letterSpacing: '0.06em', alignSelf: 'center', flexShrink: 0, textAlign: 'center', padding: '0 8px' }}>
+          Dokun/tıkla = boya · aynı hücreye tekrar = sil · sürükle = doldur · kenar şeridi = duvar/portal/lav
+        </p>
+      </div>
     </div>
   );
 }

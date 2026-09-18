@@ -26,12 +26,16 @@ export interface LevelFeedbackParams {
 
 /**
  * Inserts a play session telemetry attempt into D1.
+ *
+ * Yazılan satır sayısını DÖNDÜRÜR: çağıran taraf "hata fırlatmadı" ile
+ * "gerçekten yazıldı"yı ayırt edebilsin diye (bkz. services/levelTelemetry/).
+ * Hatalar burada yutulmaz, yukarı fırlatılır.
  */
 export async function insertTelemetry(
   db: D1Database,
   params: LevelTelemetryParams,
-): Promise<void> {
-  await db
+): Promise<{ changes: number }> {
+  const result = await db
     .prepare(
       `INSERT INTO level_telemetry
          (id, uid, level_id, version, outcome, time_spent, restarts, deaths, moves_count, hints_used)
@@ -50,6 +54,8 @@ export async function insertTelemetry(
       params.hintsUsed,
     )
     .run();
+
+  return { changes: result.meta.changes ?? 0 };
 }
 
 /**

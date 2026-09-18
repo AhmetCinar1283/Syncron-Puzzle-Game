@@ -7,11 +7,11 @@ import { BlockWrapper, CellToolList, ToolBtn, CELL_SIZE, CELL_SIZE_MOB } from '.
 const OTHER_MECHS = ['direction_toggle', 'control_switch', 'direction_deflector'] as const;
 
 /** "Mechs" block: conveyors/trampolines (2x2 grids), toggle/switch/deflector, add box. */
-export default function PaletteMechsBlock({ small, isLandscape }: { small: boolean; isLandscape: boolean }) {
+export default function PaletteMechsBlock({ small, vertical }: { small: boolean; vertical: boolean }) {
   const { activeTool, setActiveTool, setBoxes, setActivePlacingBoxId } = useEditorContext();
 
   return (
-    <BlockWrapper label="Mechs" isLandscape={isLandscape}>
+    <BlockWrapper label="Mechs" vertical={vertical}>
       {/* Conveyors 2x2 Grid */}
       <div style={{
         display: 'grid',

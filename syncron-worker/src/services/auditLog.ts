@@ -50,6 +50,9 @@ export type AuditAction =
   | 'admin.daily_puzzle_delete'
   | 'admin.daily_schedule_change'
   | 'admin.daily_settings_change'
+  // Telemetri yazımı başarısız oldu (yayin-hazirlik/08). Bu satırın VARLIĞI
+  // "ölçüm yolu kopuk" demektir; yokluğu yolun sağlam olduğunun kanıtıdır.
+  | 'telemetry.write_failed'
   // Kötüye kullanım sinyalleri (yayin-hazirlik/03)
   | 'security.rate_limit_exceeded'
   | 'security.verify_moves_failed'

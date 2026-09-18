@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { LevelData } from '@/game-engine/level-format';
-import EditorLeftPanel from './EditorLeftPanel';
 import LevelsManagerDialog from './levels/LevelsManagerDialog';
 import ToolPalette from './palette/ToolPalette';
 import EditorCanvas from './canvas/EditorCanvas';
@@ -29,8 +28,10 @@ export default function EditorScreen() {
   const firestoreIdParam = searchParams.get('firestoreId');
 
   const s = useEditorState(editId, firestoreIdParam);
-  const { isMobile, isLandscape, activeTab, setActiveTab, tabs, cellSize } =
-    useEditorLayout(s.width, s.height, s.generatedCandidates.length);
+  const {
+    isMobile, isCompactBar, paletteOrientation,
+    activeTab, setActiveTab, tabs, cellSize, canvasAreaRef,
+  } = useEditorLayout(s.width, s.height);
 
   const gridOps = useGridOperations({
     grid: s.grid, setGrid: s.setGrid,
@@ -60,6 +61,9 @@ export default function EditorScreen() {
     optimalSolution: s.optimalSolution,
   });
 
+  // Mobilde palet yalnızca ızgara sekmesinde anlamlı; masaüstünde her zaman açık.
+  const showGrid = !isMobile || activeTab === 'grid';
+
   const ctxValue: EditorContextValue = {
     ...s,
     cellSize,
@@ -71,24 +75,41 @@ export default function EditorScreen() {
       <div className="h-[100dvh]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#030712', color: '#e2e8f0', overflow: 'hidden' }}>
 
         {/* Top bar */}
-        <EditorTopBar editId={editId} isMobile={isMobile} onDailyPuzzle={role === 'admin' ? daily.openDialog : undefined} />
+        <EditorTopBar
+          editId={editId}
+          isCompact={isCompactBar}
+          showTitle={!isCompactBar}
+          onDailyPuzzle={role === 'admin' ? daily.openDialog : undefined}
+        />
+
+        {/* Test hatası: hangi sekmede olursak olalım görünür kalır */}
+        {s.testError && (
+          <div style={{
+            flexShrink: 0, padding: '6px 14px', fontSize: 11, fontWeight: 600,
+            color: '#fecaca', background: 'rgba(239,68,68,0.12)',
+            borderBottom: '1px solid rgba(239,68,68,0.35)',
+          }}>
+            {s.testError}
+          </div>
+        )}
 
         {/* Mobile tab bar */}
         {isMobile && <EditorMobileTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />}
 
-        {/* Body */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          <EditorLeftPanel
-            isMobile={isMobile} visible={activeTab === 'alternatives'}
-          />
+        {/* Body: [palet] [tuval + alt panel] [ayarlar] */}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+          {/* Geniş ekranda palet solda sabit sütun; tuvalin sol tarafında,
+              ayar paneliyle karışmayacak şekilde. */}
+          {paletteOrientation === 'column' && showGrid && (
+            <ToolPalette isMobile={isMobile} orientation="column" />
+          )}
 
-          {/* Center column: palette + grid + bottom panel */}
+          {/* Center column: palette (dar ekran) + grid + bottom panel */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: isLandscape ? 'row' : 'column', overflow: 'hidden' }}>
-              {!isLandscape && <ToolPalette isMobile={isMobile} isLandscape={false} />}
-              <EditorCanvas isMobile={isMobile} visible={activeTab === 'grid'} />
-              {isLandscape && <ToolPalette isMobile={isMobile} isLandscape={true} />}
-            </div>
+            {paletteOrientation === 'row' && showGrid && (
+              <ToolPalette isMobile={isMobile} orientation="row" />
+            )}
+            <EditorCanvas isMobile={isMobile} visible={activeTab === 'grid'} areaRef={canvasAreaRef} />
             <BottomSettingsPanel isMobile={isMobile} visible={activeTab === 'grid'} />
           </div>
 

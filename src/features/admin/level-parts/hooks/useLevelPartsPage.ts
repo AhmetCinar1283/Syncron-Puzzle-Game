@@ -144,6 +144,26 @@ export function useLevelPartsPage() {
 
   // ── Level operations ────────────────────────────────────────────────────────
 
+  const handleReorderLevels = useCallback((partId: string, newLevels: LevelOrderEntry[]) => {
+    setParts((prev) => {
+      const partIdx = prev.findIndex((p) => p.partId === partId);
+      if (partIdx === -1) return prev;
+      const part = prev[partIdx];
+
+      const newOrder: Record<string, LevelOrderEntry> = {};
+      newLevels.forEach((entry, idx) => {
+        newOrder[entry.id] = {
+          ...entry,
+          position: idx,
+        };
+      });
+
+      const newParts = [...prev];
+      newParts[partIdx] = { ...part, order: newOrder };
+      return newParts;
+    });
+  }, []);
+
   const handleReorderLevel = useCallback(async (partId: string, levelId: string, dir: 'up' | 'down') => {
     setParts((prev) => {
       const partIdx = prev.findIndex((p) => p.partId === partId);
@@ -271,6 +291,7 @@ export function useLevelPartsPage() {
     handleUpdatePartName,
     handleUpdatePartUnlock,
     handleDeletePart,
+    handleReorderLevels,
     handleReorderLevel,
     handleDeleteLevel,
     handleReset,

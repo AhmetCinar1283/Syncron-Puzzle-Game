@@ -11,8 +11,8 @@ function rectStyle(sel: SelectionRect, cellSize: number): React.CSSProperties {
   const c1 = Math.max(sel.c0, sel.c1);
   return {
     position: 'absolute',
-    top: r0 * cellSize,
-    left: c0 * cellSize,
+    top: r0 * cellSize + GRID_BORDER,
+    left: c0 * cellSize + GRID_BORDER,
     width: (c1 - c0 + 1) * cellSize,
     height: (r1 - r0 + 1) * cellSize,
     border: '2px solid rgba(0,196,255,0.85)',
@@ -30,8 +30,8 @@ function ghostStyle(sel: SelectionRect, dr: number, dc: number, cellSize: number
   const c1 = Math.max(sel.c0, sel.c1) + dc;
   return {
     position: 'absolute',
-    top: r0 * cellSize,
-    left: c0 * cellSize,
+    top: r0 * cellSize + GRID_BORDER,
+    left: c0 * cellSize + GRID_BORDER,
     width: (c1 - c0 + 1) * cellSize,
     height: (r1 - r0 + 1) * cellSize,
     border: '2px dashed rgba(0,196,255,0.5)',
@@ -41,6 +41,9 @@ function ghostStyle(sel: SelectionRect, dr: number, dc: number, cellSize: number
     borderRadius: 3,
   };
 }
+
+/** GridCore'un saydam kenarlık kalınlığı (px). */
+const GRID_BORDER = 3;
 
 function isInsideRect(r: number, c: number, sel: SelectionRect): boolean {
   const r0 = Math.min(sel.r0, sel.r1);
@@ -59,11 +62,13 @@ export default function SelectionLayer() {
   const dragStartCell = useRef<{ r: number; c: number } | null>(null);
   const [ghostOffset, setGhostOffset] = useState({ dr: 0, dc: 0 });
 
+  // GridCore 3px'lik saydam bir kenarlık içinde çizildiği için hücre kökeni
+  // katmanın sol/üst kenarından GRID_BORDER kadar içeridedir.
   const pixelToCell = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current) return { r: 0, c: 0 };
     const rect = containerRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const x = clientX - rect.left - GRID_BORDER;
+    const y = clientY - rect.top - GRID_BORDER;
     return {
       r: Math.max(0, Math.min(height - 1, Math.floor(y / cellSize))),
       c: Math.max(0, Math.min(width - 1, Math.floor(x / cellSize))),
@@ -74,8 +79,11 @@ export default function SelectionLayer() {
     return null;
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
+    // Yakalama sayesinde parmak/fare katmanın dışına çıksa da sürükleme sürer.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* destek yoksa sorun değil */ }
     const cell = pixelToCell(e.clientX, e.clientY);
     if (selection && isInsideRect(cell.r, cell.c, selection)) {
       // Start move
@@ -90,7 +98,7 @@ export default function SelectionLayer() {
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (phase === 'idle') return;
     const cell = pixelToCell(e.clientX, e.clientY);
     if (phase === 'selecting' && dragStartCell.current) {
@@ -108,7 +116,7 @@ export default function SelectionLayer() {
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = () => {
     if (phase === 'moving' && selection && (ghostOffset.dr !== 0 || ghostOffset.dc !== 0)) {
       // Normalise selection rect before moving
       const sel: SelectionRect = {
@@ -138,11 +146,12 @@ export default function SelectionLayer() {
         position: 'absolute', inset: 0,
         cursor: phase === 'moving' ? 'grabbing' : (selection ? 'default' : 'crosshair'),
         zIndex: 15,
+        touchAction: 'none',
       }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
       {selection && <div style={rectStyle(selection, cellSize)} />}
       {phase === 'moving' && selection && (ghostOffset.dr !== 0 || ghostOffset.dc !== 0) && (

@@ -10,7 +10,7 @@ import { BlockWrapper, ToolBtn, actionBtnStyle } from './paletteParts';
  * group letter found in the grid + groups added via "+G" (session-only; a
  * group persists once one of its cells is painted).
  */
-export default function PalettePortalsBlock({ small, isLandscape }: { small: boolean; isLandscape: boolean }) {
+export default function PalettePortalsBlock({ small, vertical }: { small: boolean; vertical: boolean }) {
   const { activeTool, setActiveTool, grid } = useEditorContext();
   const [addedGroups, setAddedGroups] = useState<string[]>([]);
 
@@ -27,12 +27,12 @@ export default function PalettePortalsBlock({ small, isLandscape }: { small: boo
   const telGroups = Array.from(foundGroups).sort();
 
   return (
-    <BlockWrapper label="Portals" isLandscape={isLandscape}>
+    <BlockWrapper label="Portals" vertical={vertical}>
       {telGroups.map((g) => {
         const inTool = `teleporter_in_${g}` as ToolType;
         const outTool = `teleporter_out_${g}` as ToolType;
         return (
-          <div key={g} style={{ display: 'flex', gap: 2, flexDirection: isLandscape ? 'row' : 'column' }}>
+          <div key={g} style={{ display: 'flex', gap: 2, flexDirection: vertical ? 'row' : 'column' }}>
             <ToolBtn
               tool={inTool}
               active={activeTool === inTool}

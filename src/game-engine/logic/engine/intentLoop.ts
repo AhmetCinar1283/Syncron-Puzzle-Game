@@ -211,7 +211,14 @@ export function processSingleTick(
                 const prevPos = { ...entity.position };
                 entity.position = intent.targetPos;
                 movedEntityIds.add(entity.id);
- 
+
+                // Niyetin taşıdığı fizik verisini nesneye yaz.
+                // Hücre davranışları (buz force'u korur, normal zemin sürtünme düşer)
+                // her zaman entity.physics üzerinden okur; bu senkron olmazsa
+                // itilen kutu physics.force = 0 ile buza girer ve anında durur.
+                if (intent.newDirection !== undefined) entity.physics.direction = intent.newDirection;
+                if (intent.force       !== undefined) entity.physics.force     = intent.force;
+
                 // Cable laying electrification:
                 if (entity.type === 'player' && entity.customData.holdingCable) {
                     if (oldCell) oldCell.isElectrified = true;
@@ -293,9 +300,14 @@ export function processSingleTick(
                 }
 
                 if (intent.triggerLanded) {
-                    entity.physics.force = 0;
-
                     const landCell = getCellAt(rooms, entity.position);
+
+                    // Sürtünmeli zeminde iniş momentumu öldürür.
+                    // Sürtünmesiz zeminde (buz vb.) momentum korunur; ne olacağına
+                    // hücrenin kendi onEnter'ı karar verir.
+                    if (!landCell || (landCell.def.friction ?? 1) > 0) {
+                        entity.physics.force = 0;
+                    }
 
                     // İniş anında aynı konumdaki entity'leri ez
                     for (const other of entities) {
@@ -828,6 +840,11 @@ function attemptPushing(
         if (response.status === 'accept') {
             if (intent.pusherPlayerIndex !== undefined) {
                 response.resultingIntent.pusherPlayerIndex = intent.pusherPlayerIndex;
+            }
+            // İtilen nesne itiş yönünü devralır — kenar portalından geçse bile
+            // buz/konveyör gibi hücreler doğru yönde devam ettirebilsin.
+            if (response.resultingIntent.newDirection === undefined) {
+                response.resultingIntent.newDirection = moveDir;
             }
             let boxTarget = response.resultingIntent.targetPos;
             if (boxTarget) {

@@ -1,61 +1,110 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type EditorMobileTab = 'alternatives' | 'grid' | 'settings';
+export type EditorMobileTab = 'grid' | 'settings';
+
+export const EDITOR_TABS: readonly EditorMobileTab[] = ['grid', 'settings'];
+
+/** Izgara çevresinde her zaman yer ayrılan kontroller (satır/sütun ekle-sil, kenar şeritleri). */
+const RESERVE_W = 98;
+const RESERVE_H = 136;
+/** Kaydırma çubuğu payı — ölçüm ile gerçek yerleşim arasında salınımı önler. */
+const SCROLLBAR_ALLOWANCE = 16;
+
+const MIN_CELL = 22;
+const MAX_CELL = 56;
+
+interface Viewport {
+  w: number;
+  h: number;
+}
+
+function readViewport(): Viewport {
+  if (typeof window === 'undefined') return { w: 1280, h: 800 };
+  return { w: window.innerWidth, h: window.innerHeight };
+}
 
 /**
- * Viewport-driven layout state for the editor screen: mobile/landscape flags,
- * active mobile tab and the computed grid cell size. Effects are in the same
- * order as the original `EditorInner` (tab sync, resize flags, cell size).
+ * Editör ekranının yerleşim durumu: kırılım noktaları, aktif mobil sekme ve
+ * hücre boyutu.
+ *
+ * Hücre boyutu artık sabit "sihirli sayı" çıkarmalarıyla değil, tuvalin gerçek
+ * ölçüsünden (ResizeObserver) hesaplanır; böylece panel açılıp kapandığında,
+ * pencere yeniden boyutlandığında veya mobilde adres çubuğu gizlendiğinde
+ * ızgara gerçekten kalan alana oturur.
  */
-export function useEditorLayout(width: number, height: number, candidateCount: number) {
-  const [isMobile, setIsMobile] = useState(false);
+export function useEditorLayout(width: number, height: number) {
+  const [viewport, setViewport] = useState<Viewport>(readViewport);
   const [activeTab, setActiveTab] = useState<EditorMobileTab>('grid');
   const [cellSize, setCellSize] = useState(44);
 
-  // Sync activeTab when candidates list becomes empty
-  useEffect(() => {
-    if (candidateCount === 0 && activeTab === 'alternatives') {
-      setActiveTab('grid');
-    }
-  }, [candidateCount, activeTab]);
-
-  // Dynamically calculate mobile tabs: show "Alternatifler" tab only if there are generated candidates
-  const tabs = candidateCount > 0
-    ? (['grid', 'settings', 'alternatives'] as const)
-    : (['grid', 'settings'] as const);
-
-  const [isLandscape, setIsLandscape] = useState(false);
+  const canvasAreaRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function check() {
-      setIsMobile(window.innerWidth < 900);
-      setIsLandscape(window.innerWidth > window.innerHeight);
+    function onResize() {
+      setViewport(readViewport());
     }
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    onResize();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
   }, []);
 
+  // Tuval alanı: tek kaynak ölçüm. Element yoksa (ilk render, mobilde gizli
+  // sekme) pencereden türetilen makul bir tahmine düşer.
+  const measure = useCallback(() => {
+    const el = canvasAreaRef.current;
+    const gw = width;
+    const gh = height;
+    if (!gw || !gh) return;
+
+    const availW = (el?.clientWidth || readViewport().w * 0.6) - RESERVE_W - SCROLLBAR_ALLOWANCE;
+    const availH = (el?.clientHeight || readViewport().h * 0.6) - RESERVE_H - SCROLLBAR_ALLOWANCE;
+
+    const next = Math.max(
+      MIN_CELL,
+      Math.min(MAX_CELL, Math.floor(Math.min(availW / gw, availH / gh))),
+    );
+    setCellSize((prev) => (prev === next ? prev : next));
+  }, [width, height]);
+
+  // ResizeObserver geri çağrısı her zaman en güncel ölçüm fonksiyonunu kullansın.
+  const measureRef = useRef(measure);
   useEffect(() => {
-    function compute() {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const mob = vw < 900;
-      const hasLeftPanel = !mob && candidateCount > 0;
-      const leftPanelWidth = hasLeftPanel ? 170 : 0;
-      const paletteWidth = isLandscape ? 48 : 0;
-      // Subtract: left panel, right panel, palette, row/col controls (34px), edge strips (20px), padding (20px)
-      const availW = mob ? vw - 76 : vw - leftPanelWidth - paletteWidth - 220 - 80;
+    measureRef.current = measure;
+    // Ölçüm bir sonraki kareye ertelenir: yerleşim (panel açılması, sekme
+    // değişimi, yeni ızgara boyutu) tamamlandıktan sonra okunsun.
+    const id = requestAnimationFrame(() => measureRef.current());
+    return () => cancelAnimationFrame(id);
+  }, [measure, viewport.w, viewport.h, activeTab]);
 
-      const paletteHeight = isLandscape ? 0 : 52;
-      // Subtract: top bar, tab bar (mob), tool palette, bottom panel, col controls, edge, padding
-      const availH = vh - (mob ? 130 : 44) - paletteHeight - 40 - 22 - 28;
-      setCellSize(Math.max(24, Math.min(56, Math.floor(availW / width), Math.floor(availH / height))));
-    }
-    compute();
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
-  }, [width, height, candidateCount, isLandscape]);
+  useEffect(() => {
+    const el = canvasAreaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => measureRef.current());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  return { isMobile, isLandscape, activeTab, setActiveTab, tabs, cellSize };
+  const isMobile = viewport.w < 900;
+  /** Araç paletinin dikey sütun olarak sığamayacağı kadar dar ekranlar. */
+  const isNarrow = viewport.w < 620;
+  /** Üst çubukta metin etiketleri yerine yalnız simge gösterilecek genişlik. */
+  const isCompactBar = viewport.w < 1180;
+
+  return {
+    isMobile,
+    isNarrow,
+    isCompactBar,
+    /** Palet dar ekranda tuvalin üstünde yatay şerit, aksi halde solda sütun. */
+    paletteOrientation: (isNarrow ? 'row' : 'column') as 'row' | 'column',
+    activeTab,
+    setActiveTab,
+    tabs: EDITOR_TABS,
+    cellSize,
+    canvasAreaRef,
+    remeasure: measure,
+  };
 }

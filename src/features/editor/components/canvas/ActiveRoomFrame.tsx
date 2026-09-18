@@ -28,8 +28,9 @@ export default function ActiveRoomFrame({ room, offset }: ActiveRoomFrameProps) 
       {/* Active Room Title */}
       <div style={{
         position: 'absolute',
-        top: -22,
+        top: -24,
         left: 2,
+        pointerEvents: 'none',
         fontSize: 10,
         fontWeight: 800,
         color: '#00c4ff',
@@ -43,7 +44,7 @@ export default function ActiveRoomFrame({ room, offset }: ActiveRoomFrameProps) 
       {/* Column controls at the top of the active room */}
       <div style={{
         position: 'absolute',
-        top: -COL_CTRL_H - 12,
+        top: -COL_CTRL_H - 28,
         left: -10,
         right: -10,
         display: 'flex',
@@ -56,7 +57,7 @@ export default function ActiveRoomFrame({ room, offset }: ActiveRoomFrameProps) 
       {/* Row controls at the right of the active room */}
       <div style={{
         position: 'absolute',
-        right: -ROW_CTRL_W - 12,
+        right: -ROW_CTRL_W - 28,
         top: -10,
         bottom: -10,
         display: 'flex',

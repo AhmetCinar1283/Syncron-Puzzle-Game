@@ -6,11 +6,11 @@ import { useEditorContext } from '../../EditorContext';
 import { BlockWrapper, ToolBtn, actionBtnStyle, CELL_SIZE, CELL_SIZE_MOB } from './paletteParts';
 
 /** "Players" block: place-player / place-target tool per player, +P / -P. */
-export default function PalettePlayersBlock({ small, isLandscape }: { small: boolean; isLandscape: boolean }) {
+export default function PalettePlayersBlock({ small, vertical }: { small: boolean; vertical: boolean }) {
   const { activeTool, setActiveTool, objects, setObjects } = useEditorContext();
 
   return (
-    <BlockWrapper label="Players" isLandscape={isLandscape}>
+    <BlockWrapper label="Players" vertical={vertical}>
       {objects.map((obj) => {
         const id = obj.id;
         const playerTool = `place_obj${id}` as ToolType;
@@ -18,7 +18,7 @@ export default function PalettePlayersBlock({ small, isLandscape }: { small: boo
         const { hex: color } = getPlayerColor(id - 1);
         const sz = small ? CELL_SIZE_MOB : CELL_SIZE;
         return (
-          <div key={id} style={{ display: 'flex', gap: 2, flexDirection: isLandscape ? 'row' : 'column' }}>
+          <div key={id} style={{ display: 'flex', gap: 2, flexDirection: vertical ? 'row' : 'column' }}>
             {/* Player placing button */}
             <ToolBtn
               tool={playerTool} active={activeTool === playerTool}
@@ -50,7 +50,7 @@ export default function PalettePlayersBlock({ small, isLandscape }: { small: boo
       })}
 
       {/* Add/Remove Player Controls */}
-      <div style={{ display: 'flex', flexDirection: isLandscape ? 'row' : 'column', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: vertical ? 'row' : 'column', gap: 2 }}>
         <button
           title="Add Player"
           onClick={() => {

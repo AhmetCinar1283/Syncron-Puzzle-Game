@@ -26,32 +26,45 @@ const SYS_TOOLS: SysToolDef[] = [
   { tool: 'lock', color: '#fbbf24', label: 'Lock / Unlock Cell', icon: 'lock', activeColor: '#fbbf24' },
 ];
 
-/** Tool palette strip (top bar on portrait, right column on landscape). */
-export default function ToolPalette({ isMobile, isLandscape = false }: { isMobile: boolean; isLandscape?: boolean }) {
+interface ToolPaletteProps {
+  isMobile: boolean;
+  /** `column` = tuvalin yanında dikey sütun, `row` = üstünde yatay şerit. */
+  orientation: 'row' | 'column';
+}
+
+/**
+ * Araç paleti. Geniş ekranlarda tuvalin solunda sabit bir sütun, dar
+ * ekranlarda tuvalin üstünde kaydırılabilir yatay şerittir — böylece araçlar
+ * her iki düzende de ızgaranın hemen yanında kalır.
+ */
+export default function ToolPalette({ isMobile, orientation }: ToolPaletteProps) {
   const { activeTool, setActiveTool, undo, canUndo } = useEditorContext();
   const small = isMobile;
+  const vertical = orientation === 'column';
+  const btnSize = small ? CELL_SIZE_MOB : CELL_SIZE;
 
   return (
     <div style={{
       flexShrink: 0,
       display: 'flex',
-      flexDirection: isLandscape ? 'column' : 'row',
-      alignItems: 'center',
+      flexDirection: vertical ? 'column' : 'row',
+      alignItems: vertical ? 'stretch' : 'center',
       gap: 8,
-      padding: isLandscape ? '10px 6px' : '6px 10px',
-      borderLeft: isLandscape ? '1px solid rgba(0,196,255,0.15)' : 'none',
-      borderBottom: isLandscape ? 'none' : '1px solid rgba(0,196,255,0.15)',
-      overflowY: isLandscape ? 'auto' : 'hidden',
-      overflowX: isLandscape ? 'hidden' : 'auto',
-      width: isLandscape ? 84 : 'auto',
-      height: isLandscape ? '100%' : 'auto',
-      whiteSpace: isLandscape ? 'normal' : 'nowrap',
-      scrollbarWidth: 'none',
+      padding: vertical ? '10px 8px' : '6px 10px',
+      borderRight: vertical ? '1px solid rgba(0,196,255,0.15)' : 'none',
+      borderBottom: vertical ? 'none' : '1px solid rgba(0,196,255,0.15)',
+      overflowY: vertical ? 'auto' : 'hidden',
+      overflowX: vertical ? 'hidden' : 'auto',
+      width: vertical ? btnSize + 46 : 'auto',
+      height: vertical ? '100%' : 'auto',
+      whiteSpace: vertical ? 'normal' : 'nowrap',
+      scrollbarWidth: 'thin',
+      WebkitOverflowScrolling: 'touch',
       background: 'rgba(3,7,18,0.95)',
     }}>
 
       {/* System Block */}
-      <BlockWrapper label="Sys" isLandscape={isLandscape}>
+      <BlockWrapper label="Sys" vertical={vertical}>
         {/* Undo */}
         <button
           title="Undo (Ctrl+Z)"
@@ -59,8 +72,8 @@ export default function ToolPalette({ isMobile, isLandscape = false }: { isMobil
           disabled={!canUndo}
           style={{
             flexShrink: 0,
-            width: small ? CELL_SIZE_MOB : CELL_SIZE,
-            height: small ? CELL_SIZE_MOB : CELL_SIZE,
+            width: btnSize,
+            height: btnSize,
             padding: 0,
             border: `1px solid ${canUndo ? 'rgba(148,163,184,0.35)' : 'rgba(255,255,255,0.05)'}`,
             borderRadius: 6,
@@ -71,7 +84,7 @@ export default function ToolPalette({ isMobile, isLandscape = false }: { isMobil
             transition: 'opacity 0.15s',
           }}
         >
-          <GameIcon name="arrow-left" size={small ? 14 : 18} color={canUndo ? '#94a3b8' : '#334155'} />
+          <GameIcon name="arrow-left" size={small ? 16 : 18} color={canUndo ? '#94a3b8' : '#334155'} />
         </button>
 
         {/* Select / Erase / Lock */}
@@ -82,26 +95,26 @@ export default function ToolPalette({ isMobile, isLandscape = false }: { isMobil
             color={item.color} label={item.label}
             onClick={() => setActiveTool(item.tool)} small={small}
           >
-            <GameIcon name={item.icon} size={small ? 14 : 18} color={activeTool === item.tool ? item.activeColor : '#334155'} />
+            <GameIcon name={item.icon} size={small ? 16 : 18} color={activeTool === item.tool ? item.activeColor : '#334155'} />
           </ToolBtn>
         ))}
       </BlockWrapper>
 
       {/* Players & Targets Block */}
-      <PalettePlayersBlock small={small} isLandscape={isLandscape} />
+      <PalettePlayersBlock small={small} vertical={vertical} />
 
       {/* Floor & Walls (Board) Block */}
-      <BlockWrapper label="Board" isLandscape={isLandscape}>
+      <BlockWrapper label="Board" vertical={vertical}>
         <CellToolList types={BOARD_BASIC} activeTool={activeTool} setActiveTool={setActiveTool} small={small} />
         <CellToolList types={CELL_TYPES_ICE} activeTool={activeTool} setActiveTool={setActiveTool} small={small} />
         <CellToolList types={CELL_TYPES_POWER} activeTool={activeTool} setActiveTool={setActiveTool} small={small} />
       </BlockWrapper>
 
       {/* Mechanisms Block */}
-      <PaletteMechsBlock small={small} isLandscape={isLandscape} />
+      <PaletteMechsBlock small={small} vertical={vertical} />
 
       {/* Teleporters Block */}
-      <PalettePortalsBlock small={small} isLandscape={isLandscape} />
+      <PalettePortalsBlock small={small} vertical={vertical} />
     </div>
   );
 }
