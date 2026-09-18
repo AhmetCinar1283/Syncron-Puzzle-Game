@@ -13,6 +13,8 @@ export interface LevelStats {
   total_hints?: number;
   /** En az bir ipucu kullanılan oturum sayısı. */
   hinted_attempts?: number;
+  /** Bu sürümü ödüllü reklamla atlayan oyuncu sayısı (0012 migration öncesi worker'da yok). Yüksekse zorluk ayarı gerekir. */
+  total_skips?: number;
   avg_time_win: number;
   likes: number;
   dislikes: number;

@@ -9,6 +9,7 @@ import { useLevelLoader } from './useLevelLoader';
 import { useLevelCompletion } from './useLevelCompletion';
 import { usePlayAds } from './usePlayAds';
 import { usePlayHint } from './usePlayHint';
+import { usePlaySkip } from './usePlaySkip';
 import { DIRECTION_TO_MOVE, SWITCH_ROOM_MOVE } from '../lib/session';
 
 /**
@@ -84,6 +85,27 @@ export function usePlayPage() {
     const [showAfterAdPrompt, setShowAfterAdPrompt] = useState(false);
     const dismissAfterAdPrompt = useCallback(() => setShowAfterAdPrompt(false), []);
 
+    // ── Ödüllü level atlama (05) ───────────────────────────────
+    // Atlanan level skor/yıldız vermez; oturum 'skip' olarak kapanır ve sonraki
+    // level'a (bölüm sonuysa menüye) geçilir. Reklam zaten izlendiği için bölüm
+    // arası reklam kontrolünden geçilmez.
+    const onSkipped = useCallback(() => {
+        submitTelemetry('skip');
+        if (nextLevelId !== null) {
+            router.replace(isPreset ? `/play?id=${nextLevelId}&source=preset` : `/play?id=${nextLevelId}`);
+        } else {
+            router.push('/levels');
+        }
+    }, [submitTelemetry, nextLevelId, isPreset, router]);
+    const skip = usePlaySkip({
+        firestoreId: level.firestoreId,
+        partId: level.partId,
+        isChapterEnd: isPreset && nextLevelId === null,
+        ready: levelReady && !showWin,
+        onSkipped,
+    });
+    const { onFailedAttempt: skipOnFailedAttempt } = skip;
+
     // ── UI button handler ─────────────────────────────────────
     const handleButtonPressed = useCallback(async (buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
         if (buttonType === 'next_level') {
@@ -97,6 +119,7 @@ export function usePlayPage() {
             // politika uygunsa reklam gösterir. Reklam kapanmadan board sıfırlanmaz.
             recordRestart(details?.isDeath);
             hintOnRestart();
+            skipOnFailedAttempt();
             const result = await beforeRestart();
             reload(); // PlayScreen'i sıfırla
             if (result.shown) setShowAfterAdPrompt(true);
@@ -105,7 +128,7 @@ export function usePlayPage() {
             submitTelemetry('quit');
             router.push('/levels');
         }
-    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart, resetHint, hintOnRestart]);
+    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart, resetHint, hintOnRestart, skipOnFailedAttempt]);
 
     // ── Kazanma ekranından ayrılış (sonraki level / menü) ─────
     // İkisi de aynı reklam kontrolünden geçer: level bitti, ekrandan ayrılıyoruz.
@@ -146,6 +169,7 @@ export function usePlayPage() {
         showAfterAdPrompt,
         dismissAfterAdPrompt,
         hint,
+        skip,
         onMoveExecuted,
         onUndoExecuted,
     };

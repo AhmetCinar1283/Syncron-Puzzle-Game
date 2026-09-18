@@ -38,6 +38,8 @@ export function useLevelLoader({ levelId, isPreset, onBeforeLoad, onLoaded }: Us
 
     const [levelName, setLevelName] = useState<string>('');
     const [firestoreId, setFirestoreId] = useState<string | undefined>();
+    /** Kampanya bölümü (levelParts id) — yalnızca hazır level'larda; ödüllü atlama bunu sunucuya iletir. */
+    const [partId, setPartId] = useState<string | undefined>();
     const [game2State, setGame2State] = useState<Game2State | null>(null);
     const [levelEdges, setLevelEdges] = useState<LevelEdges | undefined>();
     const [nextLevelId, setNextLevelId] = useState<number | null>(null);
@@ -128,6 +130,7 @@ export function useLevelLoader({ levelId, isPreset, onBeforeLoad, onLoaded }: Us
                 if (cancelled) return;
                 setLevelName(stored.name ?? '');
                 setFirestoreId(stored.firestoreId);
+                setPartId(isPreset && stored.part ? String(stored.part) : undefined);
                 setLevelVersion(stored.version ?? 1);
                 setTrailCollision(!!stored.trailCollision);
                 setGameNotes(stored.gameNotes ?? '');
@@ -155,6 +158,7 @@ export function useLevelLoader({ levelId, isPreset, onBeforeLoad, onLoaded }: Us
     return {
         levelName,
         firestoreId,
+        partId,
         game2State,
         levelEdges,
         nextLevelId,

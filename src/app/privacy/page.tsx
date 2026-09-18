@@ -115,7 +115,7 @@ export default function PrivacyPage() {
         >
           {isTr ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <p><strong>Son Güncelleme: 25 Mayıs 2026</strong></p>
+              <p><strong>Son Güncelleme: 17 Eylül 2026</strong></p>
               <p>Syncron, oyun severlere eğlenceli ve güvenli bir ortam sunmayı amaçlar. Bu Gizlilik Politikası, topladığımız bilgileri, bunları nasıl kullandığımızı ve gizliliğinizi korumak için aldığımız önlemleri açıklar.</p>
               
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>1. Hangi Verileri Topluyoruz?</h2>
@@ -125,6 +125,7 @@ export default function PrivacyPage() {
                 <li><strong>Destek Talepleri ve İletişim Geçmişi:</strong> Destek sistemi üzerinden oluşturduğunuz biletler, ilettiğiniz mesajlar, ek notlar ve admin yanıt geçmişi.</li>
                 <li><strong>Oyun İlerleyişi ve İstatistikleri:</strong> Çözdüğünüz bulmacalar, skorlarınız, hamle sayılarınız, harcadığınız süreler ve tasarladığınız özel leveller.</li>
                 <li><strong>Teknik Veriler:</strong> Cihaz türünüz, işletim sisteminiz ve Google Analytics 4 (GA4) üzerinden toplanan anonim kullanım analitikleri.</li>
+                <li><strong>Güvenlik Kayıtları (yalnızca güvenlik olaylarında):</strong> IP adresinizin <strong>geri döndürülemez şekilde karmalanmış (hash)</strong> hâli ve tarayıcı/cihaz kimliğiniz (User-Agent). Bu veriler <strong>yalnızca</strong> §7&apos;de sayılan güvenlik olayları gerçekleştiğinde kaydedilir; normal oyun hareketlerinizde kaydedilmez.</li>
               </ul>
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>2. Verileri Nasıl Kullanıyoruz?</h2>
@@ -150,10 +151,19 @@ export default function PrivacyPage() {
               <p>Oyunun mobil (Android) sürümünde Google AdMob üzerinden reklam gösterilir. AdMob, reklamları sunmak ve ölçmek için reklam kimliği gibi cihaz tanımlayıcılarını işleyebilir. Avrupa Ekonomik Alanı, Birleşik Krallık ve İsviçre&apos;deki kullanıcılara ilk açılışta Google&apos;ın rıza formu gösterilir; <strong>rıza vermezseniz reklamlar kişiselleştirilmeden</strong> sunulur ve oyun tam olarak çalışmaya devam eder. Tercihinizi dilediğiniz zaman aşağıdaki butondan değiştirebilirsiniz.</p>
               <p>Google&apos;ın reklam verilerini nasıl işlediğini <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" style={{ color: '#67e8f9' }}>Google Gizlilik ve Şartlar</a> sayfasından inceleyebilirsiniz.</p>
               <AdPrivacyOptionsButton />
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>7. Güvenlik Kayıtları ve Adli İz</h2>
+              <p><strong>Hangi veri:</strong> IP adresinizin gizli bir anahtarla karmalanmış (tuzlanmış SHA-256) özeti ve tarayıcı/cihaz kimliğiniz (User-Agent, ilk 256 karakter). <strong>Ham IP adresiniz saklanmaz</strong>; kaydedilen özet geri döndürülemez ve tek başına kimliğinizi göstermez, yalnızca &quot;aynı kaynak mı?&quot; sorusunu cevaplar.</p>
+              <p><strong>Ne zaman:</strong> Yalnızca şu güvenlik olaylarında: başarısız kimlik doğrulama, yetkisiz yönetim erişimi denemesi, doğrulanamayan çözüm gönderimi, yasaklı hesabın istek denemesi, hız limiti aşımı ve geçersiz imzalı ödeme bildirimi. <strong>Normal oyun ilerlemeniz, bölüm bitirmeniz veya günlük bulmacanız bu kaydı oluşturmaz.</strong></p>
+              <p><strong>Hangi amaçla:</strong> Hesap güvenliğinin sağlanması, hile ve dolandırıcılığın önlenmesi, hizmete yönelik saldırıların tespiti ve yasal taleplere cevap verilebilmesi.</p>
+              <p><strong>Saklama süresi:</strong> <strong>30 gün.</strong> Bu süre dolduğunda kayıtlar günlük çalışan otomatik bir görevle <strong>kalıcı olarak silinir</strong>; arşivlenmez ve soğuk depolamaya aktarılmaz.</p>
+              <p><strong>Hukuki dayanak:</strong> KVKK m.5/2-(f) ve GDPR m.6/1-(f) uyarınca <strong>meşru menfaat</strong> (hizmetin ve kullanıcıların güvenliğinin korunması). Bu işleme açık rızaya dayanmaz; bu nedenle reklam tercihleriniz bu kayıtları etkilemez.</p>
+              <p><strong>Erişim:</strong> Bu kayıtlara yalnızca &quot;admin&quot; rolündeki yetkililer erişebilir; moderatörler erişemez. Kayıtlar üçüncü taraflarla paylaşılmaz.</p>
+              <p><strong>Haklarınız:</strong> KVKK m.11 ve GDPR m.15-22 kapsamında bu kayıtlara ilişkin bilgi talep etme, işlemeye itiraz etme ve silinmesini isteme haklarına sahipsiniz. Başvurularınızı oyun içi <strong>Destek</strong> ekranından &quot;Hesap&quot; veya &quot;Veri Silme&quot; kategorisiyle iletebilirsiniz.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <p><strong>Last Updated: May 25, 2026</strong></p>
+              <p><strong>Last Updated: September 17, 2026</strong></p>
               <p>At Syncron, we are committed to protecting the privacy of our players. This Privacy Policy details the types of information we collect, how we use it, and the security measures we deploy to safeguard your data.</p>
               
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>1. What Data We Collect</h2>
@@ -163,6 +173,7 @@ export default function PrivacyPage() {
                 <li><strong>Support Tickets and Interaction Logs:</strong> Detailed tickets created via the support system, submitted messages, attachments, and administrator reply logs.</li>
                 <li><strong>Gameplay and Performance:</strong> Ratios of solved levels, total score points, move sequences, solved timings, and level submissions created by you.</li>
                 <li><strong>Device and Analytical Information:</strong> Browser type, operating system, and anonymous usage telemetry collected via Google Analytics 4 (GA4).</li>
+                <li><strong>Security Records (security events only):</strong> An <strong>irreversibly hashed</strong> form of your IP address and your browser/device identifier (User-Agent). These are recorded <strong>only</strong> when one of the security events listed in §7 occurs; they are not recorded during normal gameplay.</li>
               </ul>
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>2. How We Use Your Data</h2>
@@ -188,6 +199,15 @@ export default function PrivacyPage() {
               <p>The mobile (Android) build of the game serves ads through Google AdMob. AdMob may process device identifiers such as the advertising ID in order to deliver and measure ads. Players in the European Economic Area, the United Kingdom and Switzerland are shown Google&apos;s consent form on first launch; <strong>if you decline, ads are served without personalisation</strong> and the game keeps working exactly as before. You can change your choice at any time with the button below.</p>
               <p>You can review how Google processes advertising data on the <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" style={{ color: '#67e8f9' }}>Google Privacy &amp; Terms</a> page.</p>
               <AdPrivacyOptionsButton />
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>7. Security Records and Audit Trail</h2>
+              <p><strong>What we store:</strong> A salted SHA-256 digest of your IP address and your browser/device identifier (User-Agent, first 256 characters). <strong>Your raw IP address is never stored.</strong> The digest cannot be reversed and does not identify you on its own; it only answers the question &quot;is this the same source?&quot;.</p>
+              <p><strong>When:</strong> Only on these security events: failed authentication, unauthorised administration access attempt, unverifiable solution submission, request from a suspended account, rate limit breach, and payment notification with an invalid signature. <strong>Normal progress, level completions and daily puzzles do not create such a record.</strong></p>
+              <p><strong>Purpose:</strong> Account security, cheating and fraud prevention, detection of attacks against the service, and the ability to answer lawful requests.</p>
+              <p><strong>Retention:</strong> <strong>30 days.</strong> After that, a daily automated job <strong>permanently deletes</strong> the records. They are not archived and never moved to cold storage.</p>
+              <p><strong>Legal basis:</strong> <strong>Legitimate interest</strong> under GDPR Art. 6(1)(f) and Turkish KVKK Art. 5/2-(f) — protecting the service and its players. This processing does not rely on consent, so your advertising preferences do not affect it.</p>
+              <p><strong>Access:</strong> Only staff with the &quot;admin&quot; role can read these records; moderators cannot. They are not shared with third parties.</p>
+              <p><strong>Your rights:</strong> Under GDPR Art. 15-22 and KVKK Art. 11 you may request information about these records, object to the processing, and ask for their erasure. Use the in-game <strong>Support</strong> screen with the &quot;Account&quot; or &quot;Data Deletion&quot; category.</p>
             </div>
           )}
         </div>

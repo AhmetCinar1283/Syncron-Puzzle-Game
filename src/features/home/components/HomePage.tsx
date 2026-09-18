@@ -4,7 +4,7 @@ import { useCapabilities } from '@/contexts/MonetizationContext';
 import { AppLink } from '@/lib/navigation';
 import { CanvasParticles } from './CanvasParticles';
 import { MenuCard } from './MenuCard';
-import { useHomePage } from '../hooks/useHomePage';
+import { HERO_CARD_IDS, useHomePage } from '../hooks/useHomePage';
 import { GameIcon } from '@/components/icons';
 
 export function HomePage() {
@@ -81,7 +81,7 @@ export function HomePage() {
               onClick={opt.onClick}
               isSelected={activeMenuIndex === idx}
               onMouseEnter={() => setActiveMenuIndex(idx)}
-              isHero={opt.id === 'play' || opt.id === 'admin'}
+              isHero={HERO_CARD_IDS.has(opt.id)}
               isGamepadConnected={isConnected}
               isMobile={isMobile}
             />

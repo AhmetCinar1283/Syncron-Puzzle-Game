@@ -5,6 +5,7 @@ import type { StoredLevel, StoredPlayedLevel } from '@/services/db';
 import { useT } from '@/contexts/LanguageContext';
 import { DIFFICULTY_COLORS } from '../lib/mapThemes';
 import { GameIcon } from '@/components/icons';
+import { SkippedBadge } from './SkippedBadge';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -93,6 +94,8 @@ export interface RowProps {
   cols: string; // API uyumluluğu için, kullanılmıyor
   playedLevel?: StoredPlayedLevel;
   isLocked?: boolean;
+  /** Ödüllü reklamla atlandı (05); çözülmüşse `playedLevel` önceliklidir. */
+  isSkipped?: boolean;
   onPlay: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -102,7 +105,7 @@ export interface RowProps {
 }
 
 export function LevelRow({
-  level, index, total, isPreset, isAdmin, isMobile, playedLevel, isLocked,
+  level, index, total, isPreset, isAdmin, isMobile, playedLevel, isLocked, isSkipped,
   onPlay, onEdit, onDelete, onMoveUp, onMoveDown, gamepadSelected,
 }: RowProps) {
   const t = useT();
@@ -224,6 +227,8 @@ export function LevelRow({
                   {playedLevel.moveCount} {t('hud.moves')?.replace(':', '') || 'Hamle'} · {formatTime(playedLevel.timeSpent)}
                 </span>
               </>
+            ) : isSkipped ? (
+              <SkippedBadge />
             ) : (
               <span className="text-[10px] italic text-slate-600">{t('levels.not_played') || 'Oynanmadı'}</span>
             )}

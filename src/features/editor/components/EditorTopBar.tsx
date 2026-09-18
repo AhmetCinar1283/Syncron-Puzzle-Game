@@ -9,7 +9,7 @@ import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { ThemeSelectorModal } from '@/game-engine/components/play-screen/ThemeSelectorModal';
 import { GameIcon } from '@/components/icons';
 
-export function EditorTopBar({ editId, isMobile }: { editId: number | null; isMobile: boolean }) {
+export function EditorTopBar({ editId, isMobile, onDailyPuzzle }: { editId: number | null; isMobile: boolean; onDailyPuzzle?: () => void }) {
   const t = useT();
   const s = useEditorContext();
   const { themeConfig } = useGameTheme();
@@ -33,6 +33,11 @@ export function EditorTopBar({ editId, isMobile }: { editId: number | null; isMo
             {!isMobile && (t(themeConfig.nameKey) || themeConfig.defaultName)}
           </NBtn>
         </div>
+        {onDailyPuzzle && (
+          <NBtn onClick={onDailyPuzzle} color="#ffd700" style={{ padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <GameIcon name="star" size={13} /> {!isMobile && t('daily_admin.editor_button')}
+          </NBtn>
+        )}
         <NBtn onClick={() => s.setLevelsDialogOpen(true)} color="#00c4ff" active style={{ padding: '5px 16px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <GameIcon name="folder" size={13} /> {isMobile ? 'Bölümler' : t('editor.saved_levels')}
         </NBtn>

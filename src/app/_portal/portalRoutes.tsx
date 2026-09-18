@@ -10,6 +10,7 @@ import { HomePage } from '@/features/home';
 import { LevelsPage } from '@/features/levels';
 import { ControlsPage } from '@/features/controls';
 import { PlayContent, LoadingScreen } from '@/features/play';
+import { DailyHubPage, DailyPlayContent } from '@/features/daily';
 import PrivacyPage from '@/app/privacy/page';
 import TermsPage from '@/app/terms/page';
 import KvkkPage from '@/app/kvkk/page';
@@ -22,11 +23,22 @@ function PlayRoute() {
   );
 }
 
+function DailyPlayRoute() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <DailyPlayContent />
+    </Suspense>
+  );
+}
+
 export const PORTAL_ROUTES: Record<string, ComponentType> = {
   '/': HomePage,
   '/levels': LevelsPage,
   '/play': PlayRoute,
   '/controls': ControlsPage,
+  // Günlük bulmaca: giriş noktası yalnızca `capabilities.dailyPuzzle` + worker varsa görünür.
+  '/daily': DailyHubPage,
+  '/daily/play': DailyPlayRoute,
   '/privacy': PrivacyPage,
   '/terms': TermsPage,
   '/kvkk': KvkkPage,

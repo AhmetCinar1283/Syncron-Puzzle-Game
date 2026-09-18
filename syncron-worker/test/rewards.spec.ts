@@ -26,7 +26,7 @@ let computeCalls = 0;
 
 /** Firestore'a gitmeyen sahte aksiyon: girdi `{ k }`, sonuç `{ answer: k }`. */
 const fakeAction: RewardActionHandler<{ k: string }> = {
-  rule: { requiresLevel: true, freePerLevel: 1, maxPerUidPerDay: 50, maxPerUidPerMinute: 3 },
+  rule: { enabled: true, requiresLevel: true, freePerLevel: 1, maxPerUidPerDay: 50, maxPerUidPerMinute: 3 },
   parseInput: (raw) => (raw && typeof (raw as { k?: unknown }).k === 'string' ? (raw as { k: string }) : null),
   inputKey: (input) => input.k,
   resolve: async (_env, { input }) => ({
@@ -60,6 +60,36 @@ beforeEach(async () => {
   await env.AUDIT_DB.prepare('DELETE FROM reward_grants').run();
   await env.AUDIT_DB.prepare('DELETE FROM audit_logs').run();
   computeCalls = 0;
+});
+
+describe('disabled actions', () => {
+  const disabledAction: RewardActionHandler<{ k: string }> = {
+    ...fakeAction,
+    rule: { ...fakeAction.rule, enabled: false },
+  };
+
+  it('rejects prepare without computing or storing anything, and logs the attempt', async () => {
+    const outcome = await prepareReward(testEnv, disabledAction, {
+      uid: 'u1', action: 'hint', levelId: 'L1', input: { k: 'a' }, platform: 'web',
+    });
+    expect(outcome).toEqual({ status: 'rejected', httpStatus: 403, error: 'action-disabled' });
+    expect(computeCalls).toBe(0);
+    const rows = await env.AUDIT_DB.prepare('SELECT COUNT(*) AS n FROM reward_grants').first<{ n: number }>();
+    expect(rows?.n).toBe(0);
+    expect(await auditActions()).toEqual(['reward.action_disabled']);
+  });
+
+  it('refuses to deliver grants prepared before the action was disabled', async () => {
+    const requestId = await preparedId('a');
+    await claimReward(testEnv, fakeAction, { uid: 'u1', requestId, via: 'ad' });
+    const outcome = await claimReward(testEnv, disabledAction, { uid: 'u1', requestId, via: 'ad' });
+    expect(outcome).toEqual({ status: 'rejected', httpStatus: 403, error: 'action-disabled' });
+  });
+
+  it('keeps the server hint action disabled', async () => {
+    const { REWARD_ACTIONS } = await import('../src/services/rewards/actions');
+    expect(REWARD_ACTIONS.hint.rule.enabled).toBe(false);
+  });
 });
 
 describe('reward flow', () => {

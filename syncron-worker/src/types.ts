@@ -20,6 +20,14 @@ export interface Env {
   LS_WEBHOOK_SECRET: string;
   /** Lemon Squeezy API key */
   LS_API_KEY: string;
+  /**
+   * `security_events.ip` karmasının tuzu — `wrangler secret put SECURITY_IP_SALT`.
+   * Tuzsuz bir IP karması kaba kuvvetle geri çevrilebilir (IPv4 uzayı 2^32),
+   * bu yüzden tuz ZORUNLUDUR. Sır tanımlı değilse IP alanı NULL kalır; ham IP'ye
+   * asla düşülmez (bkz. services/securityEvents/lib/fingerprint.ts).
+   * İsteğe bağlı: eksikliği Worker'ı düşürmez, yalnızca izi zayıflatır.
+   */
+  SECURITY_IP_SALT?: string;
 }
 
 export interface CompleteLevelRequest {

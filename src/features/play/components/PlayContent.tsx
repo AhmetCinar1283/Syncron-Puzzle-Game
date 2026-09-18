@@ -7,6 +7,8 @@ import { ErrorScreen } from './ErrorScreen';
 import { WinResultOverlay } from './WinResultOverlay';
 import { AfterAdPrompt } from './AfterAdPrompt';
 import { HintDialog } from './HintDialog';
+import { SkipLevelButton } from './SkipLevelButton';
+import { SkipLevelDialog } from './SkipLevelDialog';
 
 /** `/play` view'i — tüm akış `usePlayPage` içinde. useSearchParams nedeniyle Suspense altında render edilmeli. */
 export function PlayContent() {
@@ -24,6 +26,7 @@ export function PlayContent() {
         showAfterAdPrompt,
         dismissAfterAdPrompt,
         hint,
+        skip,
         onMoveExecuted,
         onUndoExecuted,
     } = usePlayPage();
@@ -65,10 +68,17 @@ export function PlayContent() {
                 onUndoExecuted={onUndoExecuted}
                 onButtonPressed={handleButtonPressed}
                 hint={hint.screenHint}
+                inputLocked={skip.inputLocked}
+                areaAccessory={skip.buttonVisible ? (
+                    <SkipLevelButton busy={skip.busy} onClick={skip.onRequest} />
+                ) : null}
             />
 
             {/* Ödüllü ipucu onay kartı */}
             <HintDialog dialog={hint.dialog} />
+
+            {/* Ödüllü level atlama onay kartı */}
+            <SkipLevelDialog dialog={skip.dialog} />
 
             {/* Kazanma result overlay — position:fixed olduğu için scale wrapper dışına çıkar */}
             {showWin && (

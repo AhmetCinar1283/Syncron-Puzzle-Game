@@ -70,7 +70,8 @@ const SCHEMA_STATEMENTS = [
     currency                TEXT NOT NULL DEFAULT 'USD' CHECK (length(currency) = 3),
     total_donated_usd_cents INTEGER NOT NULL DEFAULT 0 CHECK (total_donated_usd_cents >= 0),
     created_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    updated_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    updated_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    deleted_at              TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS badges (
     id         TEXT    NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),

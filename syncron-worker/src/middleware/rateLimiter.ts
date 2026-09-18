@@ -1,83 +1,72 @@
 /**
- * DOSYA AMACI: Bu dosya, Firebase Functions döngüsel hatalarının API'yi suistimal etmesini 
- * önlemek amacıyla bellek içi kayan pencere (sliding-window) hız limitleyicisi (rate limiter) içerir.
+ * DOSYA AMACI: Hız limiti kararını HTTP'ye çeviren ince Hono ara yazılımı.
+ * Karar `services/rateLimit`'te, eşikler `services/rateLimit/lib/policy.ts`'te;
+ * burada yalnızca kimliğin çözülmesi, 429 yanıtı ve güvenlik izi vardır.
+ * bkz. .plans/yayin-hazirlik/03-rate-limit-ve-kotuye-kullanim.md §3.2, §3.4
  */
 
-/**
- * Sliding-window rate limiter for the Worker.
- *
- * Used on /internal/log to prevent Firebase Functions loops from
- * flooding the endpoint. In-memory, so it resets when the Worker
- * isolate is recycled — which is fine for abuse prevention.
- *
- * Two limit levels:
- *   - Global:  100 requests / 60s  (protects D1 write budget)
- *   - Per-UID: 20 requests / 60s   (prevents single-user loop)
- */
+import { createMiddleware } from 'hono/factory';
+import type { Context } from 'hono';
+import type { AppContext } from '../types';
+import { evaluateRateLimit, sharedRateLimitStore, type RateLimitEndpointId } from '../services/rateLimit';
+import { recordRateLimitExceeded } from '../services/securitySignals';
+import { trackSecurityEvent } from './securityTrail';
 
-interface WindowEntry {
-  count: number;
-  windowStart: number;
+export interface RateLimitMiddlewareOptions {
+  /**
+   * Kimliği bağlamdan çıkaran fonksiyon. Varsayılan: `c.get('uid')`.
+   * `/internal/log` gibi kimliğin gövdeden geldiği yerler bunu geçersiz kılar.
+   */
+  identify?: (c: Context<AppContext>) => string | null;
 }
 
-const WINDOW_MS = 60_000; // 1 minute window
-const GLOBAL_MAX = 100;   // max total requests from Functions per minute
-const UID_MAX = 20;       // max requests per individual user per minute
+/**
+ * Bir uç noktayı `policy.ts` tablosundaki kimliğe bağlar.
+ *
+ * Alternatifi neydi ve neden reddettim? Middleware'e doğrudan sayı vermek
+ *   (`rateLimit({ perMinute: 30 })`). Reddedildi: eşikler o zaman 10 route
+ *   dosyasına dağılır, "hangi uç nokta hangi limitte?" sorusunun tek cevabı
+ *   kalmaz ve gözden geçirmek imkânsızlaşır.
+ * Yeni bir uç nokta eklenince bu dosya değişmek zorunda mı? HAYIR — bu dosyada
+ *   hiçbir uç nokta adı geçmez; `RateLimitEndpointId` birliği tabloda büyür.
+ * Değer eksik/null gelirse? Kimlik çözülemezse uid kapsamlı kurallar atlanır
+ *   (bkz. `rateLimitService.ts`); depo patlarsa istek GEÇER (fail-open) —
+ *   hız limitleyicinin kendisi kesinti sebebi olmamalıdır.
+ */
+export function rateLimit(
+  endpoint: RateLimitEndpointId,
+  options: RateLimitMiddlewareOptions = {},
+) {
+  const identify = options.identify ?? ((c: Context<AppContext>) => c.get('uid') ?? null);
 
-// Separate maps for different limit scopes
-const globalMap = new Map<string, WindowEntry>();
-const uidMap = new Map<string, WindowEntry>();
-
-// Clean up stale entries every 5 minutes to prevent memory leaks
-const CLEANUP_INTERVAL_MS = 5 * 60_000;
-let lastCleanup = Date.now();
-
-// Bellek sızıntılarını önlemek için süresi dolmuş limit kayıtlarını Map'ten temizler.
-function pruneMap(map: Map<string, WindowEntry>): void {
-  const now = Date.now();
-  if (now - lastCleanup < CLEANUP_INTERVAL_MS) return;
-  lastCleanup = now;
-  for (const [key, entry] of map) {
-    if (now - entry.windowStart > WINDOW_MS * 2) {
-      map.delete(key);
+  return createMiddleware<AppContext>(async (c, next) => {
+    let outcome;
+    try {
+      outcome = await evaluateRateLimit(sharedRateLimitStore, {
+        endpoint,
+        identity: identify(c),
+        now: Date.now(),
+      });
+    } catch (err) {
+      console.error('[RateLimit] evaluation failed, allowing request:', err);
+      return next();
     }
-  }
-}
 
-/**
- * Returns true if the request is within the allowed rate.
- * Returns false if the limit is exceeded (caller should return 429).
- */
-// Belirtilen anahtar (anahtar: global veya uid) için istek sıklığının limit sınırlarında olup olmadığını kontrol eder.
-function checkLimit(map: Map<string, WindowEntry>, key: string, max: number): boolean {
-  pruneMap(map);
-  const now = Date.now();
-  const entry = map.get(key);
+    if (outcome.allowed) return next();
 
-  if (!entry || now - entry.windowStart >= WINDOW_MS) {
-    map.set(key, { count: 1, windowStart: now });
-    return true;
-  }
+    // Güvenlik izi — isteği bekletmez (§3.5; 05 numaralı görev genişletecek).
+    const uid = identify(c);
+    c.executionCtx.waitUntil(
+      recordRateLimitExceeded(c.env.AUDIT_DB, uid, endpoint, outcome.exceededScope ?? 'uid').catch((err) =>
+        console.error('[RateLimit] security audit write failed:', err),
+      ),
+    );
 
-  if (entry.count >= max) {
-    return false; // Rate limit exceeded
-  }
+    // 05 §3.2 — adli iz: aşımın kaynağını (karma IP + UA) `security_events`'e yazar.
+    trackSecurityEvent(c, 'ratelimit.exceeded', { endpointId: endpoint, scope: outcome.exceededScope ?? 'uid' }, uid);
 
-  entry.count++;
-  return true;
-}
-
-/**
- * Check both global and per-UID limits for the /internal/log endpoint.
- * Returns null if all limits are satisfied, or an error string if exceeded.
- */
-// Log uç noktası için hem genel (global) hem de kullanıcı bazlı (per-UID) hız limitlerini doğrular.
-export function checkInternalLogRateLimit(uid: string): string | null {
-  if (!checkLimit(globalMap, 'global', GLOBAL_MAX)) {
-    return 'Global rate limit exceeded on /internal/log — possible loop detected';
-  }
-  if (!checkLimit(uidMap, uid, UID_MAX)) {
-    return `Per-UID rate limit exceeded for ${uid} — possible loop detected`;
-  }
-  return null;
+    c.header('Retry-After', String(outcome.retryAfterSeconds));
+    // Gövde iç eşikleri SIZDIRMAZ: ne limit, ne pencere, ne kalan hak yazar.
+    return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED' }, 429);
+  });
 }

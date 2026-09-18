@@ -18,9 +18,14 @@ import { playedLevelsRouter } from './routes/playedLevels';
 import { runLogRetention } from './scheduled/logRetention';
 import { runBadgeDistribution } from './scheduled/badgeDistribution';
 import { runAnonymousCleanup } from './scheduled/anonymousCleanup';
+import { runDataExport } from './scheduled/dataExport';
+import { runSecurityEventRetention } from './scheduled/securityEventRetention';
 import { storeRouter } from './routes/store';
 import { donorApiRouter } from './routes/donorApi';
 import { rewardsRouter } from './routes/rewards';
+import { dailyRouter } from './routes/daily';
+import { adminDailyRouter } from './routes/adminDaily';
+import { adminRecoveryRouter } from './routes/adminRecovery';
 
 const app = new Hono<AppContext>();
 
@@ -75,6 +80,9 @@ app.route('/', playedLevelsRouter); // GET /played-levels, DELETE /admin/levels/
 app.route('/', storeRouter);
 app.route('/', donorApiRouter);
 app.route('/', rewardsRouter);     // POST /rewards/claim
+app.route('/', dailyRouter);       // /daily/* — günlük bulmaca (06)
+app.route('/', adminDailyRouter);  // /admin/daily/* — günlük bulmaca takvimi
+app.route('/', adminRecoveryRouter); // POST /admin/recovery/recompute — türetilmiş tablo onarımı (02)
 
 // ─── Error handlers ───────────────────────────────────────────────────────────
 // Worker içerisinde yakalanamayan genel hataları (500) yönetir ve JSON yanıtı döner.
@@ -106,10 +114,18 @@ export default {
       ctx.waitUntil(runBadgeDistribution(env, 'weekly'));
     } else if (event.cron === '5 0 1 * *') {
       ctx.waitUntil(runBadgeDistribution(env, 'monthly'));
+    } else if (event.cron === '0 2 * * SAT') {
+      // Haftalık soğuk dışa aktarım: kaynak D1 tablolarını R2'ye KOPYALAR.
+      // D1'den hiçbir şey silinmez (bkz. scheduled/dataExport.ts).
+      ctx.waitUntil(runDataExport(env));
     } else if (event.cron === '0 4 * * *') {
       // Daily at 04:00 UTC — delete stale anonymous user data from D1.
       // Firebase Functions does the Auth+Firestore side at 04:05 UTC.
       ctx.waitUntil(runAnonymousCleanup(env));
+    } else if (event.cron === '45 3 * * *') {
+      // Günlük güvenlik izi temizliği: 30 günden eski `security_events` satırları
+      // SİLİNİR (arşivlenmez — kişisel veri R2'ye gitmez, bkz. yayin-hazirlik/05 §3.1).
+      ctx.waitUntil(runSecurityEventRetention(env));
     }
   },
 };

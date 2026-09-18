@@ -44,31 +44,31 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# capacitor / android build artifacts
+# capacitor / android — yalnızca türetilmiş ve gizli dosyalar
+# (Android projesinin kendisi versiyon kontrolündedir; bkz. docs/release/anahtar-yonetimi.md)
 android/.gradle/
+android/.idea/
+android/.kotlin/
 android/app/build/
 android/build/
+android/capacitor-cordova-android-plugins/
 android/local.properties
+android/keystore.properties
 
-# electron build output
+# imzalama anahtarları — hiçbir yerde, hiçbir zaman git'e girmez
+*.jks
+*.keystore
+
+# electron build output (electron/ kaynak kodu takip edilir — package.json main'i oradan gelir)
 dist-electron/
-electron/
 
 
 # Benim eklediklerim
+# NOT: firebase.json, firestore.rules, firestore.indexes.json, .firebaserc, docs/, android/ ve
+# electron/ bilinçli olarak versiyon kontrolündedir — güvenlik kuralları ve platform
+# yapılandırması geçmişsiz kalmamalı. Sırlar `.env*` kuralıyla dışarıda tutulur.
 
-# /firebaseFunctions
 /.archive
-/firebase.json
-/firestore.rules
-/firestore.indexes.json
 /.claude
 /.agent
 /.continue
-/android
-# /functions
-/electron
-
-/docs/
-# /syncron-worker
-/.firebaserc

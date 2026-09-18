@@ -1,0 +1,197 @@
+rules_version = '2';
+
+  service cloud.firestore {
+    match /databases/{database}/documents {
+
+      function isSignedIn() { return request.auth != null; }
+      function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+      function isAdmin() {
+        let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+        return isSignedIn() && exists(userPath) && get(userPath).data.role == 'admin';
+      }
+      function isModerator() {
+        let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+        return isSignedIn() && exists(userPath) && get(userPath).data.role
+             in ['admin', 'moderator'];
+      }
+      function isNotAnonymous() {
+        return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      }
+
+      // Checks whether the current user is allowed to read a level document.
+      // - Published campaign levels are public content accessible by all users (guests and signed-in users).
+      function canReadLevel() {
+        return true;
+      }
+
+      match /users/{uid} {
+        // Admins and moderators can read any user's profile (for admin panel)
+        // Regular users can only read their own document
+        allow read: if isOwner(uid) || isModerator();
+
+        allow create: if isOwner(uid)
+          // Anonymous users cannot self-create their profile — the Worker does it
+          // via Admin SDK (which bypasses these rules). Only real accounts may create.
+          && isNotAnonymous()
+          // Zorunlu temel alanlar: uid, authProvider, createdAt, totalScore, completedCount, role
+          && request.resource.data.keys().hasAll([
+              'uid','authProvider','createdAt','totalScore','completedCount','role'
+            ])
+          // Gönderilen alanlar sadece izin verilenlerden oluşmalı (bilinmeyen alan yasak)
+          && request.resource.data.keys().hasOnly([
+              'uid','authProvider','createdAt','totalScore','completedCount','role',
+              'email','displayName','acceptedTermsAt'
+            ])
+          && request.resource.data.uid == uid
+          && request.resource.data.totalScore == 0
+          && request.resource.data.completedCount == 0
+          && request.resource.data.role == 'user'
+          // createdAt her zaman sunucu zamanı olmalı
+          && request.resource.data.createdAt == request.time
+          // Non-anonim kullanıcılar (email/google) için acceptedTermsAt zorunlu ve sunucu zamanı olmalı
+          && request.resource.data.keys().hasAll(['acceptedTermsAt'])
+          && request.resource.data.acceptedTermsAt == request.time
+          && (!('displayName' in request.resource.data) || (
+               request.resource.data.displayName is string &&
+               request.resource.data.displayName.size() >= 3 &&
+               request.resource.data.displayName.size() <= 25 &&
+               request.resource.data.displayName.matches('^[a-zA-Z0-9ğüşöçıİĞÜŞÖÇ\\s_-]+$')
+             ));
+
+        // Clients may update profile fields only — totalScore, completedCount and xp are worker-only
+        allow update: if isOwner(uid)
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['totalScore', 'completedCount', 'role', 'xp'])
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (!('tag' in resource.data) || request.resource.data.tag == resource.data.tag)
+          && (!('showcaseBadges' in request.resource.data) || (
+               request.resource.data.showcaseBadges is list &&
+               request.resource.data.showcaseBadges.size() <= 5
+             ))
+          && (!('displayName' in request.resource.data) || (
+               request.resource.data.displayName is string &&
+               request.resource.data.displayName.size() >= 3 &&
+               request.resource.data.displayName.size() <= 25 &&
+               request.resource.data.displayName.matches('^[a-zA-Z0-9ğüşöçıİĞÜŞÖÇ\\s_-]+$')
+             ));
+
+        // playedLevels are written exclusively by the Cloudflare Worker (Admin SDK bypasses rules)
+        match /playedLevels/{levelId} {
+          // Admins and moderators can read any user's game history (for admin panel)
+          allow read: if isOwner(uid) || isModerator();
+          allow write: if false;
+        }
+      }
+
+      // Tags registry — written exclusively by Cloud Functions (Admin SDK bypasses rules)
+      match /tags/{tag} {
+        allow read, write: if false;
+      }
+
+      match /levels/{levelId} {
+        allow read: if canReadLevel();
+        allow create, update: if isAdmin()
+          && (!('gameNotes' in request.resource.data) || request.resource.data.gameNotes == null || request.resource.data.gameNotes is string)
+          && (!('creatorNotes' in request.resource.data) || request.resource.data.creatorNotes == null || request.resource.data.creatorNotes is string);
+        allow delete: if isAdmin();
+
+        // solutions and other infos written exclusively by the Cloudflare Worker
+        match /infos/{doc} {
+          allow read: if true;
+          allow write: if false;
+        }
+      }
+
+      match /levelParts/{partId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /metadata/levelsState {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /settings/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+      }
+
+      match /levelRequests/{requestId} {
+        // Single-doc read: owner or admin; list: admin only
+        allow get: if isOwner(resource.data.submittedBy) || isAdmin();
+        allow list: if isAdmin();
+        // Non-anonymous users can create their own requests (status must start as 'pending')
+        allow create: if isNotAnonymous()
+          && request.resource.data.submittedBy == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && (!('gameNotes' in request.resource.data) || request.resource.data.gameNotes == null || request.resource.data.gameNotes is string)
+          && (!('creatorNotes' in request.resource.data) || request.resource.data.creatorNotes == null || request.resource.data.creatorNotes is string);
+        // Only admin can approve/reject (update status)
+        allow update: if isAdmin()
+          && (!('gameNotes' in request.resource.data) || request.resource.data.gameNotes == null || request.resource.data.gameNotes is string)
+          && (!('creatorNotes' in request.resource.data) || request.resource.data.creatorNotes == null || request.resource.data.creatorNotes is string);
+        // Owner can delete their own pending request
+        allow delete: if isOwner(resource.data.submittedBy)
+          && resource.data.status == 'pending';
+      }
+      
+      
+      // ─── Support Tickets ────────────────────────────────────────────────────
+      // Tickets are always created by the Cloudflare Worker via Admin SDK, which
+      // bypasses these rules entirely. Client SDK is used for reads, user replies,
+      // status marking-as-read, and admin management.
+
+      match /supportTickets/{ticketId} {
+        // Single-doc read: ticket owner or admin
+        allow get: if isOwner(resource.data.uid) || isAdmin();
+
+        // List query: admin sees all; non-anonymous users see only their own.
+        // Client must supply a where('uid','==',uid) filter — if they omit it,
+        // documents belonging to other users will cause this rule to fail for
+        // those docs, making the entire query fail. This is the desired behaviour.
+        allow list: if isAdmin() || (isNotAnonymous() && resource.data.uid == request.auth.uid);
+
+        // Ticket creation is handled exclusively by the Cloudflare Worker via
+        // Admin SDK — no client-side creation allowed.
+        allow create: if false;
+
+        // Admin can update any field (status, priority, adminNote, hasUnreadAdmin, updatedAt).
+        // Users may only flip hasUnreadUser to false (marking admin reply as read).
+        allow update: if isAdmin() || (
+          isOwner(resource.data.uid) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hasUnreadUser'])
+        );
+
+        // Tickets are never deleted — they are closed (status = 'closed') instead.
+        allow delete: if false;
+
+        // ── Messages subcollection ─────────────────────────────────────────────
+        match /messages/{messageId} {
+          // Both ticket owner and admin can read all messages in a ticket.
+          allow read: if isAdmin() || isOwner(
+            get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.uid
+          );
+
+          // Non-anonymous ticket owner can add user messages; admin can add admin replies.
+          // For user messages we validate: senderType, senderUid, required fields, body length.
+          allow create: if (
+            isNotAnonymous() &&
+            isOwner(get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.uid) &&
+            request.resource.data.senderType == 'user' &&
+            request.resource.data.senderUid == request.auth.uid &&
+            request.resource.data.keys().hasAll(['senderType', 'senderUid', 'senderName', 'body', 'createdAt']) &&
+            request.resource.data.body is string &&
+            request.resource.data.body.size() >= 5 &&
+            request.resource.data.body.size() <= 2000
+          ) || isAdmin();
+
+          // Messages are immutable once written.
+          allow update, delete: if false;
+        }
+      }
+
+      match /{document=**} { allow read, write: if false; }
+    }
+  }

@@ -117,7 +117,9 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
                 }
             } else {
                 console.warn('[Play] Worker verification failed with status:', result.status, result.errorText);
-                setWorkerResult({ success: false, reason: 'error' });
+                // 429 → oyun kilitlenmez; yerel (iyimser) kayıt zaten yazıldı,
+                // oyuncuya "biraz yavaşla" mesajı gösterilir.
+                setWorkerResult({ success: false, reason: result.status === 429 ? 'rate_limited' : 'error' });
             }
         } catch (err) {
             console.warn('[Play] Worker call failed:', err);

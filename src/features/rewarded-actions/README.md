@@ -1,8 +1,8 @@
 # features/rewarded-actions
 
 "Ödüllü aksiyon"un React tarafı — **aksiyondan bağımsız**. İpucu (04) ilk
-kullanıcısıdır; level atlama (05) ve sonraki ödüllü aksiyonlar aynı parçaları
-kullanır, yeni bir reklam akışı yazılmaz.
+kullanıcısıdır (şu an kapalı); level atlama (05, `features/play/hooks/usePlaySkip.ts`)
+aynı parçaları kullanır, yeni bir reklam akışı yazılmaz.
 
 ## Akış — ödülün içeriği sunucudadır
 
@@ -51,11 +51,13 @@ syncron-worker/src/services/rewards/
    `RewardActionId` birliğini genişlet.
 2. Worker: bir `RewardActionHandler` yaz (`rule`, `parseInput`, `inputKey`, `resolve` → `compute`)
    ve `services/rewards/actions.ts`'e ekle. Şema (`schemas/rewards.ts`) aksiyon listesini buradan alır.
+   Teslimde kalıcı yan etki gerekiyorsa (ör. atlama kaydı) idempotent `onDelivered` kancasını yaz;
+   `resolve` kurala takılan istekleri 403/409 ile reddedebilir (reklam gösterilmez).
 3. Feature'da:
    ```ts
    const rewarded = useRewardedAction('skip-level', levelId);
    const outcome = await rewarded.run<SkipResult>({
-     prepare: () => prepareReward('skip-level', levelId, {}),
+     prepare: () => prepareReward('skip-level', levelId, { partId }),
      claim: (requestId, via) => claimReward(requestId, via),
      cancel: (requestId, reason) => cancelReward(requestId, reason),
    });

@@ -10,6 +10,7 @@
 import type { User } from 'firebase/auth';
 import { getDB } from '../db';
 import type { StoredPlayedLevel } from '../db';
+import { applySkippedLevels, type SkippedLevelSyncRecord } from './applySkippedLevels';
 
 // ─── Constants (Sabitler) ──────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ async function writeLastSync(serverTimeIso: string): Promise<void> {
 export async function clearPlayedLevelsForUserSwitch(): Promise<void> {
   const dexie = getDB();
   await dexie.playedLevels.clear();
+  await dexie.skippedLevels.clear();
   // D1 senkronizasyon imleçlerini temizle ki yeni kullanıcı tam senkronizasyon yapsın
   await dexie.syncMeta.delete(SYNC_KEY);
   await dexie.syncMeta.delete(`${SYNC_KEY}_cursor`);
@@ -114,6 +116,8 @@ export async function syncPlayedLevelsFromWorker(
       updatedAt: string;
     }>;
     deletedLevelIds: string[];
+    /** Ödüllü reklamla atlanan bölümler (05). Eski worker sürümünde yoktur. */
+    skippedLevels?: SkippedLevelSyncRecord[];
     serverTime: string;
   };
 
@@ -171,6 +175,11 @@ export async function syncPlayedLevelsFromWorker(
       }
     });
   }
+
+  // ── Atlanan bölümler (skor taşımaz, ayrı tablo) ──
+  const skipped = await applySkippedLevels(dexie, data.skippedLevels ?? [], data.deletedLevelIds);
+  upserted += skipped.upserted;
+  deleted += skipped.deleted;
 
   // ── Sunucu tarafından verilen zaman damgası imlecini kaydeder ──
   await writeLastSync(data.serverTime);

@@ -14,15 +14,21 @@ import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { firebaseAuth } from '../middleware/auth';
 import { adminAuth } from '../middleware/adminAuth';
+import { getPlayedLevelsSince, getDeletedLevelsSince } from '../services/playedLevels';
 import {
-  getPlayedLevelsSince,
-  getDeletedLevelsSince,
   getLevelDeletionImpact,
   deleteLevelRecords,
-} from '../services/playedLevels';
+  restoreLevelRecords,
+  countLevelDeletionRows,
+  buildLeaderboardRollbackStatements,
+} from '../services/levelLifecycle';
+import { evaluateDestructiveGate } from '../services/recovery';
+import { getSkippedLevelsSince } from '../services/skipLevel/skippedLevels';
 import { writeAuditLog } from '../services/auditLog';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import { fsDelete } from '../services/firestore';
+import { rateLimit } from '../middleware/rateLimiter';
+import { trackSecurityEvent } from '../middleware/securityTrail';
 
 export const playedLevelsRouter = new Hono<AppContext>();
 
@@ -31,12 +37,13 @@ export const playedLevelsRouter = new Hono<AppContext>();
 // Delta sync endpoint. Returns:
 //   • records[]      — played_levels rows updated after `since` (or ALL if first sync)
 //   • deletedLevelIds[] — level IDs deleted after `since` (tombstones for Dexie cleanup)
+//   • skippedLevels[]  — ödüllü reklamla atlanan level'lar (skor taşımaz; bkz. services/skipLevel)
 //   • serverTime     — ISO timestamp to use as the next `since` cursor
 //
 // Query param:
 //   ?since=2026-06-16T10:00:00.000Z   (omit for full sync)
 // Kullanıcının oynadığı seviyeleri ve silinen seviyeleri zaman damgası (delta sync) bazlı senkronize eder.
-playedLevelsRouter.get('/played-levels', firebaseAuth, async (c) => {
+playedLevelsRouter.get('/played-levels', firebaseAuth, rateLimit('played-levels-sync'), async (c) => {
   const uid = c.get('uid');
   const sinceRaw = new URL(c.req.url).searchParams.get('since');
 
@@ -51,9 +58,14 @@ playedLevelsRouter.get('/played-levels', firebaseAuth, async (c) => {
   }
 
   try {
-    const [records, deletedLevelIds] = await Promise.all([
+    const [records, deletedLevelIds, skipped] = await Promise.all([
       getPlayedLevelsSince(c.env.AUDIT_DB, uid, since),
       getDeletedLevelsSince(c.env.AUDIT_DB, since),
+      // Atlama kayıtları okunamazsa (ör. 0012 migration henüz uygulanmadı) ilerleme sync'i bozulmaz.
+      getSkippedLevelsSince(c.env.AUDIT_DB, uid, since).catch((err) => {
+        console.error('[PlayedLevels] skipped_levels read failed:', err);
+        return [];
+      }),
     ]);
 
     const serverTime = new Date().toISOString();
@@ -70,6 +82,11 @@ playedLevelsRouter.get('/played-levels', firebaseAuth, async (c) => {
         updatedAt:   r.updated_at,
       })),
       deletedLevelIds,
+      skippedLevels: skipped.map((s) => ({
+        levelId:   s.level_id,
+        skippedAt: s.skipped_at,
+        updatedAt: s.updated_at,
+      })),
       serverTime,
     });
   } catch (err) {
@@ -90,8 +107,18 @@ playedLevelsRouter.get('/played-levels', firebaseAuth, async (c) => {
 //   6. Insert into deleted_levels (tombstone for client delta sync)
 //   7. Delete the level from Firestore (levels/{levelId} + infos/solutions subcollection)
 //   8. Write admin audit log
-// Seviyeyi kalıcı olarak siler ve ilgili tüm skor, rekor ve yapımcı verilerini D1 ve Firestore'dan temizler.
-playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
+//
+// İKİ ADIMLI ONAY (02 §3.1): `confirm` gövdesi yoksa hiçbir şey silinmez;
+// uç nokta 409 ile etkilenecek satır sayısını döner. İkinci çağrı aynı sayıyı
+// `{ "confirm": <n> }` olarak göndermek zorundadır. Sayı bu arada değiştiyse
+// onay tutmaz ve işlem yeniden onaylanır.
+//
+// D1 tarafı artık MANTIKSAL silmedir (soft delete): satırlar `deleted_at` ile
+// işaretlenir, POST /admin/levels/:levelId/restore ile geri getirilebilir.
+// Firestore tarafındaki bölüm dokümanı silinmeye devam eder (bu görevin kapsamı
+// D1'dir; Firestore yedeklemesi §4 gereği ayrı bir iştir).
+// Seviyeyi siler ve ilgili tüm skor, rekor ve yapımcı verilerini geri alır.
+playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, rateLimit('admin-level-delete'), async (c) => {
   if (c.get('role') !== 'admin') {
     return c.json({ success: false, error: 'Insufficient permissions' }, 403);
   }
@@ -99,6 +126,17 @@ playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
   const levelId = c.req.param('levelId');
   const adminUid = c.get('uid');
   const db = c.env.AUDIT_DB;
+
+  // Gövde isteğe bağlıdır: yoksa `confirm` yok sayılır ve önizleme dönülür.
+  let confirm: number | null = null;
+  try {
+    const body: unknown = await c.req.json();
+    if (body && typeof body === 'object' && typeof (body as { confirm?: unknown }).confirm === 'number') {
+      confirm = (body as { confirm: number }).confirm;
+    }
+  } catch {
+    confirm = null;
+  }
 
   try {
     // ── Idempotency guard: already deleted? ──────────────────────────────────
@@ -108,6 +146,16 @@ playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
       .first();
     if (alreadyDeleted) {
       return c.json({ success: false, error: 'Level already deleted' }, 409);
+    }
+
+    // ── Onay kapısı: önce say, sonra onayla ─────────────────────────────────
+    const affectedRows = await countLevelDeletionRows(db, levelId);
+    const gate = evaluateDestructiveGate({ affectedRows, confirm });
+    if (!gate.allowed) {
+      return c.json(
+        { success: false, error: gate.reason, levelId, affectedRows: gate.affectedRows, submitted: gate.submitted },
+        409,
+      );
     }
 
     // ── Step 1: Read impact BEFORE deletion ──────────────────────────────────
@@ -130,60 +178,12 @@ playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
       adminToken = await getAdminAccessToken(c.env.GOOGLE_SERVICE_ACCOUNT);
     }
 
-    // ── Step 3: Build D1 rollback statements ─────────────────────────────────
-    const rollbackStatements: D1PreparedStatement[] = [];
-
-    // period_types and period_ids are historical — we decrement ALL periods that
-    // ever existed for each user (stars_gained and levels_done).
-    // Because user_period_scores may have rows from multiple periods, we target
-    // them all with a single UPDATE per uid (subtract across all rows).
-    for (const { uid, stars } of affectedUsers) {
-      // Decrement stars from all periods for this user
-      rollbackStatements.push(
-        db
-          .prepare(
-            `UPDATE user_period_scores
-             SET stars_gained = MAX(0, stars_gained - ?2),
-                 levels_done  = MAX(0, levels_done - 1),
-                 updated_at   = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-             WHERE uid = ?1`,
-          )
-          .bind(uid, stars),
-      );
-    }
-
-    // World record rollback: decrement all_time count for the record holder
-    if (worldRecordHolderUid) {
-      rollbackStatements.push(
-        db
-          .prepare(
-            `UPDATE user_world_records
-             SET records_count = MAX(0, records_count - 1),
-                 updated_at    = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-             WHERE uid = ?1 AND period_type = 'all_time' AND period_id = 'all_time'`,
-          )
-          .bind(worldRecordHolderUid),
-      );
-    }
-
-    // Creator score rollback: remove all plays + stars earned FROM this level
-    if (createdBy) {
-      // Sum of stars earned by all completers (what was added to creator_scores)
-      const totalStarsEarned = affectedUsers.reduce((sum, u) => sum + u.stars, 0);
-      const totalPlays = affectedUsers.length;
-
-      rollbackStatements.push(
-        db
-          .prepare(
-            `UPDATE creator_scores
-             SET plays_gained = MAX(0, plays_gained - ?2),
-                 stars_gained = MAX(0, stars_gained - ?3),
-                 updated_at   = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-             WHERE uid = ?1`,
-          )
-          .bind(createdBy, totalPlays, totalStarsEarned),
-      );
-    }
+    // ── Step 3: Liderlik sayaci geri alma ifadeleri (services/levelLifecycle) ───
+    const rollbackStatements = buildLeaderboardRollbackStatements(db, {
+      affectedUsers,
+      worldRecordHolderUid,
+      createdBy,
+    });
 
     // ── Step 4: Execute rollbacks + delete played_levels + insert tombstone ──
     if (rollbackStatements.length > 0) {
@@ -216,10 +216,20 @@ playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
       writeAuditLog(db, adminUid, 'admin.level_delete', 'admin', {
         levelId,
         affectedUserCount: affectedUsers.length,
+        affectedRows,
         createdBy,
         worldRecordHolderUid,
+        softDelete: true,
       }).catch((err) => console.error('[AuditLog] admin.level_delete write failed:', err)),
     );
+    // 05 §3.2 — çok satır etkileyen admin işlemi güvenlik izine de düşer;
+    // `audit_logs` "ne oldu"yu, `security_events` "yıkıcı ne oldu"yu tutar.
+    trackSecurityEvent(c, 'admin.destructive', {
+      operation: 'level.delete',
+      levelId,
+      affectedRows,
+      affectedUserCount: affectedUsers.length,
+    }, adminUid);
 
     return c.json({
       success: true,
@@ -227,6 +237,44 @@ playedLevelsRouter.delete('/admin/levels/:levelId', adminAuth, async (c) => {
     });
   } catch (err) {
     console.error('[LevelDelete] Cascade delete error:', err);
+    return c.json({ success: false, error: 'Internal error' }, 500);
+  }
+});
+
+// ─── POST /admin/levels/:levelId/restore ─────────────────────────────────────
+//
+// Soft delete'in karşılığı. Mantıksal olarak silinmiş played_levels /
+// skipped_levels satırlarını geri getirir ve tombstone'u kaldırır.
+//
+// Liderlik sayaçlarına DOKUNMAZ: geri yüklemeden sonra
+// POST /admin/recovery/recompute (scope='user') çalıştırılmalıdır. Sayacı elle
+// "geri artırmak" yerine kaynaktan yeniden hesaplamak idempotenttir.
+// Bkz. docs/release/veri-kurtarma.md.
+//
+// Onay kapısına tabi DEĞİLDİR: veri ekler, hiçbir şeyi yok etmez.
+playedLevelsRouter.post('/admin/levels/:levelId/restore', adminAuth, rateLimit('admin-level-restore'), async (c) => {
+  if (c.get('role') !== 'admin') {
+    return c.json({ success: false, error: 'Insufficient permissions' }, 403);
+  }
+
+  const levelId = c.req.param('levelId');
+  const db = c.env.AUDIT_DB;
+
+  try {
+    const { restoredRows } = await restoreLevelRecords(db, levelId);
+
+    c.executionCtx.waitUntil(
+      writeAuditLog(db, c.get('uid'), 'admin.level_restore', 'admin', { levelId, restoredRows }).catch((err) =>
+        console.error('[AuditLog] admin.level_restore write failed:', err),
+      ),
+    );
+    trackSecurityEvent(c, 'admin.destructive', { operation: 'level.restore', levelId, affectedRows: restoredRows });
+
+    // Firestore'daki bölüm dokümanı silme sırasında yok edilmişti; bu uç nokta
+    // yalnızca D1 ilerlemesini kurtarır. Bölümün kendisi yeniden yüklenmelidir.
+    return c.json({ success: true, levelId, restoredRows, firestoreLevelRestored: false });
+  } catch (err) {
+    console.error('[LevelRestore] restore failed:', err);
     return c.json({ success: false, error: 'Internal error' }, 500);
   }
 });

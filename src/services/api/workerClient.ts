@@ -6,6 +6,25 @@
 import { auth } from '@/services/firebase';
 
 /**
+ * Sunucu hız limiti (429). Ayrı bir tip olmasının sebebi: çağıran taraf bunu
+ * "sunucu bozuk" hatasından ayırıp kullanıcıya "biraz yavaşla" diyebilsin.
+ * Oyun akışı bu hatada ASLA kilitlenmez (bkz. 03 §3.4).
+ */
+export class WorkerRateLimitError extends Error {
+  readonly retryAfterSeconds: number;
+  constructor(retryAfterSeconds: number) {
+    super('RATE_LIMIT_EXCEEDED');
+    this.name = 'WorkerRateLimitError';
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+/** Bir hatanın hız limiti kaynaklı olup olmadığını güvenle söyler. */
+export function isRateLimitError(err: unknown): err is WorkerRateLimitError {
+  return err instanceof WorkerRateLimitError;
+}
+
+/**
  * Giriş yapmış kullanıcının Firebase ID Token'ını getirir.
  * Belirtecin süresi dolmak üzereyse (son 5 dakika) yenilenmeye zorlanır.
  */
@@ -81,6 +100,13 @@ export async function workerFetch<T = any>(
   }
 
   const response = await fetch(url, fetchOptions);
+
+  if (response.status === 429) {
+    // Retry-After eksik/bozuk gelirse 60 sn varsayılır; kullanıcıya gösterilen
+    // mesaj süreye bağlı değildir, süre yalnızca çağıranın bilgisidir.
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    throw new WorkerRateLimitError(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60);
+  }
 
   if (!response.ok) {
     let errorMessage = `HTTP error! status: ${response.status}`;

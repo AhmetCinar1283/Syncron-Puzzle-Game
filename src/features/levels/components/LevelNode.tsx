@@ -1,7 +1,9 @@
 'use client';
 
 import { forwardRef } from 'react';
+import { SkipForward } from 'lucide-react';
 import { GameIcon } from '@/components/icons';
+import { SKIPPED_COLOR } from './SkippedBadge';
 
 export interface LevelNodeProps {
   index: number;
@@ -10,6 +12,8 @@ export interface LevelNodeProps {
   y: number; // yüzde (0-100)
   isLocked: boolean;
   isCompleted: boolean;
+  /** Ödüllü reklamla atlandı, henüz çözülmedi (05): kesik çizgili çerçeve + atla simgesi. */
+  isSkipped?: boolean;
   isCurrent: boolean;
   isSelected: boolean;
   stars?: 1 | 2 | 3;
@@ -25,7 +29,7 @@ export interface LevelNodeProps {
  * seviye) düğümü CSS ile hafifçe yüzer; diğerleri statik durur (mobilde 60fps için önemli).
  */
 export const LevelNode = forwardRef<HTMLButtonElement, LevelNodeProps>(function LevelNode(
-  { index, label, x, y, isLocked, isCompleted, isCurrent, isSelected, stars, activeColor, isMobile, onSelect, onActivate },
+  { index, label, x, y, isLocked, isCompleted, isSkipped = false, isCurrent, isSelected, stars, activeColor, isMobile, onSelect, onActivate },
   ref,
 ) {
   const size = isMobile ? 38 : 32;
@@ -77,18 +81,27 @@ export const LevelNode = forwardRef<HTMLButtonElement, LevelNodeProps>(function 
 
       {/* Çekirdek düğüm */}
       <span
-        className="flex items-center justify-center rounded-full border-2 font-extrabold"
+        className="relative flex items-center justify-center rounded-full border-2 font-extrabold"
         style={{
           width: size,
           height: size,
           fontSize: isMobile ? 14 : 12,
           background: isLocked ? '#090d16' : isCompleted ? `${activeColor}1a` : '#060b13',
-          borderColor: isLocked ? '#1e293b' : isCurrent ? '#ffd700' : activeColor,
+          borderColor: isLocked ? '#1e293b' : isCurrent ? '#ffd700' : isSkipped ? SKIPPED_COLOR : activeColor,
+          borderStyle: isSkipped ? 'dashed' : 'solid',
           color: isLocked ? '#475569' : '#fff',
           boxShadow: isLocked ? 'none' : `0 0 10px ${isCurrent ? 'rgba(255,215,0,0.45)' : `${activeColor}40`}`,
         }}
       >
         {isLocked ? <GameIcon name="lock" size={13} color="#475569" /> : index + 1}
+        {isSkipped && (
+          <span
+            className="absolute flex items-center justify-center rounded-full"
+            style={{ top: -4, right: -4, width: 14, height: 14, background: '#030712', border: `1px solid ${SKIPPED_COLOR}`, color: SKIPPED_COLOR }}
+          >
+            <SkipForward size={8} strokeWidth={3} />
+          </span>
+        )}
       </span>
 
       {/* İsim etiketi */}

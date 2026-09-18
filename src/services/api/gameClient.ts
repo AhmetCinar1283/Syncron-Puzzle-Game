@@ -13,7 +13,8 @@ export interface TelemetryPayload {
   id: string;
   levelId: string;
   version: number;
-  outcome: 'win' | 'restart' | 'quit';
+  /** 'skip': oturum ödüllü level atlamayla bitti (05). */
+  outcome: 'win' | 'restart' | 'quit' | 'skip';
   timeSpent: number;
   restarts: number;
   deaths: number;

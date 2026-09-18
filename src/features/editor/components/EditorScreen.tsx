@@ -1,6 +1,9 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import type { LevelData } from '@/game-engine/level-format';
 import EditorLeftPanel from './EditorLeftPanel';
 import LevelsManagerDialog from './levels/LevelsManagerDialog';
 import ToolPalette from './palette/ToolPalette';
@@ -9,11 +12,13 @@ import BottomSettingsPanel from './settings/BottomSettingsPanel';
 import EditorRightPanel from './EditorRightPanel';
 import EditorDialogs from './dialogs/EditorDialogs';
 import EditorTestOverlay from './EditorTestOverlay';
+import DailyPuzzleDialog from './dialogs/DailyPuzzleDialog';
 import { EditorMobileTabs, EditorTopBar } from './EditorTopBar';
 import { useEditorState } from '../hooks/useEditorState';
 import { useGridOperations } from '../hooks/useGridOperations';
 import { useEditorLayout } from '../hooks/useEditorLayout';
 import { useEditorShortcuts } from '../hooks/useEditorShortcuts';
+import { useDailyPuzzleEditor } from '../hooks/useDailyPuzzleEditor';
 import { EditorContextProvider } from '../EditorContext';
 import type { EditorContextValue } from '../EditorContext';
 
@@ -42,6 +47,19 @@ export default function EditorScreen() {
 
   useEditorShortcuts(s.undo, s.testLevel, s.handleTest);
 
+  // Günlük bulmaca modu yalnızca admin içindir (worker da yazmayı admin'e sınırlar).
+  const { role } = useAuth();
+  const { doGenerateLevel } = s;
+  const loadDailyLevel = useCallback((level: LevelData) => doGenerateLevel(level, null, 0), [doGenerateLevel]);
+  const daily = useDailyPuzzleEditor({
+    enabled: role === 'admin',
+    dailyPuzzleId: searchParams.get('dailyPuzzleId'),
+    dailyDraft: searchParams.get('dailyDraft') === '1',
+    generateLevelData: s.generateLevelData,
+    loadLevel: loadDailyLevel,
+    optimalSolution: s.optimalSolution,
+  });
+
   const ctxValue: EditorContextValue = {
     ...s,
     cellSize,
@@ -53,7 +71,7 @@ export default function EditorScreen() {
       <div className="h-[100dvh]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#030712', color: '#e2e8f0', overflow: 'hidden' }}>
 
         {/* Top bar */}
-        <EditorTopBar editId={editId} isMobile={isMobile} />
+        <EditorTopBar editId={editId} isMobile={isMobile} onDailyPuzzle={role === 'admin' ? daily.openDialog : undefined} />
 
         {/* Mobile tab bar */}
         {isMobile && <EditorMobileTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />}
@@ -106,8 +124,11 @@ export default function EditorScreen() {
             testLevel={s.testLevel}
             setTestLevel={s.setTestLevel}
             solutionSteps={s.showSolutionPath ? s.optimalSolution : null}
+            onSolved={daily.recordTestSolution}
           />
         )}
+
+        {daily.open && <DailyPuzzleDialog daily={daily} defaultTitle={s.levelName} />}
       </div>
     </EditorContextProvider>
   );

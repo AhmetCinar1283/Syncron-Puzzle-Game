@@ -30,6 +30,7 @@ import {
   writeAuditLog,
 } from '../services/auditLog';
 import { checkActiveBan, getActiveBans, getBanHistory } from '../services/banService';
+import { querySecurityEventsByUid } from '../services/securityEvents';
 import type { AuditCategory, AuditAction } from '../services/auditLog';
 
 export const adminApiRouter = new Hono<AppContext>();
@@ -39,7 +40,9 @@ adminApiRouter.use('/admin/*', adminAuth);
 
 // ─── Query schemas ────────────────────────────────────────────────────────────
 
-const AUDIT_CATEGORIES = ['game', 'support', 'account', 'payment', 'admin'] as const;
+// 'security': 03'ün kötüye kullanım sinyalleri (`audit_logs`, IP İÇERMEZ).
+// Ham/karma IP yalnızca `security_events` tablosundadır ve ayrı bir uç noktadan okunur.
+const AUDIT_CATEGORIES = ['game', 'support', 'account', 'payment', 'admin', 'reward', 'security'] as const;
 
 const logsQuerySchema = z.object({
   category: z.enum(AUDIT_CATEGORIES).optional(),
@@ -122,6 +125,45 @@ adminApiRouter.get('/admin/users/:uid/logs', async (c) => {
   }
 });
 
+// ─── GET /admin/users/:uid/security-events ────────────────────────────────────
+//
+// Kullanıcının son güvenlik olayları — karma IP ve User-Agent İÇERİR.
+//
+// YALNIZCA `role === 'admin'`. Moderatör 403 alır: moderatör destek/içerik
+// rolüdür, kişisel veriye erişim iş gereği değildir (yetki en aza indirme).
+// bkz. .plans/yayin-hazirlik/05-loglama-ve-adli-iz.md §3.4
+const securityEventsQuerySchema = z.object({
+  limit:  z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+adminApiRouter.get('/admin/users/:uid/security-events', async (c) => {
+  if (c.get('role') !== 'admin') {
+    return c.json({ success: false, error: 'Admin role required' }, 403);
+  }
+
+  const uid = c.req.param('uid');
+  const parsed = securityEventsQuerySchema.safeParse(
+    Object.fromEntries(new URL(c.req.url).searchParams),
+  );
+  if (!parsed.success) {
+    return c.json({ success: false, error: 'Invalid query parameters' }, 400);
+  }
+
+  try {
+    const events = await querySecurityEventsByUid(
+      c.env.AUDIT_DB,
+      uid,
+      parsed.data.limit,
+      parsed.data.offset,
+    );
+    return c.json({ success: true, events, limit: parsed.data.limit, offset: parsed.data.offset });
+  } catch (err) {
+    console.error(`[AdminAPI] Failed to query security events for ${uid}:`, err);
+    return c.json({ success: false, error: 'Internal error' }, 500);
+  }
+});
+
 // ─── GET /admin/users/:uid/stats ──────────────────────────────────────────────
 // Kullanıcının log istatistiklerini ve son aktivite zamanını getirir.
 adminApiRouter.get('/admin/users/:uid/stats', async (c) => {
@@ -153,7 +195,7 @@ adminApiRouter.get('/admin/users/:uid/played-levels', async (c) => {
       .prepare(
         `SELECT level_id, stars, score, move_count, time_spent, completed_at, updated_at
          FROM played_levels
-         WHERE uid = ?1
+         WHERE uid = ?1 AND deleted_at IS NULL
          ORDER BY updated_at DESC
          LIMIT ?2`,
       )

@@ -12,6 +12,7 @@ import {
   awardDonorBadge,
 } from '../services/lemonSqueezy';
 import { writeAuditLog } from '../services/auditLog';
+import { trackSecurityEvent } from '../middleware/securityTrail';
 
 export const storeRouter = new Hono<AppContext>();
 
@@ -29,6 +30,12 @@ storeRouter.post('/webhooks/lemonsqueezy', async (c) => {
   const isSignatureValid = await verifyLsSignature(c.env.LS_WEBHOOK_SECRET, signature, rawBody);
   if (!isSignatureValid) {
     console.warn('[LSWebhook] Webhook signature verification failed.');
+    // 05 §3.2 — sahte ödeme webhook'u: kimlik yoktur (uid = null), tek iz kaynaktır.
+    trackSecurityEvent(c, 'webhook.invalid_signature', {
+      provider: 'lemonsqueezy',
+      signaturePresent: signature !== '',
+      bodyBytes: rawBody.length,
+    }, null);
     return c.json({ success: false, error: 'Invalid signature' }, 401);
   }
 

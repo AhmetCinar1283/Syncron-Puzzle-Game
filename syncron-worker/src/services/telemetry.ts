@@ -8,7 +8,7 @@ export interface LevelTelemetryParams {
   uid: string;
   levelId: string;
   version: number;
-  outcome: 'win' | 'restart' | 'quit';
+  outcome: 'win' | 'restart' | 'quit' | 'skip';
   timeSpent: number; // in seconds
   restarts: number;
   deaths: number;
@@ -92,6 +92,8 @@ export interface AggregatedLevelAnalytics {
   total_deaths: number;
   total_hints: number;
   hinted_attempts: number;
+  /** Bu level sürümünü ödüllü reklamla atlayan oyuncu sayısı (skipped_levels — sunucu kaydı). */
+  total_skips: number;
   avg_time_win: number;
   likes: number;
   dislikes: number;
@@ -116,6 +118,7 @@ export async function getLevelAnalytics(db: D1Database): Promise<AggregatedLevel
       SUM(t.hints_used) as total_hints,
       COUNT(DISTINCT CASE WHEN t.hints_used > 0 THEN t.id END) as hinted_attempts,
       AVG(CASE WHEN t.outcome = 'win' THEN t.time_spent END) as avg_time_win,
+      COALESCE(sk.skips, 0) as total_skips,
       COALESCE(f.likes, 0) as likes,
       COALESCE(f.dislikes, 0) as dislikes,
       COALESCE(f.votes_easy, 0) as votes_easy,
@@ -134,6 +137,12 @@ export async function getLevelAnalytics(db: D1Database): Promise<AggregatedLevel
       FROM level_feedback
       GROUP BY level_id, version
     ) f ON t.level_id = f.level_id AND t.version = f.version
+    LEFT JOIN (
+      SELECT level_id, level_version, COUNT(*) as skips
+      FROM skipped_levels
+      WHERE deleted_at IS NULL
+      GROUP BY level_id, level_version
+    ) sk ON t.level_id = sk.level_id AND t.version = sk.level_version
     GROUP BY t.level_id, t.version
   `;
 

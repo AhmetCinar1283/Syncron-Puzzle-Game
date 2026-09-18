@@ -6,6 +6,7 @@ import type { LevelPart } from '@/services/firebase/adminTypes';
 import { getMapTheme } from '../lib/mapThemes';
 import { LevelNode } from './LevelNode';
 import { PortalNode } from './PortalNode';
+import { SKIPPED_COLOR } from './SkippedBadge';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -15,6 +16,8 @@ export interface CampaignMapProps {
   hasPortalStart: boolean;
   isSessionCompleted: boolean;
   playedMap: Map<string, StoredPlayedLevel>;
+  /** Ödüllü reklamla atlanan bölümler (05). */
+  skippedSet: Set<string>;
   lockedSet: Set<string>;
   selectedIndex: number | null;
   defaultActiveIndex: number;
@@ -48,6 +51,7 @@ export function CampaignMap({
   hasPortalStart,
   isSessionCompleted,
   playedMap,
+  skippedSet,
   lockedSet,
   selectedIndex,
   defaultActiveIndex,
@@ -92,18 +96,19 @@ export function CampaignMap({
     pathData += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`;
   }
 
-  // idx (levels dizisindeki) → segment durumu ("locked" | "current" | "completed")
+  // idx (levels dizisindeki) → segment durumu ("locked" | "current" | "completed" | "skipped")
   const segmentState = useCallback(
-    (levelIdx: number): 'locked' | 'current' | 'completed' => {
+    (levelIdx: number): 'locked' | 'current' | 'completed' | 'skipped' => {
       const lv = levels[levelIdx];
       if (!lv) return 'locked';
       const isLocked = lv.firestoreId ? lockedSet.has(lv.firestoreId) : false;
       const isCompleted = lv.firestoreId ? playedMap.has(lv.firestoreId) : false;
       if (isCompleted) return 'completed';
+      if (lv.firestoreId && skippedSet.has(lv.firestoreId)) return 'skipped';
       if (!isLocked) return 'current';
       return 'locked';
     },
-    [levels, lockedSet, playedMap],
+    [levels, lockedSet, playedMap, skippedSet],
   );
 
   // Seçili düğüm değiştiğinde görünüme kaydır (manuel piksel matematiği yerine tarayıcı API'si)
@@ -188,7 +193,7 @@ export function CampaignMap({
             const p0 = points[i];
             const p1 = points[i + 1];
             if (!p0 || !p1) return null;
-            const color = state === 'completed' ? theme.activeColor : '#ffd700';
+            const color = state === 'completed' ? theme.activeColor : state === 'skipped' ? SKIPPED_COLOR : '#ffd700';
             return (
               <path
                 key={`seg-${i}`}
@@ -197,6 +202,7 @@ export function CampaignMap({
                 stroke={color}
                 strokeWidth={1.6}
                 strokeLinecap="round"
+                strokeDasharray={state === 'skipped' ? '1.5,1.5' : undefined}
                 vectorEffect="non-scaling-stroke"
                 style={{ opacity: 0.85 }}
               />
@@ -213,7 +219,8 @@ export function CampaignMap({
         {levels.map((lv, idx) => {
           const isLocked = lv.firestoreId ? lockedSet.has(lv.firestoreId) : false;
           const isCompleted = lv.firestoreId ? playedMap.has(lv.firestoreId) : false;
-          const isCurrent = idx === defaultActiveIndex && !isLocked && !isCompleted;
+          const isSkipped = !isCompleted && !!lv.firestoreId && skippedSet.has(lv.firestoreId);
+          const isCurrent = idx === defaultActiveIndex && !isLocked && !isCompleted && !isSkipped;
           const playedData = lv.firestoreId ? playedMap.get(lv.firestoreId) : undefined;
           const pos = nodePosition(levels, activePart, idx);
 
@@ -230,6 +237,7 @@ export function CampaignMap({
               y={pos.y}
               isLocked={isLocked}
               isCompleted={isCompleted}
+              isSkipped={isSkipped}
               isCurrent={isCurrent}
               isSelected={selectedIndex === idx}
               stars={playedData?.stars}

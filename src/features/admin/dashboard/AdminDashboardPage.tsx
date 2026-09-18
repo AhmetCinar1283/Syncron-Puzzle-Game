@@ -25,6 +25,13 @@ export default function AdminDashboardPage() {
       color: '#00c4ff' // Cyan
     },
     {
+      path: '/admin/daily-calendar',
+      label: 'Daily Puzzle',
+      sub: 'Plan & approve daily puzzles',
+      icon: 'star',
+      color: '#ffd700' // Gold
+    },
+    {
       path: '/admin/pending-request-levels',
       label: 'Requests',
       sub: 'Review user submitted levels',

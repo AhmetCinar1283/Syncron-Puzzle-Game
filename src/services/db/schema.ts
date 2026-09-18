@@ -69,6 +69,16 @@ export interface StoredPlayedLevel {
   stars?: 1 | 2 | 3;   // Kazanılan en iyi yıldız derecesi (1-3 arası)
 }
 
+/**
+ * Ödüllü reklamla atlanan bir bölümün yerel kaydı (05). Skor taşımaz: yalnızca
+ * ilerleme kilidini açar. Bölüm sonradan çözülürse `playedLevels` kaydı önceliklidir.
+ */
+export interface StoredSkippedLevel {
+  levelId: string;     // Birincil anahtar = Firestore doküman ID'si
+  skippedAt: number;   // ms zaman damgası
+  updatedAt: number;   // ms zaman damgası
+}
+
 /** 
  * Koleksiyon bazlı senkronizasyon zaman damgalarını tutan tablo şeması.
  */
@@ -87,6 +97,7 @@ export class KnowAndConquerDB extends Dexie {
   levelOrder!: Table<LevelOrderRecord>;
   presetLevels!: Table<StoredLevel>;
   playedLevels!: Table<StoredPlayedLevel>;
+  skippedLevels!: Table<StoredSkippedLevel>;
   syncMeta!: Table<SyncMetaRecord>;
 
   constructor() {
@@ -142,6 +153,18 @@ export class KnowAndConquerDB extends Dexie {
     }).upgrade((tx) => {
       // Temiz bir D1 tam senkronizasyonu tetiklemek için eski imleci temizler
       return tx.table('syncMeta').delete('playedLevels');
+    });
+    // Versiyon 11: Ödüllü level atlama (05) — atlanan bölümler ayrı tabloda (skor taşımaz).
+    // Mevcut D1 imleci atlama kayıtlarını hiç çekmediği için silinir → bir sonraki sync tam çekim yapar.
+    this.version(11).stores({
+      levels: '++id',
+      levelOrder: 'id',
+      presetLevels: '++id, firestoreId',
+      syncMeta: 'collection',
+      playedLevels: 'levelId, updatedAt',
+      skippedLevels: 'levelId, updatedAt',
+    }).upgrade((tx) => {
+      return tx.table('syncMeta').delete('playedLevels_d1');
     });
   }
 }

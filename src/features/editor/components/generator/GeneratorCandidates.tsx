@@ -1,7 +1,7 @@
 'use client';
 
 import { NBtn } from '../EditorUI';
-import GeneratorMiniPreview from './GeneratorMiniPreview';
+import GeneratorMiniPreview from '@/game-engine/components/LevelMiniPreview';
 import type { GeneratorFormApi } from '../../hooks/useGeneratorForm';
 import type { GeneratedCandidate } from '../../hooks/useEditorUiState';
 import type { LevelData } from '@/game-engine/level-format';

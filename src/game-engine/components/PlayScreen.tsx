@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Entity } from '../logic/entityTypes';
 import { Cell } from '../logic/cellTypes';
@@ -52,6 +53,10 @@ interface PlayScreenProps {
      * ipucunun board işareti çizilir. Test modunda yok sayılır ("adım ileri" var).
      */
     hint?: PlayScreenHint;
+    /** Dışarıdan açılan bir kart (ör. ödüllü aksiyon onayı) oyun girdisini kilitler. */
+    inputLocked?: boolean;
+    /** Board alanının altında, ölçeklenmeden çizilen ek katman (ör. `/play`'in "level'ı atla" butonu). */
+    areaAccessory?: ReactNode;
 }
 
 /**
@@ -78,6 +83,8 @@ export function PlayScreen({
     gameNotes,
     solutionSteps,
     hint,
+    inputLocked: externalInputLocked = false,
+    areaAccessory,
 }: PlayScreenProps) {
     const { theme, toggleTheme } = useGameTheme();
     const { play, muted, toggleMute } = useSoundManager();
@@ -159,7 +166,7 @@ export function PlayScreen({
         isGameOver,
     });
     // İpucu kartı açıkken oyun girdisi kilitli (ipucu tam o durum için hazırlanır).
-    const inputLocked = !!playerHint?.inputLocked;
+    const inputLocked = !!playerHint?.inputLocked || externalInputLocked;
     const inputLockedRef = useRef(inputLocked);
     useEffect(() => {
         inputLockedRef.current = inputLocked;
@@ -275,7 +282,12 @@ export function PlayScreen({
                         controlledRoomIds={controlledRoomIds}
                     />
                 ) : null}
-                areaOverlay={visibleHint ? <HintBanner hint={visibleHint} /> : null}
+                areaOverlay={visibleHint || areaAccessory ? (
+                    <>
+                        {visibleHint && <HintBanner hint={visibleHint} />}
+                        {areaAccessory}
+                    </>
+                ) : null}
             />
 
             {visibleHint && <style>{HINT_KEYFRAMES}</style>}

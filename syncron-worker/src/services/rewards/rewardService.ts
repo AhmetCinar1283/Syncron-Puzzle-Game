@@ -26,6 +26,18 @@ import {
 } from './rewardGrants';
 import type { RewardActionHandler } from './types';
 
+/** Teslim kancası (varsa) — idempotent; hata yukarı iletilir (istek 500, istemci tekrar dener). */
+async function runOnDelivered(env: Env, handler: RewardActionHandler<any>, row: RewardGrantRow): Promise<void> {
+  if (!handler.onDelivered) return;
+  await handler.onDelivered(env, {
+    id: row.id,
+    uid: row.uid,
+    levelId: row.level_id,
+    levelVersion: row.level_version,
+    result: parseResult(row),
+  });
+}
+
 /** Aynı girdi için hazırlanmış/teslim edilmiş kaydın yeniden kullanıldığı süre. */
 const REUSE_WINDOW_MS = 6 * 60 * 60 * 1000;
 
@@ -34,11 +46,15 @@ export type PrepareOutcome =
   /** Bu girdi için ödül daha önce teslim edilmiş: yeniden reklam gerekmez. */
   | { status: 'delivered'; requestId: string; result: unknown }
   | { status: 'unavailable'; requestId: string; reason: string }
-  | { status: 'rejected'; httpStatus: 400 | 404 | 429 | 500; error: string };
+  | { status: 'rejected'; httpStatus: 400 | 403 | 404 | 409 | 429 | 500; error: string };
 
 export type ClaimOutcome =
   | { status: 'delivered'; requestId: string; via: RewardGrantVia; result: unknown; redelivered: boolean }
-  | { status: 'rejected'; httpStatus: 403 | 404 | 409; error: 'not-found' | 'not-claimable' | 'quota-exhausted' | 'not-entitled' };
+  | {
+      status: 'rejected';
+      httpStatus: 403 | 404 | 409;
+      error: 'not-found' | 'not-claimable' | 'quota-exhausted' | 'not-entitled' | 'action-disabled';
+    };
 
 export interface PrepareParams {
   uid: string;
@@ -72,14 +88,24 @@ export async function prepareReward(
 ): Promise<PrepareOutcome> {
   const { uid, action, levelId, platform } = params;
   const { rule } = handler;
+  if (!rule.enabled) {
+    // İstemci arayüzü kapalı aksiyonu sunmaz; buraya gelen istek değiştirilmiş istemcidir.
+    await logEvent(env, uid, 'reward.action_disabled', { step: 'prepare', action, levelId, platform });
+    return { status: 'rejected', httpStatus: 403, error: 'action-disabled' };
+  }
   if (rule.requiresLevel && !levelId) return { status: 'rejected', httpStatus: 400, error: 'level-required' };
 
   const input = handler.parseInput(params.input);
   if (input === null) return { status: 'rejected', httpStatus: 400, error: 'invalid-input' };
   const inputKey = handler.inputKey(input);
 
-  const resolved = await handler.resolve(env, { levelId, input });
-  if (!resolved.ok) return { status: 'rejected', httpStatus: resolved.status, error: resolved.reason };
+  const resolved = await handler.resolve(env, { uid, levelId, input });
+  if (!resolved.ok) {
+    if (resolved.status === 403 || resolved.status === 409) {
+      await logEvent(env, uid, 'reward.not_allowed', { action, levelId, reason: resolved.reason });
+    }
+    return { status: 'rejected', httpStatus: resolved.status, error: resolved.reason };
+  }
   const { levelVersion } = resolved;
 
   const db = env.AUDIT_DB;
@@ -94,6 +120,7 @@ export async function prepareReward(
   if (reusable) {
     await logEvent(env, uid, 'reward.reuse', { requestId: reusable.id, action, levelId, status: reusable.status });
     if (reusable.status === 'delivered') {
+      await runOnDelivered(env, handler, reusable);
       return { status: 'delivered', requestId: reusable.id, result: parseResult(reusable) };
     }
     const used = await countDeliveredFree(db, uid, action, levelId);
@@ -148,7 +175,14 @@ export async function claimReward(
   const row = await getOwnGrant(db, uid, requestId);
   if (!row) return { status: 'rejected', httpStatus: 404, error: 'not-found' };
 
+  // Aksiyon kapatılmadan önce hazırlanmış/teslim edilmiş kayıtlar da teslim edilmez.
+  if (!handler.rule.enabled) {
+    await logEvent(env, uid, 'reward.action_disabled', { step: 'claim', requestId, action: row.action, levelId: row.level_id });
+    return { status: 'rejected', httpStatus: 403, error: 'action-disabled' };
+  }
+
   if (row.status === 'delivered') {
+    await runOnDelivered(env, handler, row);
     await logEvent(env, uid, 'reward.redelivered', { requestId, action: row.action, levelId: row.level_id, via: row.via });
     return { status: 'delivered', requestId, via: row.via ?? via, result: parseResult(row), redelivered: true };
   }
@@ -166,6 +200,7 @@ export async function claimReward(
     // Ya eşzamanlı başka bir claim teslim etti ya da ücretsiz kota doldu.
     const fresh = await getOwnGrant(db, uid, requestId);
     if (fresh?.status === 'delivered') {
+      await runOnDelivered(env, handler, fresh);
       return { status: 'delivered', requestId, via: fresh.via ?? via, result: parseResult(fresh), redelivered: true };
     }
     const error = via === 'free' ? 'quota-exhausted' : 'not-claimable';
@@ -173,6 +208,7 @@ export async function claimReward(
     return { status: 'rejected', httpStatus: via === 'free' ? 403 : 409, error };
   }
 
+  await runOnDelivered(env, handler, row);
   await logEvent(env, uid, 'reward.delivered', {
     requestId,
     action: row.action,

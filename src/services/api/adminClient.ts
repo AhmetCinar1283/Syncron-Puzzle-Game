@@ -105,6 +105,41 @@ export interface UserBansResponse {
   activeBans: ActiveBan[];
 }
 
+/**
+ * Bir güvenlik olayı kaydı (worker `security_events` tablosu).
+ * `ipHash` HAM IP DEĞİLDİR: tuzlanmış SHA-256 özetidir ve geri döndürülemez.
+ * Tuz sırrı tanımlı değilse `null` gelir — arayüz bunu ayrıca göstermelidir.
+ */
+export interface SecurityEventRecord {
+  id: string;
+  uid: string | null;
+  eventType: string;
+  endpoint: string;
+  ipHash: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface SecurityEventsResponse {
+  success: boolean;
+  events: SecurityEventRecord[];
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Kullanıcının son güvenlik olaylarını getirir.
+ * Uç nokta yalnızca `role === 'admin'` kabul eder; moderatör 403 alır.
+ * bkz. .plans/yayin-hazirlik/05-loglama-ve-adli-iz.md §3.4
+ */
+export async function getUserSecurityEvents(uid: string, limit = 25): Promise<SecurityEventsResponse> {
+  return fetchAdminApi<SecurityEventsResponse>(
+    `/admin/users/${uid}/security-events?limit=${limit}`,
+    { method: 'GET' },
+  );
+}
+
 export interface IssueBanParams {
   banType: 'platform' | 'tag' | 'social' | 'coop';
   reason: string;

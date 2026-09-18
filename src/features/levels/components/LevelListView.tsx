@@ -13,6 +13,8 @@ export interface LevelListViewProps {
   isAdmin?: boolean;
   isMobile: boolean;
   playedMap: Map<string, StoredPlayedLevel>;
+  /** Ödüllü reklamla atlanan bölümler (05). */
+  skippedSet: Set<string>;
   lockedSet: Set<string>;
   selectedIndex: number | null;
   onHover: (index: number) => void;
@@ -26,7 +28,7 @@ export interface LevelListViewProps {
 
 /** Campaign-liste ve Custom sekmesi için tek ortak liste görünümü (kod tekrarını önler). */
 export function LevelListView({
-  levels, isPreset, isAdmin, isMobile, playedMap, lockedSet, selectedIndex,
+  levels, isPreset, isAdmin, isMobile, playedMap, skippedSet, lockedSet, selectedIndex,
   onHover, onPlay, onEdit, onDelete, onMoveUp, onMoveDown, emptyState,
 }: LevelListViewProps) {
   if (levels.length === 0 && emptyState) return <>{emptyState}</>;
@@ -55,6 +57,7 @@ export function LevelListView({
                 cols=""
                 playedLevel={lv.firestoreId ? playedMap.get(lv.firestoreId) : undefined}
                 isLocked={isLocked}
+                isSkipped={isPreset && !!lv.firestoreId && skippedSet.has(lv.firestoreId)}
                 onPlay={() => onPlay(lv)}
                 onEdit={() => onEdit(lv)}
                 onDelete={() => onDelete(lv)}

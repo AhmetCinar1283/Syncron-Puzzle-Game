@@ -1,0 +1,138 @@
+apply plugin: 'com.android.application'
+
+/**
+ * AdMob App ID'si koda GÖMÜLMEZ. Öncelik sırası:
+ *   1. ADMOB_APP_ID ortam değişkeni (CI),
+ *   2. android/local.properties içindeki `admobAppId` (gitignore'lu),
+ *   3. `admobAppId` gradle özelliği (~/.gradle/gradle.properties veya -PadmobAppId=...),
+ *   4. Google'ın test App ID'si (varsayılan — gerçek reklam GÖSTERMEZ).
+ * Bkz. docs/platforms.md → "AdMob kimlik yönetimi".
+ */
+def admobTestAppId = 'ca-app-pub-3940256099942544~3347511713'
+def resolvedAdmobAppId = System.getenv('ADMOB_APP_ID')
+if (!resolvedAdmobAppId?.trim()) {
+    def localProps = new Properties()
+    def localPropsFile = rootProject.file('local.properties')
+    if (localPropsFile.exists()) {
+        localPropsFile.withInputStream { localProps.load(it) }
+    }
+    resolvedAdmobAppId = localProps.getProperty('admobAppId')
+}
+if (!resolvedAdmobAppId?.trim()) {
+    resolvedAdmobAppId = project.findProperty('admobAppId')?.toString()
+}
+if (!resolvedAdmobAppId?.trim()) {
+    resolvedAdmobAppId = admobTestAppId
+    logger.warn("[admob] DIKKAT: Gercek AdMob App ID tanimli degil, Google TEST App ID kullaniliyor. Bu build GELIR URETMEZ. Bkz. docs/platforms.md")
+}
+
+/**
+ * Release imzalama bilgisi koda GÖMÜLMEZ. android/keystore.properties (gitignore'lu) dosyasından
+ * okunur. Aşağıdaki üç durumdan biri varsa release signingConfig atlanır ve
+ * `assembleRelease`/`bundleRelease` imzasız kalır (debug build bundan etkilenmez); her durumda
+ * nedeni söyleyen bir uyarı basılır:
+ *   1. keystore.properties yok,
+ *   2. `storeFile` boş ya da işaret ettiği .jks diskte yok (harici disk takılı değil vb.),
+ *   3. storePassword / keyAlias / keyPassword alanlarından biri boş.
+ * Kurulum: android/keystore.properties.example dosyasını android/keystore.properties olarak
+ * kopyalayıp kendi değerlerinizi girin. Bkz. docs/release/anahtar-yonetimi.md
+ */
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+def keystoreFile = null
+def keystoreSkipReason = "android/keystore.properties yok (kurulum icin keystore.properties.example'a bakin)"
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+    def storeFilePath = keystoreProps['storeFile']?.toString()?.trim()
+    def missingFields = ['storePassword', 'keyAlias', 'keyPassword'].findAll {
+        !keystoreProps[it]?.toString()?.trim()
+    }
+    if (!storeFilePath) {
+        keystoreSkipReason = "android/keystore.properties icinde 'storeFile' bos"
+    } else {
+        def candidate = rootProject.file(storeFilePath)
+        if (!candidate.exists()) {
+            keystoreSkipReason = "anahtar dosyasi BULUNAMADI." +
+                " keystore.properties -> storeFile=" + storeFilePath +
+                " ; aranan tam yol: " + candidate.absolutePath +
+                " -- Harici disk takili mi? (Windows yollarinda ters bolu CIFT yazilir:" +
+                " D:\\\\PROJECTS\\\\keys\\\\x.jks) Bkz. docs/release/anahtar-yonetimi.md"
+        } else if (!missingFields.isEmpty()) {
+            keystoreSkipReason = "android/keystore.properties icinde su alanlar bos: " +
+                missingFields.join(', ')
+        } else {
+            keystoreFile = candidate
+            keystoreSkipReason = null
+        }
+    }
+}
+def hasKeystoreProps = keystoreFile != null
+
+android {
+    namespace = "com.polimelo.syncron.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.polimelo.syncroncap"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [admobAppId: resolvedAdmobAppId]
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    if (hasKeystoreProps) {
+        signingConfigs {
+            release {
+                storeFile keystoreFile
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasKeystoreProps) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("[signing] DIKKAT: release build IMZASIZ kalacak. Neden: " + keystoreSkipReason)
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

@@ -60,7 +60,7 @@ export function usePlaySession() {
         }
     }, []);
 
-    const submitTelemetry = useCallback(async (outcome: 'win' | 'restart' | 'quit') => {
+    const submitTelemetry = useCallback(async (outcome: 'win' | 'restart' | 'quit' | 'skip') => {
         if (!sessionRef.current || !sessionRef.current.levelId) return;
         const currentSession = sessionRef.current;
         const timeSpent = Math.round((Date.now() - currentSession.startTime) / 1000);

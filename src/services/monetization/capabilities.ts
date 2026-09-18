@@ -29,6 +29,11 @@ export interface PlatformCapabilities {
   devTools: boolean;
   /** Uygulama, gerçek URL/route yerine tek statik giriş + bellek içi router ile mi çalışıyor (bkz. src/lib/navigation). */
   inMemoryRouting: boolean;
+  /**
+   * Günlük Bulmaca girişi gösterilebilir mi (portal izni). Özellik sunucu gerektirir;
+   * worker yapılandırılmamış build'de ayrıca gizlenir (bkz. features/daily).
+   */
+  dailyPuzzle: boolean;
 }
 
 const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
@@ -44,6 +49,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     thirdPartyScripts: true,
     devTools: true,
     inMemoryRouting: false,
+    dailyPuzzle: true,
   },
   electron: {
     interstitialAds: false,
@@ -57,6 +63,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     thirdPartyScripts: true,
     devTools: true,
     inMemoryRouting: false,
+    dailyPuzzle: true,
   },
   // AdMob (Capacitor) — bölüm arası, ödüllü ve kalıcı alt banner destekli.
   android: {
@@ -71,6 +78,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     thirdPartyScripts: true,
     devTools: true,
     inMemoryRouting: false,
+    dailyPuzzle: true,
   },
   // Portal build'leri: gerçek SDK reklam sağlayıcıları, tek statik giriş + bellek
   // içi router, yalnızca misafir oynanış (bkz. 02-portal-buildleri.md).
@@ -86,6 +94,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     thirdPartyScripts: false,
     devTools: false,
     inMemoryRouting: true,
+    dailyPuzzle: true,
   },
   gamedistribution: {
     interstitialAds: true,
@@ -99,6 +108,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     thirdPartyScripts: false,
     devTools: false,
     inMemoryRouting: true,
+    dailyPuzzle: true,
   },
   // Geliştirme sırasında reklam akışını uçtan uca görmek için: web yetenekleri + reklamlar.
   mock: {
@@ -113,6 +123,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     thirdPartyScripts: true,
     devTools: true,
     inMemoryRouting: false,
+    dailyPuzzle: true,
   },
 };
 

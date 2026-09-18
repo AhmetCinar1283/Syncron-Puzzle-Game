@@ -115,7 +115,7 @@ export default function KvkkPage() {
         >
           {isTr ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <p><strong>Son Güncelleme: 22 Mayıs 2026</strong></p>
+              <p><strong>Son Güncelleme: 17 Eylül 2026</strong></p>
               <p>6698 sayılı Kişisel Verilerin Korunması Kanunu (&quot;KVKK&quot;) uyarınca, Syncron platformu üzerinde gerçekleştireceğiniz kayıt ve üyelik işlemleri kapsamında kişisel verilerinizin işlenmesi ve yurt dışına aktarılması konularında açık rızanız talep edilmektedir.</p>
               
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>1. Açık Rıza Kapsamında İşlenen Veriler</h2>
@@ -130,7 +130,18 @@ export default function KvkkPage() {
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>4. Açık Rızanın Geri Alınması</h2>
               <p>Dilediğiniz zaman açık rızanızı geri çekme ve kişisel verilerinizin ile destek geçmişinizin sistemlerimizden tamamen silinmesini talep etme hakkınız bulunmaktadır. Rızanızı geri çekmeniz durumunda, çevrimiçi ilerleme eşitleme ve destek özellikleri devre dışı kalacak, hesabınız kalıcı olarak silinecektir.</p>
 
-              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Reklam Kimliği ve Reklam Tercihleri</h2>
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Açık Rızaya DAYANMAYAN İşleme: Güvenlik Kayıtları</h2>
+              <p>Aşağıdaki veriler <strong>açık rızanıza değil</strong>, KVKK m.5/2-(f) uyarınca <strong>meşru menfaat</strong> hukuki sebebine dayanarak işlenir; bu nedenle rızanızı geri çekseniz dahi güvenlik süresince saklanmaya devam eder:</p>
+              <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li><strong>Karmalanmış IP adresi:</strong> IP adresiniz gizli bir anahtarla tuzlanıp SHA-256 ile özetlenir. <strong>Ham IP adresiniz saklanmaz</strong> ve özet geri döndürülemez.</li>
+                <li><strong>Tarayıcı/cihaz kimliği (User-Agent):</strong> İlk 256 karakteriyle saklanır.</li>
+              </ul>
+              <p><strong>İşleme amacı:</strong> hesap güvenliği, hile ve dolandırıcılığın önlenmesi, saldırı tespiti ve yasal taleplere cevap verilebilmesi.</p>
+              <p><strong>Ne zaman kaydedilir:</strong> yalnızca güvenlik olaylarında — başarısız kimlik doğrulama, yetkisiz yönetim erişimi denemesi, doğrulanamayan çözüm gönderimi, yasaklı hesabın istek denemesi, hız limiti aşımı, geçersiz imzalı ödeme bildirimi. Normal oyun ilerlemenizde <strong>kaydedilmez</strong>.</p>
+              <p><strong>Saklama süresi: 30 gün.</strong> Süre dolduğunda kayıtlar otomatik olarak <strong>kalıcı biçimde silinir</strong>, arşivlenmez.</p>
+              <p><strong>Haklarınız:</strong> KVKK m.11 kapsamında bilgi talep etme, işlemeye itiraz etme ve silinmesini isteme haklarınız saklıdır. Başvurularınızı oyun içi <strong>Destek</strong> ekranından iletebilirsiniz. Ayrıntı için <strong>Gizlilik Politikası §7</strong>.</p>
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>6. Reklam Kimliği ve Reklam Tercihleri</h2>
               <p>Oyunun Android sürümünde Google AdMob üzerinden reklam gösterilir. Bu kapsamda cihazınızın reklam kimliği (Advertising ID) gibi tanımlayıcılar Google tarafından işlenebilir ve yurt dışındaki Google sunucularına aktarılabilir. Reklam gösterimi için <strong>açık rıza zorunlu değildir</strong>: rıza vermezseniz reklamlar kişiselleştirilmeden sunulur, oyunun hiçbir özelliği kısıtlanmaz. Tercihinizi aşağıdaki butondan dilediğiniz zaman değiştirebilirsiniz.</p>
               <AdPrivacyOptionsButton />
 
@@ -140,7 +151,7 @@ export default function KvkkPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <p><strong>Last Updated: May 22, 2026</strong></p>
+              <p><strong>Last Updated: September 17, 2026</strong></p>
               <p>In accordance with the Turkish Personal Data Protection Law No. 6698 (&quot;KVKK&quot;), we request your explicit consent regarding the processing and transfer of your personal data abroad when registering an account on Syncron.</p>
               
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>1. Scope of Processed Data</h2>
@@ -155,7 +166,18 @@ export default function KvkkPage() {
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>4. Revoking Your Consent</h2>
               <p>You reserve the right to withdraw your explicit consent at any time and request permanent deletion of your credentials and ticket history. Revoking this consent will automatically terminate your account session, wipe database backups and support history, and disable online cloud synchronization.</p>
 
-              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Advertising ID and Ad Preferences</h2>
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>5. Processing NOT Based on Consent: Security Records</h2>
+              <p>The following data is processed <strong>not on the basis of your consent</strong> but on <strong>legitimate interest</strong> (KVKK Art. 5/2-(f), GDPR Art. 6(1)(f)). It is therefore retained for the security period even if you withdraw your consent:</p>
+              <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li><strong>Hashed IP address:</strong> your IP address is salted with a secret key and digested with SHA-256. <strong>Your raw IP address is never stored</strong> and the digest cannot be reversed.</li>
+                <li><strong>Browser/device identifier (User-Agent):</strong> stored truncated to its first 256 characters.</li>
+              </ul>
+              <p><strong>Purpose:</strong> account security, cheating and fraud prevention, attack detection, and the ability to answer lawful requests.</p>
+              <p><strong>When recorded:</strong> only on security events — failed authentication, unauthorised administration access attempt, unverifiable solution submission, request from a suspended account, rate limit breach, payment notification with an invalid signature. It is <strong>not</strong> recorded during normal gameplay.</p>
+              <p><strong>Retention: 30 days.</strong> After that the records are <strong>permanently deleted</strong> automatically and are never archived.</p>
+              <p><strong>Your rights:</strong> you may request information, object to the processing and request erasure (KVKK Art. 11, GDPR Art. 15-22) via the in-game <strong>Support</strong> screen. See <strong>Privacy Policy §7</strong> for details.</p>
+
+              <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>6. Advertising ID and Ad Preferences</h2>
               <p>The Android build of the game serves ads through Google AdMob. Identifiers such as your device Advertising ID may therefore be processed by Google and transferred to Google servers abroad. Explicit consent is <strong>not mandatory</strong> for ads to be served: if you decline, ads are shown without personalisation and no game feature is restricted. You can change your choice at any time with the button below.</p>
               <AdPrivacyOptionsButton />
 

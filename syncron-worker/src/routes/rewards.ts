@@ -18,6 +18,8 @@ import { cancelRewardSchema, claimRewardSchema, prepareRewardSchema } from '../s
 import { REWARD_ACTIONS } from '../services/rewards/actions';
 import { getOwnGrant } from '../services/rewards/rewardGrants';
 import { cancelReward, claimReward, prepareReward } from '../services/rewards/rewardService';
+import { rateLimit } from '../middleware/rateLimiter';
+import { trackSecurityEvent } from '../middleware/securityTrail';
 
 export const rewardsRouter = new Hono<AppContext>();
 
@@ -27,6 +29,7 @@ async function readRequest<T extends z.ZodTypeAny>(
   schema: T,
 ): Promise<{ ok: true; data: z.infer<T> } | { ok: false; response: Response }> {
   if (await checkActiveBan(c.env.AUDIT_DB, c.get('uid'), 'platform')) {
+    trackSecurityEvent(c, 'ban.blocked', { banType: 'platform' });
     return { ok: false, response: c.json({ success: false, error: 'Account suspended' }, 403) };
   }
   let body: unknown;
@@ -43,7 +46,7 @@ async function readRequest<T extends z.ZodTypeAny>(
   return { ok: true, data: validation.data };
 }
 
-rewardsRouter.post('/rewards/prepare', firebaseAuth, async (c) => {
+rewardsRouter.post('/rewards/prepare', firebaseAuth, rateLimit('rewards-prepare'), async (c) => {
   const req = await readRequest(c, prepareRewardSchema);
   if (!req.ok) return req.response;
   const { action, levelId, input, platform } = req.data;
@@ -60,7 +63,7 @@ rewardsRouter.post('/rewards/prepare', firebaseAuth, async (c) => {
   }
 });
 
-rewardsRouter.post('/rewards/claim', firebaseAuth, async (c) => {
+rewardsRouter.post('/rewards/claim', firebaseAuth, rateLimit('rewards-claim'), async (c) => {
   const req = await readRequest(c, claimRewardSchema);
   if (!req.ok) return req.response;
   const uid = c.get('uid');
@@ -82,7 +85,7 @@ rewardsRouter.post('/rewards/claim', firebaseAuth, async (c) => {
   }
 });
 
-rewardsRouter.post('/rewards/cancel', firebaseAuth, async (c) => {
+rewardsRouter.post('/rewards/cancel', firebaseAuth, rateLimit('rewards-cancel'), async (c) => {
   const req = await readRequest(c, cancelRewardSchema);
   if (!req.ok) return req.response;
 

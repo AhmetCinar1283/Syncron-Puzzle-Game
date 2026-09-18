@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
 import { GameIcon } from '@/components/icons';
 import { AdminGuard } from '@/components/common/AdminGuard';
 import { useAdminUserProfile } from '../hooks/useAdminUserProfile';
@@ -11,12 +12,16 @@ import { ActivityStatsPanel } from './ActivityStatsPanel';
 import { PlayedLevelsPanel } from './PlayedLevelsPanel';
 import { BanManagementSection } from './BanManagementSection';
 import { AuditLogTimeline } from './AuditLogTimeline';
+import { SecurityEventsPanel } from './SecurityEventsPanel';
+import { useSecurityEvents } from '../hooks/useSecurityEvents';
 import { IssueBanModal } from './IssueBanModal';
 
 export function AdminUserProfilePage() {
   const router = useRouter();
   const { lang } = useLanguage();
   const isTr = lang === 'tr';
+  // Güvenlik olayları YALNIZCA admin rolüne gösterilir (moderatör kişisel veri görmez).
+  const { role } = useAuth();
 
   const {
     uid,
@@ -64,6 +69,10 @@ export function AdminUserProfilePage() {
     setBanError,
     handleIssueBan,
   } = useAdminUserProfile(isTr);
+
+  // Güvenlik olayları ayrı bir hook'tan gelir: moderatör için istek hiç atılmaz,
+  // 403 çalışma alanının geri kalanını etkilemez (bkz. useSecurityEvents).
+  const securityEvents = useSecurityEvents(uid, role);
 
   // Render loading placeholder if no uid present in the query parameter yet
   if (!uid) {
@@ -234,6 +243,13 @@ export function AdminUserProfilePage() {
                   setShowBanModal(true);
                 }}
                 onLiftBan={handleLiftBan}
+              />
+
+              <SecurityEventsPanel
+                events={securityEvents.events}
+                loading={securityEvents.loading}
+                forbidden={securityEvents.forbidden}
+                isTr={isTr}
               />
 
               <AuditLogTimeline

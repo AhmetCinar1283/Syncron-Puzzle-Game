@@ -22,6 +22,10 @@
     "electron:dist:linux": "cross-env NEXT_PUBLIC_PLATFORM=electron next build && electron-builder --linux",
     "build:crazygames": "cross-env NEXT_PUBLIC_PLATFORM=crazygames next build && node scripts/portal/package-portal.mjs crazygames",
     "build:gd": "cross-env NEXT_PUBLIC_PLATFORM=gamedistribution next build && node scripts/portal/package-portal.mjs gamedistribution",
+    "verify:release": "node scripts/release/verify-release-config.mjs",
+    "release:crazygames": "node scripts/release/verify-release-config.mjs crazygames && npm run build:crazygames",
+    "release:gd": "node scripts/release/verify-release-config.mjs gamedistribution && npm run build:gd",
+    "release:android": "node scripts/release/verify-release-config.mjs android && npm run build:mobile",
     "build:portal": "node scripts/portal/build-portal.mjs",
     "serve:portal": "node scripts/portal/serve-portal.mjs",
     "generate:assets": "node scripts/portal/generate-assets.mjs",
@@ -30,6 +34,7 @@
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
     "@capacitor/app": "^8.1.0",
+    "@capacitor/share": "^8.0.1",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@reduxjs/toolkit": "^2.11.2",
     "firebase": "^12.11.0",

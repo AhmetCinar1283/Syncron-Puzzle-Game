@@ -14,11 +14,16 @@
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AuditCategory = 'game' | 'support' | 'account' | 'payment' | 'admin' | 'reward';
+/**
+ * `security`: kötüye kullanım sinyalleri (yayin-hazirlik/03 §3.5). Yalnızca
+ * `services/securitySignals.ts` yazar; otomatik yasaklama tetiklemez.
+ */
+export type AuditCategory = 'game' | 'support' | 'account' | 'payment' | 'admin' | 'reward' | 'security';
 
 export type AuditAction =
   // Game actions
   | 'level.complete'
+  | 'daily.complete'
   // Support actions
   | 'ticket.create'
   | 'ticket.message'
@@ -34,7 +39,21 @@ export type AuditAction =
   | 'donation.badge_awarded'
   // Admin actions (future)
   | 'admin.role_change'
-  | 'admin.ticket_status_change';
+  | 'admin.ticket_status_change'
+  // Veri dayanıklılığı (yayin-hazirlik/02)
+  | 'admin.level_delete'
+  | 'admin.level_restore'
+  | 'admin.recovery_recompute'
+  // Günlük bulmaca takvimi (06)
+  | 'admin.daily_puzzle_save'
+  | 'admin.daily_puzzle_flags'
+  | 'admin.daily_puzzle_delete'
+  | 'admin.daily_schedule_change'
+  | 'admin.daily_settings_change'
+  // Kötüye kullanım sinyalleri (yayin-hazirlik/03)
+  | 'security.rate_limit_exceeded'
+  | 'security.verify_moves_failed'
+  | 'security.auth_failure_spike';
 
 export interface AuditLogRow {
   id: string;

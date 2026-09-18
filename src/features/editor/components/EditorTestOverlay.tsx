@@ -1,6 +1,6 @@
 'use client';
 
-import type { ComponentProps } from 'react';
+import { useRef, type ComponentProps } from 'react';
 import { PlayScreen } from '@/game-engine/components/PlayScreen';
 import { convertToGame2State } from '@/game-engine/logic/converter';
 import type { LevelData } from '@/game-engine/level-format';
@@ -12,15 +12,21 @@ interface EditorTestOverlayProps {
   testLevel: LevelData;
   setTestLevel: (l: LevelData | null) => void;
   solutionSteps: string[] | null;
+  /** Level test modunda kazanıldığında hamle kodlarıyla çağrılır (günlük bulmaca admin çözümü). */
+  onSolved?: (level: LevelData, moves: string[]) => void;
 }
+
+const MOVE_CODE = { up: 'u', down: 'd', left: 'l', right: 'r', switch_room: 's' } as const;
 
 /**
  * Full-screen test-play of the level being edited. The editor's LevelData is
  * fed to the game2 converter exactly as before (it is structurally a
  * StoredLevel; the casts replace the former `as any`).
  */
-export default function EditorTestOverlay({ testLevel, setTestLevel, solutionSteps }: EditorTestOverlayProps) {
+export default function EditorTestOverlay({ testLevel, setTestLevel, solutionSteps, onSolved }: EditorTestOverlayProps) {
   const asStored = testLevel as unknown as ConverterInput;
+  // /play ile aynı hamle geçmişi kuralı: geri alma son yön hamlesini ve ardındaki oda değiştirmeleri düşer.
+  const movesRef = useRef<string[]>([]);
   return (
     <div
       className="ad-banner-inset"
@@ -45,10 +51,16 @@ export default function EditorTestOverlay({ testLevel, setTestLevel, solutionSte
         initialControlledRooms={convertToGame2State(asStored).initialControlledRooms}
         levelEdges={testLevel.edges as unknown as PlayLevelEdges}
         trailCollision={!!testLevel.trailCollision}
-        onMoveExecuted={() => {}}
+        onMoveExecuted={(direction) => { movesRef.current.push(MOVE_CODE[direction]); }}
+        onUndoExecuted={() => {
+          const history = movesRef.current;
+          while (history.length > 0 && history[history.length - 1] === 's') history.pop();
+          history.pop();
+        }}
         isTestMode={true}
         solutionSteps={solutionSteps}
         onButtonPressed={(btn) => {
+          if (btn === 'next_level') onSolved?.(testLevel, [...movesRef.current]);
           if (btn === 'menu' || btn === 'next_level') {
             setTestLevel(null);
           } else if (btn === 'restart') {

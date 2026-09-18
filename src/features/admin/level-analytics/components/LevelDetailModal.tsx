@@ -225,6 +225,11 @@ export function LevelDetailModal({
                   color="#a855f7"
                   value={`${latestStats?.total_hints ?? 0}`}
                 />
+                <SummaryMetricCard
+                  label="Atlayan Oyuncu"
+                  color="#a78bfa"
+                  value={`${latestStats?.total_skips ?? 0}`}
+                />
               </div>
 
               <VersionComparisonTable versionStats={versionStats} currentVersion={selectedLevel.version} />

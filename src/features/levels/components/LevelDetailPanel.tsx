@@ -3,6 +3,7 @@
 import type { StoredLevel, StoredPlayedLevel } from '@/services/db';
 import { DIFFICULTY_COLORS } from '../lib/mapThemes';
 import { GameIcon } from '@/components/icons';
+import { SkippedBadge } from './SkippedBadge';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -11,6 +12,8 @@ export interface LevelDetailPanelProps {
   index: number;
   isLocked: boolean;
   playedData?: StoredPlayedLevel;
+  /** Ödüllü reklamla atlandı (05); çözülmüşse `playedData` önceliklidir. */
+  isSkipped?: boolean;
   accentColor: string;
   isGamepadConnected: boolean;
   onPlay: () => void;
@@ -33,6 +36,7 @@ export function LevelDetailPanel({
   index,
   isLocked,
   playedData,
+  isSkipped = false,
   accentColor,
   isGamepadConnected,
   onPlay,
@@ -60,6 +64,7 @@ export function LevelDetailPanel({
               {t(`difficulty.${level.difficulty}`)}
             </span>
           )}
+          {!playedData && isSkipped && <SkippedBadge />}
           {playedData && (
             <span className="text-[9px] text-slate-500">
               {playedData.moveCount} Hamle · {formatTime(playedData.timeSpent)}

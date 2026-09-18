@@ -15,6 +15,8 @@ import { getAdminAccessToken, isValidServiceAccount } from '../services/serviceA
 import { fsGet, fromDoc } from '../services/firestore';
 import { upsertUserProfile } from '../services/profiles';
 import { checkActiveBan } from '../services/banService';
+import { rateLimit } from '../middleware/rateLimiter';
+import { trackSecurityEvent } from '../middleware/securityTrail';
 
 export const friendsRouter = new Hono<AppContext>();
 
@@ -25,13 +27,14 @@ function getCanonicalKeys(uid1: string, uid2: string) {
 
 // ─── POST /friends/request ───────────────────────────────────────────────────
 // Başka bir oyuncuya arkadaşlık isteği gönderir (tag veya UID ile).
-friendsRouter.post('/friends/request', firebaseAuth, async (c) => {
+friendsRouter.post('/friends/request', firebaseAuth, rateLimit('friends-request'), async (c) => {
   const uid = c.get('uid');
   const db = c.env.AUDIT_DB;
 
   // Check for active social ban
   const isSocialBanned = await checkActiveBan(db, uid, 'social');
   if (isSocialBanned) {
+    trackSecurityEvent(c, 'ban.blocked', { banType: 'social' });
     return c.json({ success: false, error: 'Social features are restricted' }, 403);
   }
 

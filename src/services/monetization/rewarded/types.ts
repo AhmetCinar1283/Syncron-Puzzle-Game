@@ -44,6 +44,10 @@ export type RewardedDeclineReason =
   | 'unavailable'
   /** Sunucu tavanı: çok sık istek. */
   | 'rate-limited'
+  /** Aksiyonun kendi sınırı doldu (ör. açık level atlama sayısı). */
+  | 'limit-reached'
+  /** Aksiyon bu hedef için kurala takıldı (ör. bölüm sonu level'ı atlanamaz). */
+  | 'not-allowed'
   /** Sunucuya ulaşılamadı ya da ödül teslim edilemedi. */
   | 'claim-failed'
   | AdUnavailableReason;

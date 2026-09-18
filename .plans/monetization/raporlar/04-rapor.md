@@ -1,5 +1,14 @@
 # 04 — Ödüllü İpucu — Rapor
 
+> **DURUM (2026-09-13): İPUCU KAPALI — kod yerinde duruyor.**
+> Sunucu ipucu motoru Workers Free'nin 10 ms CPU sınırına sığmıyor (ölçüm: 8x8 ≈ 0,1 sn, 12x12 ≈ 2,4 sn). Ürün sahibinin kararı: `/play`'de ipucu yok, kod silinmez, açılabilir durumda bekler.
+> - İstemci: `src/services/monetization/rewarded/rewardedActionsConfig.ts` → `hint` her durumda `disabled` (buton, H kısayolu, kart çizilmez).
+> - Worker: `syncron-worker/src/services/hint/hintAction.ts` → `rule.enabled: false`. Değiştirilmiş bir istemciden gelen `/rewards/prepare` ve `/rewards/claim` hesaplama yapmadan 403 `action-disabled` döner, istek `reward.action_disabled` olarak loglanır; kapatılmadan önce oluşmuş kayıtlar da teslim edilmez.
+> - Ödül altyapısı (prepare/claim/cancel, kota, log) aksiyondan bağımsız çalışmaya devam eder — 05 (level atlama) kendi aksiyonunu `enabled: true` ile ekler.
+> - `/complete-level` ipucu skor kuralı yerinde; teslim edilmiş ipucu olmadığı için etkisizdir.
+> - Editör test modundaki "Adım İleri" (istemci çözücüsü) değişmedi.
+> - Aşağıdaki metin ipucunun açık olduğu tasarımı anlatır.
+
 ## Kararlar (ürün sahibi — Ahmet, 2026-09-13)
 
 - **Skor kuralı:** (a) — ipucu kullanılan çözüm en fazla **2★**, global en iyi çözüm listesine / New Best·Best·Good rozetlerine ve kişisel en iyi hamle sayısına **sayılmaz**. XP normal verilir.

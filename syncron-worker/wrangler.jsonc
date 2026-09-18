@@ -29,12 +29,19 @@
 	// "5 0 * * MON" → runBadgeDistribution() — every Monday   00:05 UTC (weekly badges)
 	// "5 0 1 * *"   → runBadgeDistribution() — 1st of month   00:05 UTC (monthly badges)
 	// "0 4 * * *"   → runAnonymousCleanup()  — every day      04:00 UTC (D1 anonymous cleanup)
+	// "0 2 * * SAT" → runDataExport()        — every Saturday 02:00 UTC (kaynak tablolar → R2 NDJSON)
+	//                 Kopyalama; D1'den hiçbir şey silinmez. bkz. docs/release/veri-kurtarma.md
+	// "45 3 * * *"  → runSecurityEventRetention() — every day 03:45 UTC
+	//                 30 günden eski `security_events` satırlarını SİLER. Arşivlenmez,
+	//                 R2'ye gitmez (kişisel veri). bkz. .plans/yayin-hazirlik/05-loglama-ve-adli-iz.md
 	"triggers": {
 		"crons": [
 			"0 3 * * SUN",
 			"5 0 * * MON",
 			"5 0 1 * *",
-			"0 4 * * *"
+			"0 4 * * *",
+			"0 2 * * SAT",
+			"45 3 * * *"
 		]
 	},
 	// ─── D1 Database ─────────────────────────────────────────────────────────
@@ -58,4 +65,5 @@
 	//   wrangler secret put LOG_SECRET
 	//   wrangler secret put LS_WEBHOOK_SECRET
 	//   wrangler secret put LS_API_KEY
+	//   wrangler secret put SECURITY_IP_SALT   — security_events.ip karma tuzu (05)
 }

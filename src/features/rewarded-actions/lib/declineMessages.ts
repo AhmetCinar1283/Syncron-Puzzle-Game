@@ -11,6 +11,8 @@ const MESSAGE_KEYS: Record<RewardedDeclineReason, string | null> = {
   'claim-failed': 'rewarded.decline_claim_failed',
   unavailable: 'rewarded.decline_unavailable',
   'rate-limited': 'rewarded.decline_rate_limited',
+  'limit-reached': 'rewarded.decline_limit',
+  'not-allowed': 'rewarded.decline_not_allowed',
   'no-fill': 'rewarded.decline_no_fill',
   closed: 'rewarded.decline_closed',
   error: 'rewarded.decline_error',

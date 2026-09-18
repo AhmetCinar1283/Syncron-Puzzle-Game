@@ -20,9 +20,10 @@ export interface WorkerResult {
      * `success:false` iken UI'nin hangi mesajı göstereceğini ayırt eder.
      * `offline`: sunucuya hiç ulaşılamadı (skor asla yerelde hesaplanmaz —
      * bkz. 02-portal-buildleri.md §5). `error`: sunucuya ulaşıldı ama
-     * doğrulama/başka bir sebeple reddetti.
+     * doğrulama/başka bir sebeple reddetti. `rate_limited`: sunucu hız limiti
+     * (429) — geçicidir, oyuncu birazdan tekrar deneyebilir (03 §3.4).
      */
-    reason?: 'offline' | 'error';
+    reason?: 'offline' | 'error' | 'rate_limited';
 }
 
 /**

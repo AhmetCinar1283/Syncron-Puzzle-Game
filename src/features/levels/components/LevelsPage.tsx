@@ -29,6 +29,7 @@ function LevelsPageContent() {
     selectedPartId,
     setSelectedPartId,
     playedMap,
+    skippedSet,
     activeTab,
     setActiveTab,
     viewMode,
@@ -114,6 +115,7 @@ function LevelsPageContent() {
             hasPortalStart={hasPortalStart}
             isSessionCompleted={isSessionCompleted}
             playedMap={playedMap}
+            skippedSet={skippedSet}
             lockedSet={lockedSet}
             selectedIndex={selectedIndex}
             defaultActiveIndex={defaultActiveIdx}
@@ -151,6 +153,7 @@ function LevelsPageContent() {
                     isAdmin={isModerator}
                     isMobile={isMobile}
                     playedMap={playedMap}
+                    skippedSet={skippedSet}
                     lockedSet={lockedSet}
                     selectedIndex={selectedIndex}
                     onHover={setSelectedIndex}
@@ -166,6 +169,7 @@ function LevelsPageContent() {
                     isPreset={false}
                     isMobile={isMobile}
                     playedMap={playedMap}
+                    skippedSet={skippedSet}
                     lockedSet={lockedSet}
                     selectedIndex={selectedIndex}
                     onHover={setSelectedIndex}
@@ -198,6 +202,7 @@ function LevelsPageContent() {
             index={selectedIndex ?? 0}
             isLocked={selectedLevel.firestoreId ? lockedSet.has(selectedLevel.firestoreId) : false}
             playedData={selectedLevel.firestoreId ? playedMap.get(selectedLevel.firestoreId) : undefined}
+            isSkipped={!!selectedLevel.firestoreId && skippedSet.has(selectedLevel.firestoreId)}
             accentColor={theme.activeColor}
             isGamepadConnected={isGamepadConnected}
             onPlay={() => playLevel(selectedLevel, true)}

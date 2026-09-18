@@ -7,6 +7,11 @@
 import type { Env } from '../../types';
 
 export interface RewardActionRule {
+  /**
+   * `false` → aksiyon kapalı: prepare/claim hiçbir iş yapmadan reddedilir (istek
+   * loglanır). Kod yerinde kalır, açmak için yalnızca bu bayrak değişir.
+   */
+  enabled: boolean;
   /** Aksiyon bir level'a bağlı mı (`levelId` zorunlu). */
   requiresLevel: boolean;
   /** Level başına ücretsiz hak (reklamı olmayan platformlar). 0 = ücretsiz yol yok. */
@@ -31,7 +36,17 @@ export type RewardResolveResult =
       /** Ağır hesaplama; yalnızca yeniden kullanılabilir kayıt yoksa ve tavan aşılmadıysa çağrılır. */
       compute: () => RewardComputeResult;
     }
-  | { ok: false; status: 404 | 500; reason: string };
+  /** 403/409: aksiyonun kuralı bu level/kullanıcı için izin vermiyor (ör. atlama sınırı). */
+  | { ok: false; status: 403 | 404 | 409 | 500; reason: string };
+
+/** Teslim edilen kaydın, teslim kancasının ihtiyaç duyduğu alanları. */
+export interface DeliveredGrant {
+  id: string;
+  uid: string;
+  levelId: string | null;
+  levelVersion: number | null;
+  result: unknown;
+}
 
 export interface RewardActionHandler<TInput = unknown> {
   rule: RewardActionRule;
@@ -40,5 +55,15 @@ export interface RewardActionHandler<TInput = unknown> {
   /** Aynı girdiyi tanıyan kısa anahtar (yeniden kullanım + kanıt). */
   inputKey(input: TInput): string;
   /** Gerekli kaynağı (ör. level) yükler ve hesaplamayı hazırlar. */
-  resolve(env: Env, params: { levelId: string | null; input: TInput }): Promise<RewardResolveResult>;
+  resolve(
+    env: Env,
+    params: { uid: string; levelId: string | null; input: TInput },
+  ): Promise<RewardResolveResult>;
+  /**
+   * Ödül teslim edildiğinde sunucuda kalıcı yan etki (ör. level atlama kaydı).
+   * İDEMPOTENT olmalıdır: yeniden teslimde ve teslim edilmiş kaydın yeniden
+   * kullanımında da çağrılır — ilk çağrı başarısız olduysa böylece onarılır.
+   * Hata fırlatırsa istek 500 döner ve istemci claim'i tekrar dener.
+   */
+  onDelivered?(env: Env, grant: DeliveredGrant): Promise<void>;
 }

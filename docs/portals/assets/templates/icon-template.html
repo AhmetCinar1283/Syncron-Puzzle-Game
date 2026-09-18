@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Syncron Master Icon (Retro Arcade 8-Bit)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1024px;
+      height: 1024px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", monospace, sans-serif;
+      background: #050505;
+      user-select: none;
+    }
+
+    .icon-container {
+      width: 1024px;
+      height: 1024px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 50%, #111116 0%, #070709 60%, #030304 100%);
+    }
+
+    /* Subtle Retro Arcade Pixel Grid */
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(250, 204, 21, 0.04) 2px, transparent 2px),
+        linear-gradient(to bottom, rgba(250, 204, 21, 0.04) 2px, transparent 2px);
+      background-size: 48px 48px;
+      background-position: center center;
+    }
+
+    /* Retro CRT Scanline Texture */
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0),
+        rgba(255, 255, 255, 0) 50%,
+        rgba(0, 0, 0, 0.35) 50%,
+        rgba(0, 0, 0, 0.35)
+      );
+      background-size: 100% 6px;
+      pointer-events: none;
+      z-index: 7;
+      opacity: 0.6;
+    }
+
+    /* Ambient CRT Corner Glow */
+    .ambient-glow-emerald {
+      position: absolute;
+      top: 15%;
+      left: 15%;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 255, 136, 0.12) 0%, transparent 70%);
+      filter: blur(40px);
+      pointer-events: none;
+    }
+
+    .ambient-glow-sky {
+      position: absolute;
+      bottom: 15%;
+      right: 15%;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 196, 255, 0.12) 0%, transparent 70%);
+      filter: blur(40px);
+      pointer-events: none;
+    }
+
+    /* Connecting Circuit / Laser Lines */
+    .circuit-svg {
+      position: absolute;
+      inset: 0;
+      width: 1024px;
+      height: 1024px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* 2x2 Main Board Layout - Centered in Safe Zone (~520px) */
+    .grid-board {
+      display: grid;
+      grid-template-columns: 240px 240px;
+      grid-template-rows: 240px 240px;
+      gap: 36px;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* 8-Bit Arcade Cell Container */
+    .cell {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      background: #0d0f17;
+      border: 5px solid #1f2438;
+      box-shadow: 
+        inset 4px 4px 0 #18181b, 
+        inset -4px -4px 0 #050505,
+        0 12px 28px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 8-Bit Arcade Player 1 (Emerald Chunky Robot Sprite) */
+    .arcade-player-1 {
+      width: 180px;
+      height: 180px;
+      background-color: #00ff88;
+      box-shadow: 
+        0 0 0 8px #000000, 
+        inset 14px 14px 0 rgba(255, 255, 255, 0.9), 
+        inset -14px -14px 0 rgba(0, 0, 0, 0.85),
+        0 0 45px rgba(0, 255, 136, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 4;
+    }
+
+    /* 8-Bit Eyes */
+    .arcade-eyes {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 6px;
+    }
+
+    .arcade-eye {
+      width: 18px;
+      height: 18px;
+      background: #000000;
+      box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    /* 8-Bit Arrow */
+    .arcade-arrow {
+      font-size: 58px;
+      line-height: 1;
+      color: #000000;
+      font-weight: 900;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* 8-Bit Arcade Player 2 (Sky Blue Chunky Robot Sprite) */
+    .arcade-player-2 {
+      width: 180px;
+      height: 180px;
+      background-color: #00c4ff;
+      box-shadow: 
+        0 0 0 8px #000000, 
+        inset 14px 14px 0 rgba(255, 255, 255, 0.9), 
+        inset -14px -14px 0 rgba(0, 0, 0, 0.85),
+        0 0 45px rgba(0, 196, 255, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 4;
+    }
+
+    /* 8-Bit Arcade Target 1 (Emerald Green) */
+    .arcade-target-1 {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      background: rgba(0, 255, 136, 0.08);
+      border: 6px solid #00ff88;
+      box-shadow: 
+        inset 0 0 35px rgba(0, 255, 136, 0.25), 
+        0 0 25px rgba(0, 255, 136, 0.3),
+        inset 3px 3px 0 rgba(0, 255, 136, 0.5),
+        inset -3px -3px 0 #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .target-ring-1 {
+      position: absolute;
+      inset: 20px;
+      border: 4px dashed rgba(0, 255, 136, 0.6);
+      pointer-events: none;
+    }
+
+    .target-symbol-1 {
+      font-size: 110px;
+      line-height: 1;
+      color: #00ff88;
+      text-shadow: 
+        0 0 20px rgba(0, 255, 136, 0.9), 
+        0 0 40px rgba(0, 255, 136, 0.5);
+      font-weight: 900;
+      z-index: 2;
+    }
+
+    /* 8-Bit Arcade Target 2 (Sky Blue) */
+    .arcade-target-2 {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      background: rgba(0, 196, 255, 0.08);
+      border: 6px solid #00c4ff;
+      box-shadow: 
+        inset 0 0 35px rgba(0, 196, 255, 0.25), 
+        0 0 25px rgba(0, 196, 255, 0.3),
+        inset 3px 3px 0 rgba(0, 196, 255, 0.5),
+        inset -3px -3px 0 #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .target-ring-2 {
+      position: absolute;
+      inset: 20px;
+      border: 4px dashed rgba(0, 196, 255, 0.6);
+      pointer-events: none;
+    }
+
+    .target-symbol-2 {
+      font-size: 110px;
+      line-height: 1;
+      color: #00c4ff;
+      text-shadow: 
+        0 0 20px rgba(0, 196, 255, 0.9), 
+        0 0 40px rgba(0, 196, 255, 0.5);
+      font-weight: 900;
+      z-index: 2;
+    }
+
+    /* Center 8-Bit Sync Core Badge */
+    .center-sync-badge {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90px;
+      height: 90px;
+      background: #09090b;
+      border: 5px solid #facc15;
+      box-shadow: 
+        0 0 0 4px #000000,
+        0 0 30px rgba(250, 204, 21, 0.75), 
+        inset 4px 4px 0 rgba(255, 255, 255, 0.6),
+        inset -4px -4px 0 #000000;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .center-sync-icon {
+      width: 46px;
+      height: 46px;
+    }
+  </style>
+</head>
+<body>
+  <div class="icon-container">
+    <div class="bg-grid"></div>
+    <div class="scanlines"></div>
+    <div class="ambient-glow-emerald"></div>
+    <div class="ambient-glow-sky"></div>
+
+    <!-- Connecting Stepped Laser Circuit Lines -->
+    <svg class="circuit-svg" viewBox="0 0 1024 1024" fill="none">
+      <defs>
+        <filter id="laser-glow-green" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="laser-glow-blue" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- P1 to T1 laser path (left vertical) -->
+      <!-- Center of P1: (393, 393), Center of T1: (393, 631) -->
+      <line x1="393" y1="393" x2="393" y2="631" stroke="#00ff88" stroke-width="10" stroke-dasharray="16 12" filter="url(#laser-glow-green)" />
+      <!-- P2 to T2 laser path (right vertical) -->
+      <!-- Center of T2: (631, 393), Center of P2: (631, 631) -->
+      <line x1="631" y1="631" x2="631" y2="393" stroke="#00c4ff" stroke-width="10" stroke-dasharray="16 12" filter="url(#laser-glow-blue)" />
+      <!-- Cross Sync Diagonals -->
+      <line x1="393" y1="393" x2="631" y2="631" stroke="rgba(250, 204, 21, 0.4)" stroke-width="4" stroke-dasharray="8 8" />
+      <line x1="393" y1="631" x2="631" y2="393" stroke="rgba(250, 204, 21, 0.4)" stroke-width="4" stroke-dasharray="8 8" />
+    </svg>
+
+    <!-- Main 2x2 Board Layout -->
+    <div class="grid-board">
+      
+      <!-- Top Left: Player 1 (Emerald Green 8-Bit Robot) -->
+      <div class="cell">
+        <div class="arcade-player-1">
+          <div class="arcade-eyes">
+            <div class="arcade-eye"></div>
+            <div class="arcade-eye"></div>
+          </div>
+          <div class="arcade-arrow">▲</div>
+        </div>
+      </div>
+
+      <!-- Top Right: Target 2 (Sky Blue 8-Bit Target) -->
+      <div class="arcade-target-2">
+        <div class="target-ring-2"></div>
+        <span class="target-symbol-2">◎</span>
+      </div>
+
+      <!-- Bottom Left: Target 1 (Emerald Green 8-Bit Target) -->
+      <div class="arcade-target-1">
+        <div class="target-ring-1"></div>
+        <span class="target-symbol-1">◎</span>
+      </div>
+
+      <!-- Bottom Right: Player 2 (Sky Blue 8-Bit Robot) -->
+      <div class="cell">
+        <div class="arcade-player-2">
+          <div class="arcade-eyes">
+            <div class="arcade-eye"></div>
+            <div class="arcade-eye"></div>
+          </div>
+          <div class="arcade-arrow">▲</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Central 8-Bit Sync Core Indicator -->
+    <div class="center-sync-badge">
+      <svg class="center-sync-icon" viewBox="0 0 24 24" fill="none">
+        <path d="M7 16V4m0 0L3 8m4-4l4 4m6-4v12m0 0l4-4m-4 4l-4-4" stroke="#facc15" stroke-width="2.8" stroke-linecap="square" stroke-linejoin="miter" />
+      </svg>
+    </div>
+
+  </div>
+</body>
+</html>

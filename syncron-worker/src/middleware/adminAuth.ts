@@ -18,6 +18,7 @@ import { createMiddleware } from 'hono/factory';
 import { verifyIdToken } from '../services/auth';
 import { fsGet, fromDoc } from '../services/firestore';
 import { getAdminAccessToken } from '../services/serviceAccount';
+import { trackSecurityEvent } from './securityTrail';
 import type { AppContext } from '../types';
 
 // İsteğin başlığındaki (Authorization) Firebase ID Token'ı ve kullanıcının admin/moderator rolünü doğrular.
@@ -37,6 +38,9 @@ export const adminAuth = createMiddleware<AppContext>(async (c, next) => {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn('[adminAuth] Token verification failed:', msg);
+    // 05 §3.2 — admin yüzeyine geçersiz token ile gelen istek, oyuncu yüzeyindekinden
+    // daha ciddidir; `surface: 'admin'` ile ayrışsın diye ayrıca işaretlenir.
+    trackSecurityEvent(c, 'auth.failed', { reason: msg.slice(0, 120), surface: 'admin' }, null);
     return c.json({ success: false, error: 'Invalid or expired token' }, 401);
   }
 
@@ -46,6 +50,7 @@ export const adminAuth = createMiddleware<AppContext>(async (c, next) => {
     const adminToken = await getAdminAccessToken(c.env.GOOGLE_SERVICE_ACCOUNT);
     const userDoc = await fsGet(c.env.FIREBASE_PROJECT_ID, `users/${uid}`, adminToken);
     if (!userDoc) {
+      trackSecurityEvent(c, 'auth.forbidden', { reason: 'user-not-found' }, uid);
       return c.json({ success: false, error: 'User not found' }, 403);
     }
     const userData = fromDoc(userDoc);
@@ -57,6 +62,9 @@ export const adminAuth = createMiddleware<AppContext>(async (c, next) => {
 
   // 4. Enforce admin/moderator access
   if (role !== 'admin' && role !== 'moderator') {
+    // Kimliği GERÇEK ama yetkisi olmayan bir hesabın admin yüzeyine dokunması:
+    // yetki yükseltme denemesinin en net sinyali (katalogda `critical`).
+    trackSecurityEvent(c, 'auth.forbidden', { reason: 'insufficient-role', role }, uid);
     return c.json({ success: false, error: 'Insufficient permissions' }, 403);
   }
 

@@ -15,10 +15,11 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   typescript: {
-    // !! DİKKAT !!
-    // Bu seçenek, proje build edilirken TypeScript hatalarını görmezden gelmenizi sağlar.
-    // Projenizde tip hataları olsa bile build işlemi başarılı olur.
-    ignoreBuildErrors: true,
+    // Tip hataları build'i DURDURUR. Daha önce `true` idi; `npx tsc --noEmit`
+    // zaten temiz olduğu için bir şey gizlemiyordu, ama bir regresyonun sessizce
+    // yayına çıkmasına açık kapı bırakıyordu (bkz. 04-yayin-kimlik-dogrulama.md §3.2).
+    // Bu değeri geri açmak, tip denetimini kapatmak anlamına gelir — açma, hatayı düzelt.
+    ignoreBuildErrors: false,
   },
 };
 

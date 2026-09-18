@@ -11,15 +11,17 @@
  *
  * Security layers:
  *   1. hmacAuth middleware — HMAC-SHA256 signature + timestamp replay protection
- *   2. rateLimiter        — 100/min global + 20/min per-UID (loop detection)
+ *   2. rateLimit          — paylaşılan middleware; eşikler policy.ts'te
+ *                           ('internalLog' kademesi: 100/dk global + 20/dk uid)
  *   3. Zod validation     — strict schema for every incoming payload
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../types';
 import { hmacAuth } from '../middleware/hmacAuth';
-import { checkInternalLogRateLimit } from '../middleware/rateLimiter';
+import { rateLimit } from '../middleware/rateLimiter';
 import { writeAuditLog } from '../services/auditLog';
 import type { AuditCategory, AuditAction } from '../services/auditLog';
 import { getAdminAccessToken, isValidServiceAccount } from '../services/serviceAccount';
@@ -42,7 +44,20 @@ const internalLogSchema = z.object({
 export const internalLogRouter = new Hono<AppContext>();
 
 // Firebase Functions'tan gelen imzalı log verilerini doğrular, hız limitini kontrol eder ve D1 veritabanına kaydeder.
-internalLogRouter.post('/internal/log', hmacAuth, async (c) => {
+/**
+ * Kimlik bu uç noktada bağlamda değil GÖVDEDEDİR (çağıran Firebase Functions'tır,
+ * kayıt ettiği uid başkasınındır). Bu yüzden `identify` geçersiz kılınır.
+ * Gövde henüz Zod'dan geçmemiştir; bu yüzden tip güvenli ve savunmacı okunur.
+ * Değer eksik/bozuksa null döner → yalnızca global kural işler (bkz. rateLimitService.ts).
+ */
+function internalLogIdentity(c: Context<AppContext>): string | null {
+  const body = c.get('parsedBody');
+  if (typeof body !== 'object' || body === null) return null;
+  const uid = (body as { uid?: unknown }).uid;
+  return typeof uid === 'string' && uid.length > 0 ? uid : null;
+}
+
+internalLogRouter.post('/internal/log', hmacAuth, rateLimit('internal-log', { identify: internalLogIdentity }), async (c) => {
   // Body was already parsed and stored by hmacAuth middleware
   const rawBody = c.get('parsedBody');
 
@@ -56,14 +71,7 @@ internalLogRouter.post('/internal/log', hmacAuth, async (c) => {
 
   const { uid, action, category, metadata } = validation.data;
 
-  // 2. Rate limiting (loop detection)
-  const rateLimitError = checkInternalLogRateLimit(uid);
-  if (rateLimitError) {
-    console.error('[InternalLog] Rate limit exceeded:', rateLimitError);
-    return c.json({ success: false, error: 'Rate limit exceeded' }, 429);
-  }
-
-  // 3. Write to D1 (fire-and-forget pattern via waitUntil not needed here
+  // 2. Write to D1 (fire-and-forget pattern via waitUntil not needed here
   //    because this endpoint IS the async side — the caller already used
   //    fire-and-forget from Firebase Functions)
   try {
@@ -79,7 +87,7 @@ internalLogRouter.post('/internal/log', hmacAuth, async (c) => {
     return c.json({ success: false, error: 'Failed to write log' }, 500);
   }
 
-  // 4. Background Sync: If this is a profile creation/update/tag-change log, sync cache from Firestore
+  // 3. Background Sync: If this is a profile creation/update/tag-change log, sync cache from Firestore
   if (
     category === 'account' &&
     (action === 'account.create' || action === 'account.upgrade' || action === 'account.tag_change') &&

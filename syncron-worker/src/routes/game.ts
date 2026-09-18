@@ -7,6 +7,9 @@ import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { completeLevelSchema, telemetrySchema, feedbackSchema } from '../schemas/game';
 import { firebaseAuth } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimiter';
+import { recordVerifyMovesFailure } from '../services/securitySignals';
+import { trackSecurityEvent } from '../middleware/securityTrail';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import { fsGet, fsCommit, parseLevelDoc, docPath, nowTimestamp, fromDoc } from '../services/firestore';
 import { verifyMoves } from '../services/gameVerify';
@@ -21,12 +24,13 @@ import type { CompleteLevelResponse } from '../types';
 export const gameRouter = new Hono<AppContext>();
 
 // Kullanıcının tamamladığı seviyenin çözümünü doğrular, yıldız ve skor hesaplayarak veritabanlarına kaydeder.
-gameRouter.post('/complete-level', firebaseAuth, async (c) => {
+gameRouter.post('/complete-level', firebaseAuth, rateLimit('complete-level'), async (c) => {
   const uid = c.get('uid');
 
   // Check for platform ban
   const isBanned = await checkActiveBan(c.env.AUDIT_DB, uid, 'platform');
   if (isBanned) {
+    trackSecurityEvent(c, 'ban.blocked', { banType: 'platform' });
     return c.json({ success: false, error: 'Account suspended' }, 403);
   }
 
@@ -37,8 +41,6 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
   } catch {
     return c.json({ success: false, error: 'Invalid JSON' }, 400);
   }
-
-  console.log('[CompleteLevel] Request body:', JSON.stringify(body));
 
   // 2. Validate with Zod
   const validation = completeLevelSchema.safeParse(body);
@@ -78,7 +80,18 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
   // 5. Replay moves & verify win
   const isValid = verifyMoves(levelData, moves);
   if (!isValid) {
-    console.log('[CompleteLevel] verifyMoves failed for level:', levelId, 'moves:', JSON.stringify(moves));
+    // §3.6: tam gövde DEĞİL, yalnızca teşhis için gereken kadarı loglanır.
+    console.warn('[CompleteLevel] verifyMoves failed', { uid, levelId, moveCount: moves.length });
+    // §3.5: tek tük başarısızlık normaldir; yalnızca eşik aşımında iz bırakılır.
+    c.executionCtx.waitUntil(
+      recordVerifyMovesFailure(c.env.AUDIT_DB, uid, levelId).catch((err) =>
+        console.error('[Security] verifyMoves signal write failed:', err),
+      ),
+    );
+    // 05 §3.2 — EŞİKSİZ adli iz. `recordVerifyMovesFailure` yalnızca eşik aşımında
+    // sinyal yazar (gürültü kontrolü); burada ise her reddedilen iddia kaynağıyla
+    // birlikte kaydedilir — tek bir hile denemesi de soruşturulabilir olmalıdır.
+    trackSecurityEvent(c, 'solution.invalid', { levelId, moveCount: moves.length, surface: 'level' });
     return c.json({ success: false, error: 'Invalid solution' }, 400);
   }
 
@@ -273,7 +286,7 @@ gameRouter.post('/complete-level', firebaseAuth, async (c) => {
 });
 
 // Telemetry submission endpoint
-gameRouter.post('/game/telemetry', firebaseAuth, async (c) => {
+gameRouter.post('/game/telemetry', firebaseAuth, rateLimit('game-telemetry'), async (c) => {
   const uid = c.get('uid');
 
   let body;
@@ -313,7 +326,7 @@ gameRouter.post('/game/telemetry', firebaseAuth, async (c) => {
 });
 
 // Feedback submission endpoint
-gameRouter.post('/game/feedback', firebaseAuth, async (c) => {
+gameRouter.post('/game/feedback', firebaseAuth, rateLimit('game-feedback'), async (c) => {
   const uid = c.get('uid');
 
   let body;

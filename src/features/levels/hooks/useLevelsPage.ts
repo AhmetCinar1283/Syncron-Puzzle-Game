@@ -9,6 +9,7 @@ import { useAppSelector } from '@/store/hooks';
 import { selectUser } from '@/store/userSlice';
 import type { LevelPart } from '@/services/firebase/adminTypes';
 import { getMapTheme } from '../lib/mapThemes';
+import { computeLockedSet, isProgressed } from '../lib/progression';
 import { useLevelsNavigation } from './useLevelsNavigation';
 import type { ChapterInfo } from '../components/ChapterDock';
 
@@ -34,6 +35,8 @@ export function useLevelsPage() {
   const [parts, setParts] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedPartId, setSelectedPartId] = useState<string>('');
   const [playedMap, setPlayedMap] = useState<Map<string, StoredPlayedLevel>>(new Map());
+  /** Ödüllü reklamla atlanan bölümler (05): kilidi açar, skor/yıldız vermez. */
+  const [skippedSet, setSkippedSet] = useState<Set<string>>(new Set());
   const [partsMap, setPartsMap] = useState<Map<string, LevelPart>>(new Map());
 
   const [activeTab, setActiveTab] = useState<'campaign' | 'custom'>('campaign');
@@ -70,13 +73,14 @@ export function useLevelsPage() {
 
   // ── Veri yükleme ────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
-    const { getOrderedLevels, getPresetLevels, getAllPlayedLevels } = await import('@/services/db');
+    const { getOrderedLevels, getPresetLevels, getAllPlayedLevels, getAllSkippedLevels } = await import('@/services/db');
     const [presetData, userData] = await Promise.all([getPresetLevels(), getOrderedLevels()]);
     setPresets(presetData as LevelEntry[]);
     setUserLevels(userData as LevelEntry[]);
 
-    const playedData = await getAllPlayedLevels();
+    const [playedData, skippedData] = await Promise.all([getAllPlayedLevels(), getAllSkippedLevels()]);
     setPlayedMap(new Map(playedData.map((p) => [p.levelId, p])));
+    setSkippedSet(new Set(skippedData.map((s) => s.levelId)));
 
     setLoading(false);
   }, []);
@@ -211,41 +215,30 @@ export function useLevelsPage() {
     [presets, selectedPartId],
   );
 
-  const lockedSet = useMemo((): Set<string> => {
-    if (isModerator) return new Set();
-    const locked = new Set<string>();
-    if (!selectedPartId) return locked;
-    const part = partsMap.get(selectedPartId);
-    if (!part) return locked;
+  const progressSets = useMemo(() => ({ played: playedMap, skipped: skippedSet }), [playedMap, skippedSet]);
 
-    const sorted = Object.values(part.order).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-    for (let i = 0; i < sorted.length; i++) {
-      const fid = typeof sorted[i] === 'string' ? (sorted[i] as unknown as string) : sorted[i].id;
-      if (i === 0) {
-        if (totalScore < (part.unlockRequirement ?? 0)) locked.add(fid);
-      } else {
-        const prevEntry = sorted[i - 1];
-        const prevFid = typeof prevEntry === 'string' ? (prevEntry as unknown as string) : prevEntry.id;
-        if (!playedMap.has(prevFid)) locked.add(fid);
-      }
-    }
-    return locked;
-  }, [selectedPartId, partsMap, playedMap, totalScore, isModerator]);
+  const lockedSet = useMemo((): Set<string> => {
+    if (isModerator || !selectedPartId) return new Set();
+    const part = partsMap.get(selectedPartId);
+    return part ? computeLockedSet(part, progressSets, totalScore) : new Set();
+  }, [selectedPartId, partsMap, progressSets, totalScore, isModerator]);
 
   const activePart = partsMap.get(selectedPartId);
   const currentPartIdx = parts.findIndex((p) => p.id === selectedPartId);
   const hasPortalStart = currentPartIdx > 0;
+  // Sonraki bölüme geçiş: tüm bölümler çözülmüş ya da atlanmış olmalı (bölüm sonu atlanamaz — sunucu kuralı).
   const isSessionCompleted =
-    filteredPresets.length > 0 && filteredPresets.every((lv) => lv.firestoreId && playedMap.has(lv.firestoreId));
+    filteredPresets.length > 0 &&
+    filteredPresets.every((lv) => lv.firestoreId && isProgressed(lv.firestoreId, progressSets));
 
   const defaultActiveIdx = useMemo(() => {
     const idx = filteredPresets.findIndex((lv) => {
-      const isCompleted = lv.firestoreId ? playedMap.has(lv.firestoreId) : false;
+      const progressed = lv.firestoreId ? isProgressed(lv.firestoreId, progressSets) : false;
       const isLocked = lv.firestoreId ? lockedSet.has(lv.firestoreId) : false;
-      return !isLocked && !isCompleted;
+      return !isLocked && !progressed;
     });
     return idx !== -1 ? idx : 0;
-  }, [filteredPresets, playedMap, lockedSet]);
+  }, [filteredPresets, progressSets, lockedSet]);
 
   const chapters: ChapterInfo[] = useMemo(
     () =>
@@ -368,6 +361,7 @@ export function useLevelsPage() {
     selectedPartId,
     setSelectedPartId,
     playedMap,
+    skippedSet,
     activeTab,
     setActiveTab,
     viewMode,

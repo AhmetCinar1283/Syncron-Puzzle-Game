@@ -16,7 +16,7 @@ import { workerFetch } from './workerClient';
 
 const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL;
 
-export type RewardActionId = 'hint';
+export type RewardActionId = 'hint' | 'skip-level';
 
 /** Worker yapılandırılmış mı — değilse ödül hazırlanamaz (ipucu sunucuda hesaplanır). */
 export function isRewardServerConfigured(): boolean {
@@ -40,6 +40,13 @@ function declineFromError(err: unknown): RewardedDeclineReason | undefined {
       return 'quota-exhausted';
     case 'rate-limited':
       return 'rate-limited';
+    case 'skip-limit':
+      return 'limit-reached';
+    case 'chapter-end':
+    case 'already-completed':
+    case 'level-not-in-part':
+    case 'action-disabled':
+      return 'not-allowed';
     case 'not-entitled':
     case 'not-claimable':
     case 'not-found':

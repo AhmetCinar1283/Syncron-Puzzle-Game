@@ -4,8 +4,11 @@ import type { CellType, LevelData } from '@/game-engine/level-format';
 import GameCellAdapter from '@/game-engine/components/GameCellAdapter';
 import { getPlayerColor } from '@/game-engine/components/playerColors';
 
-/** Thumbnail of a generated candidate (multi-room layout or single grid). */
-export default function GeneratorMiniPreview({ level }: { level: LevelData }) {
+/**
+ * DOSYA AMACI: Bir level'ın küçük, etkileşimsiz önizlemesi (çok odalı yerleşim ya da
+ * tek grid). Editörün üretici adayları ve admin günlük bulmaca takvimi kullanır.
+ */
+export default function LevelMiniPreview({ level }: { level: LevelData }) {
   const isMultiRoom = level.rooms && level.rooms.length > 0;
 
   if (isMultiRoom) {

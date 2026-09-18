@@ -5,6 +5,8 @@
 
 import { createMiddleware } from 'hono/factory';
 import { verifyIdToken } from '../services/auth';
+import { recordAuthFailure } from '../services/securitySignals';
+import { trackSecurityEvent } from './securityTrail';
 import type { AppContext } from '../types';
 
 /**
@@ -29,6 +31,18 @@ export const firebaseAuth = createMiddleware<AppContext>(async (c, next) => {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn('[firebaseAuth] Token verification failed:', msg);
+    // §3.5 — arka arkaya kimlik doğrulama başarısızlıkları. Kimlik yok (token
+    // zaten geçersiz) ve IP toplama 05'in kararına bağlı; bu yüzden sinyal
+    // GLOBAL ani yükseliş sinyalidir ve yalnızca eşik aşımında yazılır.
+    c.executionCtx.waitUntil(
+      recordAuthFailure(c.env.AUDIT_DB).catch((e) =>
+        console.error('[Security] auth failure signal write failed:', e),
+      ),
+    );
+    // 05 §3.2 — eşiksiz adli iz: her başarısızlık `security_events`'e karma IP + UA
+    // ile yazılır. Yukarıdaki sinyal "ani yükseliş var mı?" sorusunu, bu iz
+    // "kim, nereden?" sorusunu cevaplar; ikisi farklı tablolarda yaşar.
+    trackSecurityEvent(c, 'auth.failed', { reason: msg.slice(0, 120), optional: false }, null);
     return c.json({ success: false, error: 'Invalid or expired token' }, 401);
   }
 });
@@ -56,6 +70,7 @@ export const optionalFirebaseAuth = createMiddleware<AppContext>(async (c, next)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn('[optionalFirebaseAuth] Token verification failed:', msg);
+    trackSecurityEvent(c, 'auth.failed', { reason: msg.slice(0, 120), optional: true }, null);
     return c.json({ success: false, error: 'Invalid or expired token' }, 401);
   }
 });

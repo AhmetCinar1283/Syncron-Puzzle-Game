@@ -29,6 +29,7 @@ donorApiRouter.get('/donors/top', async (c) => {
            is_anonymous AS isAnonymous,
            coins_balance AS coinsBalance
          FROM donor_profiles
+         WHERE deleted_at IS NULL
          ORDER BY total_donated_usd_cents DESC
          LIMIT 50`
       )
@@ -64,7 +65,7 @@ donorApiRouter.get('/donors/:uid', optionalFirebaseAuth, async (c) => {
       .prepare(
         `SELECT uid, display_name AS displayName, total_donated_cents AS totalDonatedCents, currency, badge_tier AS badgeTier, is_anonymous AS isAnonymous, coins_balance AS coinsBalance
          FROM donor_profiles
-         WHERE uid = ?1`
+         WHERE uid = ?1 AND deleted_at IS NULL`
       )
       .bind(uid)
       .first<any>();

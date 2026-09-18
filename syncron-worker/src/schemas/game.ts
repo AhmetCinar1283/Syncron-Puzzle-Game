@@ -22,7 +22,8 @@ export const telemetrySchema = z.object({
   id: z.string({ required_error: 'Missing id' }).min(1, 'Missing id'),
   levelId: z.string({ required_error: 'Missing levelId' }).min(1, 'Missing levelId'),
   version: z.number({ required_error: 'Missing version' }).int().min(1),
-  outcome: z.enum(['win', 'restart', 'quit'], { required_error: 'Invalid outcome' }),
+  // 'skip': oturum ödüllü level atlamayla bitti (atlama sayısının asıl kaynağı skipped_levels'tır).
+  outcome: z.enum(['win', 'restart', 'quit', 'skip'], { required_error: 'Invalid outcome' }),
   timeSpent: z.number({ required_error: 'Missing timeSpent' }).min(0),
   restarts: z.number().int().min(0).default(0),
   deaths: z.number().int().min(0).default(0),

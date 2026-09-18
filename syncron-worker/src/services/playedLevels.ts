@@ -1,6 +1,10 @@
 /**
- * DOSYA AMACI: Bu dosya, oyuncuların bitirdiği seviyelere (played_levels) ait verileri 
- * okuyan, güncelleyen (upsert), silen ve silinen seviyeleri (tombstone) takip eden veritabanı işlemlerini barındırır.
+ * DOSYA AMACI: Bu dosya, oyuncuların bitirdiği seviyelere (played_levels) ait
+ * verileri okuyan ve güncelleyen (upsert) veritabanı işlemlerini barındırır.
+ * Bölümün silinmesi/geri getirilmesi ayrı bir dosyadadır: `levelLifecycle.ts`.
+ *
+ * Soft delete (migration 0014): buradaki TÜM okumalar `deleted_at IS NULL`
+ * filtresi taşır. Mantıksal olarak silinmiş satır hiçbir okuma yolunda görünmez.
  */
 
 /**
@@ -49,7 +53,7 @@ export async function getPlayedLevel(
     .prepare(
       `SELECT uid, level_id, stars, score, move_count, time_spent, completed_at, updated_at
        FROM played_levels
-       WHERE uid = ?1 AND level_id = ?2`,
+       WHERE uid = ?1 AND level_id = ?2 AND deleted_at IS NULL`,
     )
     .bind(uid, levelId)
     .first<D1PlayedLevelRow>();
@@ -73,7 +77,7 @@ export async function getPlayedLevelsSince(
       .prepare(
         `SELECT uid, level_id, stars, score, move_count, time_spent, completed_at, updated_at
          FROM played_levels
-         WHERE uid = ?1 AND updated_at > ?2
+         WHERE uid = ?1 AND updated_at > ?2 AND deleted_at IS NULL
          ORDER BY updated_at ASC`,
       )
       .bind(uid, since)
@@ -84,7 +88,7 @@ export async function getPlayedLevelsSince(
       .prepare(
         `SELECT uid, level_id, stars, score, move_count, time_spent, completed_at, updated_at
          FROM played_levels
-         WHERE uid = ?1
+         WHERE uid = ?1 AND deleted_at IS NULL
          ORDER BY updated_at ASC`,
       )
       .bind(uid)
@@ -130,6 +134,18 @@ export async function getDeletedLevelsSince(
  *   - time_spent: overwrite with latest run
  *   - completed_at: keep the original first-completion timestamp
  *   - updated_at: always set to now
+ *
+ * Soft delete (0014) ile gelen ek kural — DİRİLTME:
+ *   Satır mantıksal olarak silinmişse (`deleted_at IS NOT NULL`) çakışan satır
+ *   "yok" kabul edilir: tüm alanlar yeni değerlerle EZİLİR, `deleted_at` NULL'a
+ *   çekilir ve `wasFirstCompletion: true` döner.
+ *   Gerekçe: silme anında liderlik sayaçları zaten geri alınmıştır
+ *   (routes/playedLevels.ts Adım 3). Diriltilen satır MAX() ile eski yıldızını
+ *   geri getirseydi, oyuncu geri alınmış puanı ikinci kez kazanmadan
+ *   sayaçlarda tutmuş olurdu — yani silme+yeniden oynama bir puan sızıntısı
+ *   üretirdi. "İlk tamamlama" sayılması da aynı sebeple doğrudur.
+ *   Alternatif (reddedildi): diriltmeyi yasaklayıp 409 dönmek — oyuncu silinmiş
+ *   bir kaydı olan bölümü bir daha asla kaydedemezdi (sessiz ilerleme kaybı).
  */
 // Seviye bitirme kaydını veritabanına ekler veya günceller; ilk kez bitirildiyse wasFirstCompletion: true döner.
 export async function upsertPlayedLevel(
@@ -153,14 +169,25 @@ export async function upsertPlayedLevel(
          (uid, level_id, stars, score, move_count, time_spent, completed_at, updated_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
        ON CONFLICT (uid, level_id) DO UPDATE SET
-         stars        = MAX(excluded.stars,      played_levels.stars),
-         score        = MAX(excluded.score,      played_levels.score),
-         move_count   = MIN(excluded.move_count, played_levels.move_count),
+         -- Dirilme: satır silinmişse eski değerler yok sayılır (bkz. doc-comment)
+         stars        = CASE WHEN played_levels.deleted_at IS NULL
+                             THEN MAX(excluded.stars, played_levels.stars)
+                             ELSE excluded.stars END,
+         score        = CASE WHEN played_levels.deleted_at IS NULL
+                             THEN MAX(excluded.score, played_levels.score)
+                             ELSE excluded.score END,
+         move_count   = CASE WHEN played_levels.deleted_at IS NULL
+                             THEN MIN(excluded.move_count, played_levels.move_count)
+                             ELSE excluded.move_count END,
          time_spent   = excluded.time_spent,
-         -- Never overwrite the original completed_at timestamp
-         completed_at = played_levels.completed_at,
-         updated_at   = excluded.updated_at
-       WHERE excluded.stars >= played_levels.stars
+         -- Never overwrite the original completed_at timestamp (unless reviving)
+         completed_at = CASE WHEN played_levels.deleted_at IS NULL
+                             THEN played_levels.completed_at
+                             ELSE excluded.completed_at END,
+         updated_at   = excluded.updated_at,
+         deleted_at   = NULL
+       WHERE played_levels.deleted_at IS NOT NULL
+          OR excluded.stars >= played_levels.stars
           OR excluded.move_count < played_levels.move_count
        RETURNING (completed_at = ?7) AS is_new`,
     )
@@ -181,59 +208,4 @@ export async function upsertPlayedLevel(
   // null means the ON CONFLICT WHERE clause suppressed the update (no change needed).
   const wasFirstCompletion = result?.is_new === 1;
   return { wasFirstCompletion };
-}
-
-// ─── Level deletion cascade ────────────────────────────────────────────────────
-
-export interface LevelDeletionImpact {
-  /** Map of uid → { stars, isFirstCompletion } for rebuilding leaderboard counters */
-  affectedUsers: Array<{
-    uid: string;
-    stars: number;
-  }>;
-  /** uid of the player who held the world record (best move_count) for this level, if any */
-  worldRecordHolderUid: string | null;
-}
-
-/**
- * Reads all played_levels rows for a level before deleting them.
- * Returns the data needed to roll back leaderboard counters.
- */
-// Bir seviye silinmeden önce, bu seviyeden etkilenen oyuncuları ve dünya rekoru sahibini tespit eder.
-export async function getLevelDeletionImpact(
-  db: D1Database,
-  levelId: string,
-): Promise<LevelDeletionImpact> {
-  const rows = await db
-    .prepare(
-      `SELECT uid, stars, move_count FROM played_levels WHERE level_id = ?1 ORDER BY move_count ASC`,
-    )
-    .bind(levelId)
-    .all<{ uid: string; stars: number; move_count: number }>();
-
-  const affectedUsers = rows.results.map((r) => ({ uid: r.uid, stars: r.stars }));
-  const worldRecordHolderUid = rows.results[0]?.uid ?? null;
-
-  return { affectedUsers, worldRecordHolderUid };
-}
-
-/**
- * Delete all played_levels rows for a level and record the tombstone.
- * Call this AFTER rolling back leaderboard counters.
- */
-// Seviyeye ait tüm oynama kayıtlarını siler ve silinme geçmişine (tombstones) ekler.
-export async function deleteLevelRecords(
-  db: D1Database,
-  levelId: string,
-): Promise<void> {
-  await db.batch([
-    db
-      .prepare(`DELETE FROM played_levels WHERE level_id = ?1`)
-      .bind(levelId),
-    db
-      .prepare(
-        `INSERT OR IGNORE INTO deleted_levels (level_id) VALUES (?1)`,
-      )
-      .bind(levelId),
-  ]);
 }

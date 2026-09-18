@@ -13,6 +13,7 @@ export function MenuCard({
   const getIconName = (): IconName => {
     switch (id) {
       case 'play': return 'gamepad';
+      case 'daily': return 'star';
       case 'levels': return 'trophy';
       case 'editor': return 'tools';
       case 'friends': return 'friends';

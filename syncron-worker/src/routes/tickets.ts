@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { createTicketSchema } from '../schemas/tickets';
 import { firebaseAuth } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimiter';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import { fsGet, fsCommit, docPath, nowTimestamp, fromDoc } from '../services/firestore';
 import { writeAuditLog } from '../services/auditLog';
@@ -14,13 +15,13 @@ import type { CreateTicketResponse } from '../types';
 
 export const ticketsRouter = new Hono<AppContext>();
 
-// Rate limiting map: uid -> timestamp[]
-const ticketRateLimits = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX_TICKETS = 2;
+// Hız limiti (uid başına 2/dk) artık paylaşılan middleware'dedir:
+// services/rateLimit/lib/policy.ts → ENDPOINT_RATE_LIMITS['create-ticket'].
+// Eşik ve 429 gövdesi ('RATE_LIMIT_EXCEEDED') eski davranışla birebir aynıdır;
+// tek fark, limitin artık Zod doğrulamasından ÖNCE uygulanması (daha ucuz).
 
-// Kullanıcının gönderdiği destek talebini doğrular, hız limitini kontrol eder ve Firestore'a kaydeder.
-ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
+// Kullanıcının gönderdiği destek talebini doğrular ve Firestore'a kaydeder.
+ticketsRouter.post('/create-ticket', firebaseAuth, rateLimit('create-ticket'), async (c) => {
   const uid = c.get('uid');
   console.log(`[CreateTicket] Handling ticket creation request for UID: ${uid}`);
 
@@ -45,21 +46,7 @@ ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
   const { category, subject, body: ticketBody } = validation.data;
   console.log(`[CreateTicket] Payload validated. Category: ${category}, Subject: "${subject}"`);
 
-  // 3. Rate limiting check
-  const nowMs = Date.now();
-  const history = ticketRateLimits.get(uid) ?? [];
-  const activeHistory = history.filter((ts) => nowMs - ts < RATE_LIMIT_WINDOW_MS);
-  console.log(`[CreateTicket] Rate limit state for ${uid}: ${activeHistory.length}/${RATE_LIMIT_MAX_TICKETS} tickets in window`);
-
-  if (activeHistory.length >= RATE_LIMIT_MAX_TICKETS) {
-    console.warn(`[CreateTicket] Rate limit exceeded for UID: ${uid}`);
-    return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED' }, 429);
-  }
-
-  activeHistory.push(nowMs);
-  ticketRateLimits.set(uid, activeHistory);
-
-  // 4. Get admin access token
+  // 3. Get admin access token
   let adminToken: string;
   try {
     adminToken = await getAdminAccessToken(c.env.GOOGLE_SERVICE_ACCOUNT);
@@ -71,7 +58,7 @@ ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
 
   const projectId = c.env.FIREBASE_PROJECT_ID;
 
-  // 5. Fetch user profile from Firestore
+  // 4. Fetch user profile from Firestore
   let userDoc;
   try {
     userDoc = await fsGet(projectId, `users/${uid}`, adminToken);
@@ -88,14 +75,14 @@ ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
 
   const userData = fromDoc(userDoc);
 
-  // 6. Block anonymous users
+  // 5. Block anonymous users
   console.log(`[CreateTicket] User provider: ${userData.authProvider}, email: ${userData.email}`);
   if (userData.authProvider === 'anonymous') {
     console.warn(`[CreateTicket] Blocking anonymous ticket creation for UID: ${uid}`);
     return c.json({ success: false, error: 'ANONYMOUS_NOT_ALLOWED' }, 403);
   }
 
-  // 7. Prepare ticket and initial message fields
+  // 6. Prepare ticket and initial message fields
   const ticketId = crypto.randomUUID();
   const messageId = crypto.randomUUID();
   const now = nowTimestamp();
@@ -125,7 +112,7 @@ ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
     createdAt: { timestampValue: now },
   };
 
-  // 8. Batch write: create ticket and initial message atomically
+  // 7. Batch write: create ticket and initial message atomically
   const writes = [
     {
       update: {
@@ -150,7 +137,7 @@ ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
     return c.json({ success: false, error: 'Failed to save support ticket' }, 500);
   }
 
-  // 9. Write audit log (non-blocking)
+  // 8. Write audit log (non-blocking)
   c.executionCtx.waitUntil(
     writeAuditLog(c.env.AUDIT_DB, uid, 'ticket.create', 'support', {
       ticketId,
@@ -159,7 +146,7 @@ ticketsRouter.post('/create-ticket', firebaseAuth, async (c) => {
     }).catch((err) => console.error('[AuditLog] ticket.create write failed:', err)),
   );
 
-  // 10. Respond
+  // 9. Respond
   const response: CreateTicketResponse = {
     success: true,
     ticketId,

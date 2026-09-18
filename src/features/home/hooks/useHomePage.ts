@@ -7,6 +7,11 @@ import { selectUser } from '@/store/userSlice';
 import { useT } from '@/contexts/LanguageContext';
 import { useCapabilities } from '@/contexts/MonetizationContext';
 import { useGamepad } from '@/hooks/useGamepad';
+import { isDailyAvailable } from '@/features/daily';
+import { moveMenuSelection, type MenuDirection } from '../lib/menuGrid';
+
+/** Tam satır kaplayan (öne çıkan) kartlar — HomePage aynı kümeyi kullanır. */
+export const HERO_CARD_IDS: ReadonlySet<string> = new Set(['play', 'daily', 'admin']);
 
 export function useHomePage() {
   const t = useT();
@@ -14,7 +19,9 @@ export function useHomePage() {
   const { getItem: storageGet } = useUserStorage();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const user = useSelector(selectUser);
-  const { devTools, accountLogin } = useCapabilities();
+  const capabilities = useCapabilities();
+  const { devTools, accountLogin } = capabilities;
+  const dailyAvailable = isDailyAvailable(capabilities);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile screen size on mount and window resize
@@ -81,10 +88,16 @@ export function useHomePage() {
   }, [router, storageGet]);
 
   const options = useMemo(() => {
-    const opts = [
+    const opts: { id: string; label: string; sub: string; color: string; onClick: () => void }[] = [
       { id: 'play', label: t('home.play'), sub: t('home.play_sub'), color: '#00ff88', onClick: handlePlayClick },
-      { id: 'levels', label: t('home.levels'), sub: t('home.levels_sub'), color: '#ffd700', onClick: () => router.push('/levels') },
     ];
+    // Günlük bulmaca sunucu gerektirir; portal izni ve worker yoksa giriş gizlenir.
+    if (dailyAvailable) {
+      opts.push({ id: 'daily', label: t('home.daily'), sub: t('home.daily_sub'), color: '#ffd700', onClick: () => router.push('/daily') });
+    }
+    opts.push(
+      { id: 'levels', label: t('home.levels'), sub: t('home.levels_sub'), color: '#ffd700', onClick: () => router.push('/levels') },
+    );
     // Editör bir geliştirici aracıdır — portal oyuncusunu ilgilendirmez.
     if (devTools) {
       opts.push({ id: 'editor', label: t('home.editor'), sub: t('home.editor_sub'), color: '#00c4ff', onClick: () => router.push('/editor') });
@@ -98,52 +111,12 @@ export function useHomePage() {
       opts.push({ id: 'admin', label: t('home.admin'), sub: t('home.admin_sub'), color: '#00ff88', onClick: () => router.push('/admin') });
     }
     return opts;
-  }, [t, user?.role, router, handlePlayClick, devTools, accountLogin]);
+  }, [t, user?.role, router, handlePlayClick, devTools, accountLogin, dailyAvailable]);
 
-  const handleMoveMenu = useCallback((dir: 'up' | 'down' | 'left' | 'right') => {
-    setActiveMenuIndex((prev) => {
-      // Aşağıdaki 2 sütunlu grid haritası yalnızca tam kart setini (5 veya 6 kart:
-      // play/levels/editor/friends/controls[/admin]) varsayar — bu, web/android/electron
-      // ve mock'ta değişmedi. Portal build'lerinde (devTools=false, accountLogin=false)
-      // kart sayısı azaldığı için tek sütun gibi basitçe döngüsel gezinilir.
-      if (options.length <= 4) {
-        const len = options.length;
-        if (dir === 'up') return prev === -1 ? len - 1 : prev === 0 ? -1 : prev - 1;
-        if (dir === 'down') return prev === -1 ? 0 : prev === len - 1 ? -1 : prev + 1;
-        return prev; // left/right: tek sütunda anlamsız
-      }
-      const hasAdmin = options.length > 5;
-      switch (dir) {
-        case 'up':
-          if (prev === -1) return hasAdmin ? 5 : 4; // Wrap from Profile to bottom
-          if (prev === 0) return -1; // Go up from Play to Profile
-          if (prev === 1 || prev === 2) return 0;
-          if (prev === 3) return 1;
-          if (prev === 4) return 2;
-          if (prev === 5) return 3;
-          return prev;
-        case 'down':
-          if (prev === -1) return 0; // Go down from Profile to Play
-          if (prev === 0) return 1;
-          if (prev === 1) return 3;
-          if (prev === 2) return 4;
-          if (prev === 3 || prev === 4) return hasAdmin ? 5 : 0;
-          if (prev === 5) return 0;
-          return prev;
-        case 'left':
-          if (prev === -1) return prev;
-          if (prev === 2) return 1;
-          if (prev === 4) return 3;
-          return prev;
-        case 'right':
-          if (prev === -1) return prev;
-          if (prev === 1) return 2;
-          if (prev === 3) return 4;
-          return prev;
-      }
-      return prev;
-    });
-  }, [options.length]);
+  const heroFlags = useMemo(() => options.map((opt) => HERO_CARD_IDS.has(opt.id)), [options]);
+  const handleMoveMenu = useCallback((dir: MenuDirection) => {
+    setActiveMenuIndex((prev) => moveMenuSelection(prev, dir, heroFlags));
+  }, [heroFlags]);
 
   const { isConnected } = useGamepad({
     onMove: (dir) => handleMoveMenu(dir),

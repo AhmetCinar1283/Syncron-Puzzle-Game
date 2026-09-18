@@ -114,7 +114,7 @@ export default function TermsPage() {
         >
           {isTr ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <p><strong>Son Güncelleme: 22 Mayıs 2026</strong></p>
+              <p><strong>Son Güncelleme: 17 Eylül 2026</strong></p>
               <p>Syncron platformuna hoş geldiniz. Bu oyun, Polyvo Club tarafından geliştirilen ve yönetilen web ve mobil tabanlı bir bulmaca platformudur. Hizmetlerimizi kullanarak bu koşulları tamamen kabul etmiş sayılırsınız.</p>
               
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>1. Hesap Oluşturma ve Güvenlik</h2>
@@ -131,6 +131,7 @@ export default function TermsPage() {
                 <li>Destek sistemini spamlamak, asılsız talepler açmak veya destek görevlilerine hakaret içerikli mesajlar göndermek yasaktır. Destek sisteminde dakikada maksimum 2 bilet limiti uygulanmaktadır.</li>
                 <li>Bulut sunucularımıza veya işleyişimize zarar verecek siber saldırılarda bulunmak yasaktır.</li>
               </ul>
+              <p>Bu kuralların ihlaline işaret eden olaylar (başarısız kimlik doğrulama, doğrulanamayan çözüm gönderimi, hız limiti aşımı, yetkisiz yönetim erişimi denemesi vb.) güvenlik kayıtlarımıza işlenir. Bu kayıtlar <strong>karmalanmış IP adresi</strong> ve tarayıcı kimliği içerir, <strong>30 gün</strong> saklanır ve ardından kalıcı olarak silinir. Ayrıntılar için <strong>Gizlilik Politikası §7</strong>.</p>
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>4. Sorumluluk Sınırları</h2>
               <p>Syncron hizmetleri &quot;olduğu gibi&quot; sunulmaktadır. Hizmetin kesintisiz veya hatasız olacağını garanti etmiyoruz. Sunucu kesintileri veya teknik arızalar nedeniyle oyun verilerinin, skorlarının veya level tasarımlarının kaybından dolayı platformumuz sorumlu tutulamaz.</p>
@@ -140,7 +141,7 @@ export default function TermsPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <p><strong>Last Updated: May 22, 2026</strong></p>
+              <p><strong>Last Updated: September 17, 2026</strong></p>
               <p>Welcome to Syncron. This grid puzzle game is developed and managed by Polyvo Club. By accessing and playing our game, you agree to comply with and be bound by the following Terms of Service.</p>
               
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>1. Account Registration and Security</h2>
@@ -157,6 +158,7 @@ export default function TermsPage() {
                 <li>Abuse or spam the ticket support system, submit fraudulent support tickets, or use inappropriate language with support agents. A strict rate-limit of 2 tickets per minute per user is enforced.</li>
                 <li>Engage in any cyberattacks or actions that disrupt our database and cloud functions.</li>
               </ul>
+              <p>Events indicating a breach of these rules (failed authentication, unverifiable solution submissions, rate limit breaches, unauthorised administration access attempts and similar) are written to our security records. These records contain a <strong>hashed IP address</strong> and your browser identifier, are kept for <strong>30 days</strong> and are then permanently deleted. See <strong>Privacy Policy §7</strong> for details.</p>
 
               <h2 style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700, marginTop: '12px' }}>4. Disclaimer and Limitation of Liability</h2>
               <p>Syncron is provided &quot;as is&quot; without warranties of any kind. We do not guarantee continuous or error-free operations. We are not liable for any data loss, including level creations or scores, resulting from technical failures or scheduled server maintenance.</p>
