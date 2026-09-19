@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./cursors.css";
+@import "./home.css";
 
 :root {
   --background: #030712;
@@ -16,24 +18,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* ── Custom neon crosshair cursor ───────────────────────────────────────────
-   Hotspot at center (12,12) of the 24×24 SVG.
-   The %23 is # (neon green #00ff88).
-   Fallback: crosshair (built-in browser cursor).
-────────────────────────────────────────────────────────────────────────── */
-:root {
-  --cursor-crosshair: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='4' fill='none' stroke='%2300ff88' stroke-width='1.5' opacity='0.9'/%3E%3Cline x1='12' y1='1' x2='12' y2='7' stroke='%2300ff88' stroke-width='1.5' opacity='0.9'/%3E%3Cline x1='12' y1='17' x2='12' y2='23' stroke='%2300ff88' stroke-width='1.5' opacity='0.9'/%3E%3Cline x1='1' y1='12' x2='7' y2='12' stroke='%2300ff88' stroke-width='1.5' opacity='0.9'/%3E%3Cline x1='17' y1='12' x2='23' y2='12' stroke='%2300ff88' stroke-width='1.5' opacity='0.9'/%3E%3C/svg%3E") 12 12, crosshair;
-}
-
 html, body {
-  cursor: var(--cursor-crosshair);
   /* Prevent pull-to-refresh on mobile browsers */
   overscroll-behavior: none;
-}
-
-/* Buttons and interactive elements keep the crosshair (game feel) */
-button, a, [role="button"], input, textarea, select, label {
-  cursor: var(--cursor-crosshair);
 }
 
 body {
@@ -115,6 +102,12 @@ html.has-ad-banner .monetization-debug-panel {
 /* ── Spin (yenile butonu) ─────────────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Player göz kırpma animasyonu ───────────────────────────────────────── */
+@keyframes playerBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
 }
 
 /* ── Target hücre nabız animasyonları ─────────────────────────────────────── */
@@ -225,4 +218,14 @@ html.has-ad-banner .monetization-debug-panel {
 @keyframes portalSpin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ── Kozmik Rota: süzülen düğümler ve nabız atan enerji çekirdekleri ── */
+@keyframes cosmicFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-6px) scale(1.02); }
+}
+@keyframes cosmicPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.07); filter: brightness(1.2); }
 }

@@ -15,6 +15,7 @@ import { LevelBounds } from './getNextTopologyPosition';
 
 const N: CellTypes = 'normal';
 const I: CellTypes = 'ice';
+const FORBIDDEN: CellTypes = 'forbidden';
 const PORTAL: EdgeConfig = { type: 'portal' };
 
 function mkCell(row: number, col: number, type: CellTypes): Cell {
@@ -63,13 +64,15 @@ function boundsOf(room: RoomState): LevelBounds {
 function playTurn(entities: Entity[], room: RoomState, intents: ActionIntent[], maxTicks = 30) {
     const rooms = { main: room };
     const bounds = boundsOf(room);
+    let live = entities;
     let pending = intents;
     for (let t = 0; t < maxTicks; t++) {
-        const active = entities.some(
+        const active = live.some(
             e => !e.customData._destroyed && (e.physics.force > 0 || e.physics.z > 0),
         );
         if (pending.length === 0 && !active) break;
-        pending = processSingleTick(entities, rooms, pending, bounds).pendingNextTick;
+        pending = processSingleTick(live, rooms, pending, bounds).pendingNextTick;
+        live = live.filter(e => !e.customData._destroyed); // useGameEngine ile aynı
     }
 }
 
@@ -192,5 +195,142 @@ describe('trambolinden iniş', () => {
         // 3'e iner (buz), 4 buz, 5 normal zeminde durur
         expect(player.position.col).toBe(5);
         expect(player.physics.force).toBe(0);
+    });
+
+    // Uçuşun menzili z ile harcanır; iniş anındaki force bayat bir değerdir.
+    // Tek bir buz karesi, trambolinin gücü kadar ekstra adım kazandırmamalı.
+    it('tek buz karesine inen oyuncu sadece bir kare kayar', () => {
+        const room = mkRoom([[N, 'trampoline', N, N, I, N, N, N, N]]);
+        room.grid[0][1].customData.direction = 'right';
+        room.grid[0][1].customData.force = 3;
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        // 4'e iner (buz) → 5'e kayar (normal) → durur. 6/7'ye ilerlemez.
+        expect(player.position.col).toBe(5);
+        expect(player.physics.force).toBe(0);
+    });
+
+    it('tek buz karesine inen kutu sadece bir kare kayar', () => {
+        const room = mkRoom([[N, N, 'trampoline', N, N, I, N, N, N]]);
+        room.grid[0][2].customData.direction = 'right';
+        room.grid[0][2].customData.force = 3;
+        const player = mkEntity('player', 1, 0, 0);
+        const box = mkEntity('box', 2, 0, 1);
+
+        playTurn([player, box], room, step(1, 'right'));
+
+        expect(box.position.col).toBe(6);
+        expect(box.physics.force).toBe(0);
+    });
+
+    it('buz uzunluğu kadar kayar, ilk sürtünmeli karede durur', () => {
+        const room = mkRoom([[N, 'trampoline', N, N, I, I, N, N, N]]);
+        room.grid[0][1].customData.direction = 'right';
+        room.grid[0][1].customData.force = 3;
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        // 4 (buz) → 5 (buz) → 6 (normal) → durur
+        expect(player.position.col).toBe(6);
+        expect(player.physics.force).toBe(0);
+    });
+});
+
+describe('konveyör fırlatması — buz menzili kısaltmaz', () => {
+    it('konveyör force 3 + tek buz karesi = 4 kare', () => {
+        const room = mkRoom([[N, 'conveyor', I, N, N, N, N, N]]);
+        room.grid[0][1].customData.direction = 'right';
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        // Buz karesi adım harcatmaz: 2(buz),3,4,5 → 5'te durur
+        expect(player.position.col).toBe(5);
+    });
+
+    it('konveyör force 3, buzsuz = 3 kare', () => {
+        const room = mkRoom([[N, 'conveyor', N, N, N, N, N, N]]);
+        room.grid[0][1].customData.direction = 'right';
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        expect(player.position.col).toBe(4);
+    });
+});
+
+// Yasaklı hücre nesneyi hücrenin üstünde yok etmeli. Yok etme bir tick
+// gecikirse nesne ölmeden önce bir kare daha ilerler ve arkasındakini iter.
+describe('yasaklı hücre — kaymadan, girdiği karede yok eder', () => {
+    it('buzda kayan oyuncu yasaklı karenin üstünde ölür', () => {
+        const room = mkRoom([[N, I, I, FORBIDDEN, N, N, N]]);
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        expect(player.position.col).toBe(3);
+        expect(player.customData._destroyed).toBe(true);
+        expect(player.customData.deathReason).toBe('forbidden');
+    });
+
+    it('doğrudan adım atan oyuncu yasaklı karenin üstünde ölür', () => {
+        const room = mkRoom([[N, FORBIDDEN, N, N]]);
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        expect(player.position.col).toBe(1);
+        expect(player.customData._destroyed).toBe(true);
+    });
+
+    it('itilen kutu yasaklı karenin üstünde yok olur', () => {
+        const room = mkRoom([[N, N, FORBIDDEN, N, N]]);
+        const player = mkEntity('player', 1, 0, 0);
+        const box = mkEntity('box', 2, 0, 1);
+
+        playTurn([player, box], room, step(1, 'right'));
+
+        expect(box.position.col).toBe(2);
+        expect(box.customData._destroyed).toBe(true);
+    });
+
+    it('yasaklı karede yok olan kutu arkasındaki kutuyu itmez', () => {
+        const room = mkRoom([[N, I, I, FORBIDDEN, N, N, N]]);
+        const player = mkEntity('player', 1, 0, 0);
+        const box = mkEntity('box', 2, 0, 1);
+        const boxBehind = mkEntity('box', 3, 0, 4); // yasaklı karenin arkasında
+
+        playTurn([player, box, boxBehind], room, step(1, 'right'));
+
+        expect(box.position.col).toBe(3);
+        expect(box.customData._destroyed).toBe(true);
+        expect(boxBehind.position.col).toBe(4); // yerinden oynamadı
+        expect(boxBehind.customData._destroyed).toBeUndefined();
+    });
+
+    it('konveyörün fırlattığı oyuncu yasaklı karenin üstünde ölür', () => {
+        const room = mkRoom([[N, 'conveyor', N, FORBIDDEN, N, N, N]]);
+        room.grid[0][1].customData.direction = 'right';
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        expect(player.position.col).toBe(3);
+        expect(player.customData._destroyed).toBe(true);
+    });
+
+    it('trambolinle yasaklı karelerin üstünden uçan nesne ölmez', () => {
+        const room = mkRoom([[N, 'trampoline', FORBIDDEN, FORBIDDEN, N, N, N]]);
+        room.grid[0][1].customData.direction = 'right';
+        room.grid[0][1].customData.force = 3;
+        const player = mkEntity('player', 1, 0, 0);
+
+        playTurn([player], room, step(1, 'right'));
+
+        expect(player.position.col).toBe(4);
+        expect(player.customData._destroyed).toBeUndefined();
     });
 });

@@ -17,10 +17,15 @@ export function useGameOverSound(
 ) {
     const prevIsGameOver = useRef(false);
     useEffect(() => {
-        if (isGameOver && !isAnimating && !prevIsGameOver.current) {
+        if (isGameOver && !prevIsGameOver.current) {
             const hasSuccess = uiEvents.some(e => e.kind === 'text' && e.textType === 'success');
-            play(hasSuccess ? 'win' : 'lose');
-            prevIsGameOver.current = true;
+            if (hasSuccess) {
+                play('win');
+                prevIsGameOver.current = true;
+            } else if (!isAnimating) {
+                play('lose');
+                prevIsGameOver.current = true;
+            }
         }
         if (!isGameOver) {
             prevIsGameOver.current = false;

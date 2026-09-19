@@ -253,6 +253,10 @@ export const GAME_ANIMATION_KEYFRAMES = `
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.05); }
     }
+    @keyframes playerBlink {
+        0%, 92%, 100% { transform: scaleY(1); }
+        96% { transform: scaleY(0.1); }
+    }
     @keyframes spinCounterClockwise {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(-360deg); }

@@ -4,6 +4,7 @@ import type { ReactNode, RefObject, TouchEvent as ReactTouchEvent } from 'react'
 import GameBoard from '../GameBoard';
 import type { LevelEdges } from '../../logic/engine/getNextTopologyPosition';
 import type { useGameEngine } from '../../hooks/useGameEngine';
+import type { SoundName } from '../../hooks/useSoundManager';
 
 type Snapshots = ReturnType<typeof useGameEngine>['snapshots'];
 
@@ -25,6 +26,8 @@ interface BoardAreaProps {
     boardOverlay?: ReactNode;
     /** Board alanının üstünde ölçeklenmeden çizilen katman (ör. ipucu şeridi). */
     areaOverlay?: ReactNode;
+    onPlaySound?: (sound: SoundName) => void;
+    muted?: boolean;
 }
 
 /** Ölçeklenmiş board alanı: swipe girdisini yakalar, GameBoard'u native boyutta çizip scale eder. */
@@ -43,6 +46,8 @@ export function BoardArea({
     onTouchEnd,
     boardOverlay,
     areaOverlay,
+    onPlaySound,
+    muted,
 }: BoardAreaProps) {
     return (
         <div
@@ -68,6 +73,10 @@ export function BoardArea({
                     height: boardPixelH,
                     transform: `scale(${boardScale})`,
                     transformOrigin: 'center center',
+                    // Tüm tahtayı tek bir compositor katmanına sabitler: hücre
+                    // ve varlık hareketleri artık sayfanın geri kalanını
+                    // yeniden boyamaya zorlamıyor.
+                    willChange: 'transform',
                     position: 'relative',
                 }}
             >
@@ -76,6 +85,8 @@ export function BoardArea({
                     controlledRoomIds={controlledRoomIds}
                     levelEdges={levelEdges}
                     onAnimationEnd={onAnimationEnd}
+                    onPlaySound={onPlaySound}
+                    muted={muted}
                 />
 
                 {boardOverlay}

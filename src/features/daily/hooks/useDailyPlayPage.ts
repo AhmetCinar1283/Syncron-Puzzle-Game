@@ -61,6 +61,11 @@ export function useDailyPlayPage() {
   const { reload } = loader;
   const resolvedDate = loader.view?.date ?? null;
 
+  const onWinDetected = useCallback(() => {
+    resetHint();
+    if (resolvedDate) submit(resolvedDate);
+  }, [resetHint, resolvedDate, submit]);
+
   const handleButtonPressed = useCallback(async (buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
     if (buttonType === 'next_level') {
       resetHint();
@@ -96,6 +101,7 @@ export function useDailyPlayPage() {
     handleButtonPressed,
     onMoveExecuted,
     onUndoExecuted,
+    onWinDetected,
     leaveToHub,
     goToHub,
     retrySubmit: resolvedDate ? () => submit(resolvedDate) : undefined,

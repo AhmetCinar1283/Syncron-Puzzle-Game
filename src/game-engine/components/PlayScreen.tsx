@@ -8,6 +8,7 @@ import { Cell } from '../logic/cellTypes';
 import { Direction, UIButtonType, RoomState } from '../logic/types';
 import { LevelEdges } from '../logic/engine/getNextTopologyPosition';
 import { useSoundManager } from '../hooks/useSoundManager';
+import { warmUpHaptics } from '@/lib/haptics';
 import { useGameTheme } from '../contexts/GameThemeContext';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useGameOverSound } from '../hooks/useGameOverSound';
@@ -45,6 +46,8 @@ interface PlayScreenProps {
     onMoveExecuted?: (direction: Direction | 'switch_room') => void;
     onUndoExecuted?: () => void;
     onButtonPressed?: (buttonType: UIButtonType, details?: { isDeath?: boolean }) => void;
+    /** Zafer algılandığı anda (animasyon oynarken) erken arka plan işlemleri (worker vs.) için çağrılır. */
+    onWinDetected?: () => void;
     isTestMode?: boolean;
     gameNotes?: string;
     solutionSteps?: string[] | null;
@@ -79,6 +82,7 @@ export function PlayScreen({
     onMoveExecuted,
     onUndoExecuted,
     onButtonPressed,
+    onWinDetected,
     isTestMode,
     gameNotes,
     solutionSteps,
@@ -88,6 +92,10 @@ export function PlayScreen({
 }: PlayScreenProps) {
     const { theme, toggleTheme } = useGameTheme();
     const { play, muted, toggleMute } = useSoundManager();
+
+    // Haptik eklentisini önceden yükle: ilk swipe'ın dinamik import'u
+    // beklemesini engeller.
+    useEffect(() => { warmUpHaptics(); }, []);
     const [moveCount, setMoveCount] = useState(0);
     const [showNotes, setShowNotes] = useState(false);
     const isCompact = useCompactLayout();
@@ -186,13 +194,26 @@ export function PlayScreen({
     });
 
     const pendingUi = uiEvents.length > 0 ? uiEvents[uiEvents.length - 1] : null;
+    const hasNextLevel = uiEvents.some(e => e.kind === 'button' && e.buttonType === 'next_level');
+    const winDetectedRef = useRef(false);
 
+    // Zafer algılandığı anda (kutlama animasyonu oynarken) arka planda worker isteğini başlat
+    useEffect(() => {
+        if (!hasNextLevel) {
+            winDetectedRef.current = false;
+        } else if (!isTestMode && !winDetectedRef.current) {
+            winDetectedRef.current = true;
+            onWinDetected?.();
+        }
+    }, [hasNextLevel, isTestMode, onWinDetected]);
+
+    // Animasyon tamamlandığında modalı aç
     useEffect(() => {
         if (isTestMode) return;
-        if (pendingUi?.kind === 'button' && pendingUi.buttonType === 'next_level') {
+        if (!isAnimating && hasNextLevel) {
             handleButtonPress('next_level');
         }
-    }, [pendingUi, handleButtonPress, isTestMode]);
+    }, [hasNextLevel, handleButtonPress, isTestMode, isAnimating]);
 
     const hasSolutionSteps = !!(isTestMode && solutionSteps && solutionSteps.length > 0);
     const lastSnapshot = snapshots && snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
@@ -208,6 +229,14 @@ export function PlayScreen({
                 overflow: 'hidden',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
+                // viewport-fit=cover ile tam ekran çiziyoruz; HUD'un çentiğin
+                // ve alt gezinme çubuğunun altında kalmaması için güvenli alan
+                // payları burada veriliyor (cover kapalıyken env() 0'dır).
+                paddingTop: 'env(safe-area-inset-top, 0px)',
+                paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                paddingLeft: 'env(safe-area-inset-left, 0px)',
+                paddingRight: 'env(safe-area-inset-right, 0px)',
+                boxSizing: 'border-box',
             }}
         >
             {/* ── Premium HUD ──────────────────────────────────────────────── */}
@@ -273,6 +302,8 @@ export function PlayScreen({
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
+                onPlaySound={play}
+                muted={muted}
                 boardOverlay={visibleHint ? (
                     <HintBoardMarker
                         hint={visibleHint}

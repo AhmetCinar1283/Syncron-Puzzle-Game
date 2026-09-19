@@ -3,113 +3,161 @@
 
 'use client';
 
-import { useEffect, useRef, useState, ReactNode } from 'react';
+import { useEffect, useRef, useState, useMemo, ReactNode } from 'react';
 import { TickSnapshot, VFXEvent, RoomState, EdgeConfig } from '../logic/types';
 import { Cell } from '../logic/cellTypes';
 import { Entity } from '../logic/entityTypes';
-import { CELL_RENDERERS } from './cells/CELL_RENDERERS';
 import { ENTITY_RENDERERS } from './entities/ENTITY_RENDERERS';
 import { PhysicsWrapper } from './physicsWrapper';
 import { LevelEdges } from '../logic/engine/getNextTopologyPosition';
-import { GAME_ANIMATION_KEYFRAMES } from './effects/animationStyles';
-import { getPlayerColor } from './playerColors';
 import { calculateRoomLayoutOffsets, routePortalPath } from '../logic/engine/rooms';
 import { useGameTheme } from '../contexts/GameThemeContext';
-import { assetUrl } from '@/lib/assetUrl';
 import { GameIcon } from '@/components/icons';
+import { VictoryCelebration, VICTORY_CELEBRATION_DURATION } from './effects/VictoryCelebration';
+import type { SoundName } from '../hooks/useSoundManager';
+import { userStorageGet } from '@/lib/userStorage';
+import { soundEngine } from '../audio/soundEngine';
+import { hapticImpact, hapticNotify } from '@/lib/haptics';
+import { BoardCell } from './board/BoardCell';
+import { RoomTrails, RoomCables } from './board/RoomOverlays';
+import { ensureBoardKeyframes } from './board/boardKeyframes';
+import { BoardIndex, buildBoardIndex, cellKey, isCellVisible, playersIn, playersSignature } from './board/boardIndex';
 
 const CELL_SIZE = 64;
 
-const VFX_SOUNDS: Record<string, string> = {
-    sound_move:         '/sounds/move.mp3',
-    sound_push:         '/sounds/box_push.flac',
-    sound_ice_slide:    '/sounds/ice.mp3',
-    sound_ice_break:    '/sounds/ice_break.mp3',
-    sound_portal_enter: '/sounds/portal.mp3',
-    sound_portal_exit:  '/sounds/teleport.mp3',
-    sound_boing:        '/sounds/boing.mp3',
-    sound_tick:         '/sounds/tick.mp3',
-    sound_conveyor:     '/sounds/conveyor.mp3',
-    sound_toggle:       '/sounds/toggle.mp3',
-    sound_win:          '/sounds/win.mp3',
-    sound_lose:         '/sounds/lose.mp3',
+/** Bir tick'in ekranda kalma süresi (ms) — bkz. `frameMs` yorumu. */
+const MIN_FRAME_MS = 55;
+const MAX_FRAME_MS = 90;
+
+const VFX_TO_SOUND: Partial<Record<string, SoundName>> = {
+    sound_move:         'move',
+    sound_push:         'box_push',
+    sound_ice_slide:    'ice',
+    sound_ice_break:    'ice',
+    sound_portal_enter: 'portal',
+    sound_portal_exit:  'teleport',
+    sound_boing:        'boing',
+    sound_conveyor:     'conveyor',
+    sound_toggle:       'toggle',
+    sound_win:          'win',
+    sound_lose:         'lose',
 };
 
-function playAudio(src: string) {
-    new Audio(assetUrl(src)).play().catch(() => {});
-}
+const EMPTY_INDEX: BoardIndex = buildBoardIndex([]);
+const NO_ENTITIES: Entity[] = [];
 
 interface GameBoardProps {
     snapshots: TickSnapshot[] | null;
     controlledRoomIds?: string[]; // Aktif/kontrol edilen odalar
     levelEdges?: LevelEdges; // Legacy single-room edge behavior
     onAnimationEnd?: () => void;
+    onPlaySound?: (sound: SoundName) => void;
+    muted?: boolean;
 }
 
-const edgeStyles = `
-    @keyframes lava-flow-horiz {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    @keyframes lava-flow-vert {
-        0% { background-position: 50% 0%; }
-        50% { background-position: 50% 100%; }
-        100% { background-position: 50% 0%; }
-    }
-    @keyframes portal-shift-horiz {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    @keyframes portal-shift-vert {
-        0% { background-position: 50% 0%; }
-        50% { background-position: 50% 100%; }
-        100% { background-position: 50% 0%; }
-    }
-    @keyframes edge-glow-pulse {
-        0% { opacity: 0.85; }
-        50% { opacity: 1; }
-        100% { opacity: 0.85; }
-    }
-    @keyframes label-breath {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.15); filter: brightness(1.2); }
-        100% { transform: scale(1); }
-    }
-    @keyframes portal-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    @keyframes crawlPath {
-        to { stroke-dashoffset: -20; }
-    }
-`;
+type EdgeSide = 'top' | 'bottom' | 'left' | 'right';
+type EdgeBehavior = 'wall' | 'portal' | 'lava' | EdgeConfig;
 
-function getEdgePoint(offset: { left: number; top: number; width: number; height: number }, side: 'top' | 'bottom' | 'left' | 'right') {
-    switch (side) {
-        case 'top':
-            return { x: offset.left + offset.width / 2, y: offset.top };
-        case 'bottom':
-            return { x: offset.left + offset.width / 2, y: offset.top + offset.height };
-        case 'left':
-            return { x: offset.left, y: offset.top + offset.height / 2 };
-        case 'right':
-            return { x: offset.left + offset.width, y: offset.top + offset.height / 2 };
+// Aşağıdaki iki yardımcı bileşenin state'le ilgisi yok; modül seviyesinde
+// durmaları her render'da yeniden oluşturulmalarını engeller.
+function renderEdgeStrip(side: EdgeSide, behavior?: EdgeBehavior) {
+    if (!behavior) return null;
+
+    const ruleType = typeof behavior === 'string' ? behavior : behavior.type;
+    const isLava = ruleType === 'lava';
+    const isPortal = ruleType === 'portal';
+    const isHorizontal = side === 'top' || side === 'bottom';
+
+    const style: React.CSSProperties = {
+        position: 'absolute',
+        zIndex: 90,
+        pointerEvents: 'none',
+        ...(side === 'top' && { top: 0, left: 0, right: 0, height: 4 }),
+        ...(side === 'bottom' && { bottom: 0, left: 0, right: 0, height: 4 }),
+        ...(side === 'left' && { top: 0, bottom: 0, left: 0, width: 4 }),
+        ...(side === 'right' && { top: 0, bottom: 0, right: 0, width: 4 }),
+    };
+
+    if (isLava) {
+        style.background = isHorizontal
+            ? 'linear-gradient(90deg, #ef4444, #f97316, #ef4444, #ef4444)'
+            : 'linear-gradient(180deg, #ef4444, #f97316, #ef4444, #ef4444)';
+        style.backgroundSize = isHorizontal ? '300% 100%' : '100% 300%';
+        style.boxShadow = '0 0 10px #ef4444, 0 0 20px rgba(239, 68, 68, 0.5)';
+        style.animation = `${isHorizontal ? 'lava-flow-horiz' : 'lava-flow-vert'} 4s infinite linear, edge-glow-pulse 1.5s infinite ease-in-out`;
+    } else if (isPortal) {
+        style.background = isHorizontal
+            ? 'linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6, #8b5cf6)'
+            : 'linear-gradient(180deg, #8b5cf6, #ec4899, #8b5cf6, #8b5cf6)';
+        style.backgroundSize = isHorizontal ? '300% 100%' : '100% 300%';
+        style.boxShadow = '0 0 10px #a855f7, 0 0 20px rgba(168, 85, 247, 0.5)';
+        style.animation = `${isHorizontal ? 'portal-shift-horiz' : 'portal-shift-vert'} 3s infinite linear, edge-glow-pulse 1.2s infinite ease-in-out`;
+    } else {
+        style.background = 'rgba(30, 58, 138, 0.4)';
+        style.boxShadow = 'none';
     }
+
+    return <div style={style} />;
 }
 
-const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }: GameBoardProps) => {
-    const { theme, themeConfig } = useGameTheme();
+function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
+    if (!behavior) return null;
+
+    const ruleType = typeof behavior === 'string' ? behavior : behavior.type;
+    if (ruleType === 'wall') return null;
+
+    const isLava = ruleType === 'lava';
+    const isPortal = ruleType === 'portal';
+
+    const style: React.CSSProperties = {
+        position: 'absolute',
+        zIndex: 95,
+        pointerEvents: 'none',
+        fontSize: 14,
+        fontWeight: 800,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        backgroundColor: isLava ? 'rgba(239, 68, 68, 0.15)' : 'rgba(168, 85, 247, 0.15)',
+        border: `1px solid ${isLava ? 'rgba(239, 68, 68, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+        color: isLava ? '#ef4444' : '#a855f7',
+        textShadow: `0 0 6px ${isLava ? '#ef4444' : '#a855f7'}`,
+        boxShadow: `0 0 10px ${isLava ? 'rgba(239, 68, 68, 0.1)' : 'rgba(168, 85, 247, 0.1)'}`,
+        animation: 'label-breath 2.5s infinite ease-in-out',
+        ...(side === 'top' && { top: -28, left: '50%', transform: 'translateX(-50%)' }),
+        ...(side === 'bottom' && { bottom: -28, left: '50%', transform: 'translateX(-50%)' }),
+        ...(side === 'left' && { left: -28, top: '50%', transform: 'translateY(-50%)' }),
+        ...(side === 'right' && { right: -28, top: '50%', transform: 'translateY(-50%)' }),
+    };
+
+    const iconStyle: React.CSSProperties = isPortal ? {
+        animation: 'portal-spin 6s infinite linear',
+        display: 'inline-block',
+    } : {};
+
+    return (
+        <div style={style}>
+            <span style={iconStyle}>
+                {isLava ? <GameIcon name="skull" size={20} color="#ff2d55" /> : <GameIcon name="portal" size={20} color="#00f5d4" />}
+            </span>
+        </div>
+    );
+}
+
+const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted }: GameBoardProps) => {
+    const { themeConfig } = useGameTheme();
     const [prevSnapshots, setPrevSnapshots] = useState<TickSnapshot[] | null>(snapshots);
     const [currentFrame, setCurrentFrame] = useState(0);
 
     if (snapshots !== prevSnapshots) {
         setPrevSnapshots(snapshots);
-        const isExtension = prevSnapshots && 
-                            prevSnapshots.length > 0 && 
-                            snapshots && 
-                            snapshots.length > prevSnapshots.length && 
+        const isExtension = prevSnapshots &&
+                            prevSnapshots.length > 0 &&
+                            snapshots &&
+                            snapshots.length > prevSnapshots.length &&
                             prevSnapshots[0] === snapshots[0];
         if (!isExtension) {
             setCurrentFrame(0);
@@ -120,11 +168,39 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
     onAnimationEndRef.current = onAnimationEnd;
 
     const remainingFrames = snapshots ? snapshots.length - 1 - currentFrame : 0;
+    // Kare süresi aynı anda CSS geçiş süresidir. Eski alt sınır 20ms idi:
+    // 60Hz'de bir ekran karesinden az, yani geçiş hiç tamamlanmadan bir
+    // sonraki tick geliyordu — hareket akmak yerine "zıplıyor" gibi
+    // görünüyordu. MIN_FRAME_MS ~3.5 ekran karesine denk gelir; ara kareler
+    // gerçekten çizilir ve uzun kaymalar bile akıcı okunur.
     const frameMs = snapshots
         ? remainingFrames > 3
-            ? Math.max(20, Math.min(80, 240 / remainingFrames))
-            : Math.max(50, Math.min(120, 300 / snapshots.length))
+            ? Math.max(MIN_FRAME_MS, Math.min(MAX_FRAME_MS, 420 / remainingFrames))
+            : Math.max(60, Math.min(110, 300 / snapshots.length))
         : 80;
+
+    // Kare verisi — tüm hook'lar erken çıkıştan ÖNCE çalışmalı.
+    const frameIndex = snapshots && snapshots.length > 0 ? Math.min(currentFrame, snapshots.length - 1) : 0;
+    const snapshot: TickSnapshot | null = snapshots?.[frameIndex] ?? null;
+    const prevSnapshot: TickSnapshot | null = (snapshots && frameIndex > 0 ? snapshots[frameIndex - 1] : null) ?? null;
+    const rooms = snapshot?.rooms ?? null;
+    const entities = snapshot?.entities ?? NO_ENTITIES;
+
+    // @keyframes tanımları statik — belgeye tek sefer enjekte edilir.
+    useEffect(() => { ensureBoardKeyframes(); }, []);
+
+    const { roomPositions, totalWidth, totalHeight } = useMemo(
+        () => (rooms
+            ? calculateRoomLayoutOffsets(rooms, CELL_SIZE, 40)
+            : { roomPositions: {}, totalWidth: 0, totalHeight: 0 }),
+        [rooms]
+    );
+
+    // Kare başına TEK geçişte varlık indeksi. Eski kod hücre başına
+    // `entities.find` + `entities.filter` çağırıyordu (bkz. boardIndex.ts).
+    const index = useMemo(() => (snapshot ? buildBoardIndex(snapshot.entities) : EMPTY_INDEX), [snapshot]);
+    const prevIndex = useMemo(() => (prevSnapshot ? buildBoardIndex(prevSnapshot.entities) : EMPTY_INDEX), [prevSnapshot]);
+    const playersSig = useMemo(() => playersSignature(entities), [entities]);
 
     useEffect(() => {
         if (!snapshots || snapshots.length === 0) return;
@@ -135,10 +211,15 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
             const hasDeath = finalSnapshot?.entities.some(e => e.customData.deathReason) ?? false;
             const hasVictory = finalSnapshot?.entities.some(e => e.customData.isVictory) ?? false;
 
-            if (hasDeath || hasVictory) {
+            if (hasDeath) {
                 const timer = setTimeout(() => {
                     onAnimationEndRef.current?.();
                 }, 800);
+                return () => clearTimeout(timer);
+            } else if (hasVictory) {
+                const timer = setTimeout(() => {
+                    onAnimationEndRef.current?.();
+                }, VICTORY_CELEBRATION_DURATION);
                 return () => clearTimeout(timer);
             } else {
                 onAnimationEndRef.current?.();
@@ -165,115 +246,52 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
     }, [currentFrame, snapshots, frameMs]);
 
     useEffect(() => {
+        if (muted) return;
         if (!snapshots) return;
-        const snapshot = snapshots[currentFrame];
-        if (!snapshot) return;
-        snapshot.vfxEvents.forEach((vfx: VFXEvent) => {
-            if (VFX_SOUNDS[vfx]) playAudio(VFX_SOUNDS[vfx]);
+        const frame = snapshots[currentFrame];
+        if (!frame) return;
+        frame.vfxEvents.forEach((vfx: VFXEvent) => {
+            const soundName = VFX_TO_SOUND[vfx];
+            if (!soundName) return;
+            if (onPlaySound) {
+                onPlaySound(soundName);
+            } else if (typeof window !== 'undefined' && userStorageGet('soundMuted') !== 'true') {
+                // PlayScreen dışındaki kullanımlar (ör. editör önizleme) için
+                // aynı Web Audio motoru — HTMLAudioElement gecikmesi yok.
+                soundEngine.play(soundName);
+            }
         });
-    }, [currentFrame, snapshots]);
+    }, [currentFrame, snapshots, muted, onPlaySound]);
 
-    const renderEdgeStrip = (side: 'top' | 'bottom' | 'left' | 'right', behavior?: 'wall' | 'portal' | 'lava' | EdgeConfig) => {
-        if (!behavior) return null;
+    // Dokunsal geri bildirim: çarpma / ölüm / zafer. Sesle aynı karede verilir
+    // ki görüntü-ses-titreşim üçlüsü senkron kalsın.
+    useEffect(() => {
+        if (!snapshots) return;
+        const frame = snapshots[currentFrame];
+        if (!frame) return;
 
-        const ruleType = typeof behavior === 'string' ? behavior : behavior.type;
-        const isLava = ruleType === 'lava';
-        const isPortal = ruleType === 'portal';
-        const isHorizontal = side === 'top' || side === 'bottom';
-
-        const style: React.CSSProperties = {
-            position: 'absolute',
-            zIndex: 90,
-            pointerEvents: 'none',
-            ...(side === 'top' && { top: 0, left: 0, right: 0, height: 4 }),
-            ...(side === 'bottom' && { bottom: 0, left: 0, right: 0, height: 4 }),
-            ...(side === 'left' && { top: 0, bottom: 0, left: 0, width: 4 }),
-            ...(side === 'right' && { top: 0, bottom: 0, right: 0, width: 4 }),
-        };
-
-        if (isLava) {
-            style.background = isHorizontal
-                ? 'linear-gradient(90deg, #ef4444, #f97316, #ef4444, #ef4444)'
-                : 'linear-gradient(180deg, #ef4444, #f97316, #ef4444, #ef4444)';
-            style.backgroundSize = isHorizontal ? '300% 100%' : '100% 300%';
-            style.boxShadow = '0 0 10px #ef4444, 0 0 20px rgba(239, 68, 68, 0.5)';
-            style.animation = `${isHorizontal ? 'lava-flow-horiz' : 'lava-flow-vert'} 4s infinite linear, edge-glow-pulse 1.5s infinite ease-in-out`;
-        } else if (isPortal) {
-            style.background = isHorizontal
-                ? 'linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6, #8b5cf6)'
-                : 'linear-gradient(180deg, #8b5cf6, #ec4899, #8b5cf6, #8b5cf6)';
-            style.backgroundSize = isHorizontal ? '300% 100%' : '100% 300%';
-            style.boxShadow = '0 0 10px #a855f7, 0 0 20px rgba(168, 85, 247, 0.5)';
-            style.animation = `${isHorizontal ? 'portal-shift-horiz' : 'portal-shift-vert'} 3s infinite linear, edge-glow-pulse 1.2s infinite ease-in-out`;
-        } else {
-            style.background = 'rgba(30, 58, 138, 0.4)';
-            style.boxShadow = 'none';
+        let strongest: 'none' | 'bump' | 'death' | 'victory' = 'none';
+        for (const entity of frame.entities) {
+            if (entity.customData.deathReason) { strongest = 'death'; break; }
+            if (entity.customData.isVictory) { strongest = 'victory'; break; }
+            if (entity.customData.bumpDirection) strongest = 'bump';
         }
 
-        return <div style={style} />;
-    };
+        if (strongest === 'death') hapticNotify('error');
+        else if (strongest === 'victory') hapticNotify('success');
+        else if (strongest === 'bump') hapticImpact('medium');
+    }, [currentFrame, snapshots]);
 
-    const renderEdgeLabel = (side: 'top' | 'bottom' | 'left' | 'right', behavior?: 'wall' | 'portal' | 'lava' | EdgeConfig) => {
-        if (!behavior) return null;
+    if (!snapshots || snapshots.length === 0 || !snapshot || !rooms) return null;
 
-        const ruleType = typeof behavior === 'string' ? behavior : behavior.type;
-        if (ruleType === 'wall') return null;
-
-        const isLava = ruleType === 'lava';
-        const isPortal = ruleType === 'portal';
-
-        const style: React.CSSProperties = {
-            position: 'absolute',
-            zIndex: 95,
-            pointerEvents: 'none',
-            fontSize: 14,
-            fontWeight: 800,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            backgroundColor: isLava ? 'rgba(239, 68, 68, 0.15)' : 'rgba(168, 85, 247, 0.15)',
-            border: `1px solid ${isLava ? 'rgba(239, 68, 68, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
-            color: isLava ? '#ef4444' : '#a855f7',
-            textShadow: `0 0 6px ${isLava ? '#ef4444' : '#a855f7'}`,
-            boxShadow: `0 0 10px ${isLava ? 'rgba(239, 68, 68, 0.1)' : 'rgba(168, 85, 247, 0.1)'}`,
-            animation: 'label-breath 2.5s infinite ease-in-out',
-            ...(side === 'top' && { top: -28, left: '50%', transform: 'translateX(-50%)' }),
-            ...(side === 'bottom' && { bottom: -28, left: '50%', transform: 'translateX(-50%)' }),
-            ...(side === 'left' && { left: -28, top: '50%', transform: 'translateY(-50%)' }),
-            ...(side === 'right' && { right: -28, top: '50%', transform: 'translateY(-50%)' }),
-        };
-
-        const iconStyle: React.CSSProperties = isPortal ? {
-            animation: 'portal-spin 6s infinite linear',
-            display: 'inline-block',
-        } : {};
-
-        return (
-            <div style={style}>
-                <span style={iconStyle}>
-                    {isLava ? <GameIcon name="skull" size={20} color="#ff2d55" /> : <GameIcon name="portal" size={20} color="#00f5d4" />}
-                </span>
-            </div>
-        );
-    };
-
-    if (!snapshots || snapshots.length === 0) return null;
-
-    const frameIndex = Math.min(currentFrame, snapshots.length - 1);
-    const snapshot = snapshots[frameIndex];
-    if (!snapshot) return null;
-    const prevSnapshot = frameIndex > 0 ? snapshots[frameIndex - 1] : null;
-
-    // Odaların yerleşim ofsetlerini ve toplam boyutları hesapla
-    const { roomPositions, totalWidth, totalHeight } = calculateRoomLayoutOffsets(snapshot.rooms, CELL_SIZE, 40);
+    const finalSnapshot = snapshots[snapshots.length - 1];
+    const hasVictory = finalSnapshot?.entities.some(e => e.customData.isVictory) ?? false;
+    const isVictoryActive = currentFrame >= snapshots.length - 1 && hasVictory;
 
     // Bağlantılı portal çizgilerini oluştur
-    const connections: { fromRoomId: string; fromSide: 'top' | 'bottom' | 'left' | 'right'; toRoomId: string; toSide: 'top' | 'bottom' | 'left' | 'right' }[] = [];
+    const connections: { fromRoomId: string; fromSide: EdgeSide; toRoomId: string; toSide: EdgeSide }[] = [];
     const seen = new Set<string>();
-    for (const [rId, room] of Object.entries(snapshot.rooms)) {
+    for (const [rId, room] of Object.entries(rooms)) {
         for (const side of ['top', 'bottom', 'left', 'right'] as const) {
             const edge = room.edges[side];
             if (edge && edge.type === 'portal' && edge.targetRoomId && edge.targetEdge) {
@@ -296,7 +314,7 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
             conn.toRoomId,
             conn.toSide,
             roomPositions,
-            snapshot.rooms,
+            rooms,
             CELL_SIZE,
             40, // gap for gameplay
             connIdx,
@@ -328,12 +346,10 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
         );
     });
 
-    const combinedStyles = edgeStyles + GAME_ANIMATION_KEYFRAMES;
+    const roomList = Object.values(rooms) as RoomState[];
 
     return (
         <div style={{ position: 'relative', width: totalWidth, height: totalHeight }}>
-            <style dangerouslySetInnerHTML={{ __html: combinedStyles }} />
-
             {/* Portal Bağlantı SVG Overlay */}
             {connectionPaths.length > 0 && (
                 <svg
@@ -351,11 +367,12 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
             )}
 
             {/* Odaların Çizilmesi */}
-            {Object.values(snapshot.rooms).map((room: RoomState) => {
+            {roomList.map((room: RoomState) => {
                 const offset = roomPositions[room.id];
                 if (!offset) return null;
 
                 const isControlled = !controlledRoomIds || controlledRoomIds.length === 0 || controlledRoomIds.includes(room.id);
+                const players = playersIn(index, room.id);
 
                 return (
                     <div
@@ -407,38 +424,21 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
                         }}>
                             {room.grid.map((row: Cell[]) =>
                                 row.map((cell: Cell) => {
-                                    const entityOnCell = snapshot.entities.find(
-                                        (e: Entity) => (e.position.roomId ?? 'main') === room.id && e.position.row === cell.position.row && e.position.col === cell.position.col
-                                    );
-                                    const prevEntityOnCell = prevSnapshot?.entities.find(
-                                        (e: Entity) => (e.position.roomId ?? 'main') === room.id && e.position.row === cell.position.row && e.position.col === cell.position.col
-                                    );
-                                    const Renderer = CELL_RENDERERS[cell.type];
-                                    const playersInThisRoom = snapshot.entities.filter((e: Entity) => e.type === 'player' && (e.position.roomId ?? 'main') === room.id && !e.customData._destroyed);
-                                    const isCurrentlyVisible = !room.fogOfWar || playersInThisRoom.some(p => Math.sqrt(Math.pow(cell.position.row - p.position.row, 2) + Math.pow(cell.position.col - p.position.col, 2)) <= (room.fogVisibilityDistance ?? 1.5));
-                                    const isExplored = !room.fogOfWar || (room.fogKeepRevealed !== false ? !!cell.customData.explored : isCurrentlyVisible);
+                                    const key = cellKey(room.id, cell.position.row, cell.position.col);
+                                    const isCurrentlyVisible = isCellVisible(room, players, cell.position.row, cell.position.col);
+                                    const isExplored = !room.fogOfWar
+                                        || (room.fogKeepRevealed !== false ? !!cell.customData.explored : isCurrentlyVisible);
 
-                                    if (!isExplored) {
-                                        return (
-                                            <div key={cell.id} style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: '#020617', border: '1px solid rgba(30, 58, 138, 0.05)', boxSizing: 'border-box' }} />
-                                        );
-                                    }
-
-                                    const visibleEntityOnCell = isCurrentlyVisible ? entityOnCell : (entityOnCell?.type === 'player' ? entityOnCell : null);
-                                    const visiblePrevEntityOnCell = isCurrentlyVisible ? prevEntityOnCell : (prevEntityOnCell?.type === 'player' ? prevEntityOnCell : null);
-
-                                    // Custom renderer fallback
-                                    const ActiveRenderer = Renderer || CELL_RENDERERS['normal'];
                                     return (
-                                        <div key={cell.id} style={{ position: 'relative', width: CELL_SIZE, height: CELL_SIZE, backgroundColor: '#020617' }}>
-                                            <div style={{ width: '100%', height: '100%', filter: isCurrentlyVisible ? 'none' : 'brightness(0.3) contrast(0.8)', transition: 'filter 0.3s ease' }}>
-                                                <ActiveRenderer 
-                                                    cell={cell} 
-                                                    entityOnCell={visibleEntityOnCell}
-                                                    prevEntityOnCell={visiblePrevEntityOnCell}
-                                                />
-                                            </div>
-                                        </div>
+                                        <BoardCell
+                                            key={cell.id}
+                                            cell={cell}
+                                            size={CELL_SIZE}
+                                            entityOnCell={index.entityAt.get(key) ?? null}
+                                            prevEntityOnCell={prevIndex.entityAt.get(key) ?? null}
+                                            isCurrentlyVisible={isCurrentlyVisible}
+                                            isExplored={isExplored}
+                                        />
                                     );
                                 })
                             )}
@@ -449,203 +449,60 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
 
             {/* Trail Layer */}
             <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', width: totalWidth, height: totalHeight }}>
-                {Object.values(snapshot.rooms).map((room: RoomState) => {
+                {roomList.map((room: RoomState) => {
                     const offset = roomPositions[room.id];
                     if (!offset) return null;
-
-                    return room.grid.map((row: Cell[]) =>
-                        row.map((cell: Cell) => {
-                            const trailPlayerIndex = cell.customData.trailPlayerIndex as number | undefined;
-                            if (trailPlayerIndex === undefined) return null;
-
-                            const playersInThisRoom = snapshot.entities.filter((e: Entity) => e.type === 'player' && (e.position.roomId ?? 'main') === room.id && !e.customData._destroyed);
-                            const isCurrentlyVisible = !room.fogOfWar || playersInThisRoom.some(p => Math.sqrt(Math.pow(cell.position.row - p.position.row, 2) + Math.pow(cell.position.col - p.position.col, 2)) <= (room.fogVisibilityDistance ?? 1.5));
-                            const isExplored = !room.fogOfWar || (room.fogKeepRevealed !== false ? !!cell.customData.explored : isCurrentlyVisible);
-
-                            if (!isExplored) return null;
-
-                            const { hex: color, glow } = getPlayerColor(trailPlayerIndex);
-                            const r = cell.position.row;
-                            const c = cell.position.col;
-
-                            const hasLeft  = room.grid[r]?.[c - 1]?.customData.trailPlayerIndex === trailPlayerIndex;
-                            const hasRight = room.grid[r]?.[c + 1]?.customData.trailPlayerIndex === trailPlayerIndex;
-                            const hasUp    = room.grid[r - 1]?.[c]?.customData.trailPlayerIndex === trailPlayerIndex;
-                            const hasDown  = room.grid[r + 1]?.[c]?.customData.trailPlayerIndex === trailPlayerIndex;
-
-                            const player = snapshot.entities.find((e: Entity) => 
-                                e.type === 'player' && 
-                                !e.customData._destroyed && 
-                                (e.customData.playerIndex as number) === trailPlayerIndex
-                            );
-                            
-                            const isPlayerLeft  = player && player.position.row === r && player.position.col === c - 1;
-                            const isPlayerRight = player && player.position.row === r && player.position.col === c + 1;
-                            const isPlayerUp    = player && player.position.row === r - 1 && player.position.col === c;
-                            const isPlayerDown  = player && player.position.row === r + 1 && player.position.col === c;
-
-                            return (
-                                <div 
-                                    key={`trail-${cell.id}`}
-                                    style={{
-                                        position: 'absolute',
-                                        top: offset.top + r * CELL_SIZE,
-                                        left: offset.left + c * CELL_SIZE,
-                                        width: CELL_SIZE,
-                                        height: CELL_SIZE,
-                                        pointerEvents: 'none',
-                                        zIndex: 5,
-                                        opacity: isCurrentlyVisible ? 1.0 : 0.2,
-                                        transition: 'opacity 0.3s ease',
-                                    }}
-                                >
-                                    {(hasLeft || isPlayerLeft) && (
-                                        <div style={{
-                                            position: 'absolute', left: 0, top: 29, width: 32, height: 6,
-                                            backgroundColor: color, boxShadow: `0 0 8px ${color}, 0 0 16px ${glow}`,
-                                        }} />
-                                    )}
-                                    {(hasRight || isPlayerRight) && (
-                                        <div style={{
-                                            position: 'absolute', left: 32, top: 29, width: 32, height: 6,
-                                            backgroundColor: color, boxShadow: `0 0 8px ${color}, 0 0 16px ${glow}`,
-                                        }} />
-                                    )}
-                                    {(hasUp || isPlayerUp) && (
-                                        <div style={{
-                                            position: 'absolute', left: 29, top: 0, width: 6, height: 32,
-                                            backgroundColor: color, boxShadow: `0 0 8px ${color}, 0 0 16px ${glow}`,
-                                        }} />
-                                    )}
-                                    {(hasDown || isPlayerDown) && (
-                                        <div style={{
-                                            position: 'absolute', left: 29, top: 32, width: 6, height: 32,
-                                            backgroundColor: color, boxShadow: `0 0 8px ${color}, 0 0 16px ${glow}`,
-                                        }} />
-                                    )}
-                                    <div style={{
-                                        position: 'absolute', left: 25, top: 25, width: 14, height: 14,
-                                        borderRadius: '50%', backgroundColor: '#ffffff', border: `3px solid ${color}`,
-                                        boxShadow: `0 0 10px ${color}, 0 0 20px ${color}`, zIndex: 6,
-                                    }} />
-                                </div>
-                            );
-                        })
+                    return (
+                        <RoomTrails
+                            key={room.id}
+                            room={room}
+                            offset={offset}
+                            cellSize={CELL_SIZE}
+                            players={playersIn(index, room.id)}
+                            playerByIndex={index.playerByIndex}
+                            sig={playersSig}
+                        />
                     );
                 })}
             </div>
 
             {/* Cable Layer */}
             <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', width: totalWidth, height: totalHeight }}>
-                {Object.values(snapshot.rooms).map((room: RoomState) => {
+                {roomList.map((room: RoomState) => {
                     const offset = roomPositions[room.id];
                     if (!offset) return null;
-
-                    return room.grid.map((row: Cell[]) =>
-                        row.map((cell: Cell) => {
-                            const isElectrified = cell.isElectrified || cell.type === 'power';
-                            if (!isElectrified) return null;
-
-                            const playersInThisRoom = snapshot.entities.filter((e: Entity) => e.type === 'player' && (e.position.roomId ?? 'main') === room.id && !e.customData._destroyed);
-                            const isCurrentlyVisible = !room.fogOfWar || playersInThisRoom.some(p => Math.sqrt(Math.pow(cell.position.row - p.position.row, 2) + Math.pow(cell.position.col - p.position.col, 2)) <= (room.fogVisibilityDistance ?? 1.5));
-                            const isExplored = !room.fogOfWar || (room.fogKeepRevealed !== false ? !!cell.customData.explored : isCurrentlyVisible);
-
-                            if (!isExplored) return null;
-
-                            const cableConns = (cell.customData.cableConnections as string[]) ?? [];
-                            const hasRightConnection = cableConns.includes('right');
-                            const hasDownConnection = cableConns.includes('down');
-
-                            const r = cell.position.row;
-                            const c = cell.position.col;
-
-                            // Check right neighbor
-                            const rightCell = room.grid[r]?.[c + 1];
-                            const isRightExplored = rightCell && (!room.fogOfWar || (room.fogKeepRevealed !== false ? !!rightCell.customData.explored : (!room.fogOfWar || playersInThisRoom.some(p => Math.sqrt(Math.pow(rightCell.position.row - p.position.row, 2) + Math.pow(rightCell.position.col - p.position.col, 2)) <= (room.fogVisibilityDistance ?? 1.5)))));
-
-                            // Check down neighbor
-                            const downCell = room.grid[r + 1]?.[c];
-                            const isDownExplored = downCell && (!room.fogOfWar || (room.fogKeepRevealed !== false ? !!downCell.customData.explored : (!room.fogOfWar || playersInThisRoom.some(p => Math.sqrt(Math.pow(downCell.position.row - p.position.row, 2) + Math.pow(downCell.position.col - p.position.col, 2)) <= (room.fogVisibilityDistance ?? 1.5)))));
-
-                            return (
-                                <div 
-                                    key={`cable-${cell.id}`}
-                                    style={{
-                                        position: 'absolute',
-                                        top: offset.top + r * CELL_SIZE,
-                                        left: offset.left + c * CELL_SIZE,
-                                        width: CELL_SIZE,
-                                        height: CELL_SIZE,
-                                        pointerEvents: 'none',
-                                        zIndex: 6,
-                                        opacity: isCurrentlyVisible ? 0.65 : 0.15,
-                                        transition: 'opacity 0.3s ease',
-                                    }}
-                                >
-                                    {/* Connection to the right */}
-                                    {hasRightConnection && isRightExplored && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            left: 32,
-                                            top: 31, // center-aligned for height 2px
-                                            width: 64,
-                                            height: 2,
-                                            backgroundColor: 'rgba(251, 191, 36, 0.85)',
-                                            boxShadow: '0 0 4px rgba(234, 179, 8, 0.6)',
-                                        }} />
-                                    )}
-
-                                    {/* Connection down */}
-                                    {hasDownConnection && isDownExplored && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            left: 31, // center-aligned for width 2px
-                                            top: 32,
-                                            width: 2,
-                                            height: 64,
-                                            backgroundColor: 'rgba(251, 191, 36, 0.85)',
-                                            boxShadow: '0 0 4px rgba(234, 179, 8, 0.6)',
-                                        }} />
-                                    )}
-
-                                    {/* Center Node/Junction */}
-                                    <div style={{
-                                        position: 'absolute',
-                                        left: 30,
-                                        top: 30,
-                                        width: 4,
-                                        height: 4,
-                                        borderRadius: '50%',
-                                        backgroundColor: '#ffffff',
-                                        boxShadow: '0 0 4px rgba(234, 179, 8, 0.8)',
-                                        zIndex: 7,
-                                    }} />
-                                </div>
-                            );
-                        })
+                    return (
+                        <RoomCables
+                            key={room.id}
+                            room={room}
+                            offset={offset}
+                            cellSize={CELL_SIZE}
+                            players={playersIn(index, room.id)}
+                            playerByIndex={index.playerByIndex}
+                            sig={playersSig}
+                        />
                     );
                 })}
             </div>
 
             {/* Entity Layer */}
             <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
-                {snapshot.entities.map((entity: Entity) => {
+                {entities.map((entity: Entity) => {
                     const Renderer = ENTITY_RENDERERS[entity.type];
                     const rId = entity.position.roomId ?? 'main';
-                    const currentCell = snapshot.rooms[rId]?.grid[entity.position.row]?.[entity.position.col];
-                    const prevSnapshot = frameIndex > 0 ? snapshots[frameIndex - 1] : null;
-                    const prevEntity = prevSnapshot?.entities.find(e => e.id === entity.id) ?? null;
-                    
-                    const room = snapshot.rooms[rId];
-                    const playersInRoom = snapshot.entities.filter(e => e.type === 'player' && (e.position.roomId ?? 'main') === rId && !e.customData._destroyed);
-                    const isEntityVisible = !room?.fogOfWar || entity.type === 'player' || (
-                        playersInRoom.some(p => 
-                            Math.sqrt(Math.pow(entity.position.row - p.position.row, 2) + Math.pow(entity.position.col - p.position.col, 2)) <= (room.fogVisibilityDistance ?? 1.5)
-                        )
-                    );
-                    const isEntityExplored = !room?.fogOfWar || (room.fogKeepRevealed !== false ? !!currentCell?.customData.explored : isEntityVisible);
+                    const room = rooms[rId];
+                    const currentCell = room?.grid[entity.position.row]?.[entity.position.col];
+                    const prevEntity = prevIndex.byId.get(entity.id) ?? null;
 
-                    const opacity = (isEntityExplored && isEntityVisible) ? 1.0 : 0.0;
+                    const playersInRoom = playersIn(index, rId);
+                    const isEntityVisible = !room?.fogOfWar
+                        || entity.type === 'player'
+                        || isCellVisible(room, playersInRoom, entity.position.row, entity.position.col);
+                    const isEntityExplored = !room?.fogOfWar
+                        || (room.fogKeepRevealed !== false ? !!currentCell?.customData.explored : isEntityVisible);
+
+                    const isPlayerCelebrating = isVictoryActive && entity.type === 'player';
+                    const opacity = isPlayerCelebrating ? 0.0 : ((isEntityExplored && isEntityVisible) ? 1.0 : 0.0);
 
                     return (
                         <PhysicsWrapper
@@ -663,6 +520,17 @@ const GameBoard = ({ snapshots, controlledRoomIds, levelEdges, onAnimationEnd }:
                     );
                 })}
             </div>
+
+            {/* Victory Celebration Layer */}
+            {isVictoryActive && finalSnapshot && (
+                <VictoryCelebration
+                    entities={finalSnapshot.entities}
+                    roomPositions={roomPositions}
+                    boardWidth={totalWidth}
+                    boardHeight={totalHeight}
+                    durationMs={VICTORY_CELEBRATION_DURATION}
+                />
+            )}
         </div>
     );
 };

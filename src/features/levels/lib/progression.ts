@@ -53,3 +53,14 @@ export function computeLockedSet(
   });
   return locked;
 }
+
+/**
+ * Bölüm paketinin (chapter) kilidinin açık olup olmadığını kontrol eder.
+ */
+export function isChapterUnlocked(
+  part: Pick<LevelPart, 'unlockRequirement'> | undefined,
+  totalStarsOrScore: number,
+): boolean {
+  if (!part) return true;
+  return totalStarsOrScore >= (part.unlockRequirement ?? 0);
+}

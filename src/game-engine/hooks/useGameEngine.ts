@@ -8,20 +8,32 @@ import { Cell } from '../logic/cellTypes';
 import { ActionIntent, TickSnapshot, UIEvent, RoomState } from '../logic/types';
 import { LevelEdges, LevelBounds } from '../logic/engine/getNextTopologyPosition';
 import { gatherAvailableActions } from '../logic/actions/gather';
+import { beginGridTracking, isGridDirty } from '../logic/engine/gridRevision';
 
 const MAX_TICKS = 50;
 
+/**
+ * `def` ve `traits` kayıt defterinden (registry) gelen, hiçbir zaman ALANI
+ * değiştirilmeyen nesnelerdir — yalnızca bütünüyle başka bir registry nesnesiyle
+ * DEĞİŞTİRİLİRLER. Bu yüzden klonda referansla paylaşılabilirler; her varlık
+ * için iki nesne + bir Set allokasyonundan tasarruf edilir.
+ */
 function cloneEntities(entities: Entity[]): Entity[] {
     return entities.map(e => ({
         ...e,
         position: { ...e.position },
         physics: { ...e.physics },
-        def: { ...e.def },
-        traits: new Set(e.traits),
         customData: { ...e.customData },
     }));
 }
 
+/**
+ * Oda ızgarasının derin kopyası. `cell.def` referansla paylaşılır (bkz.
+ * cloneEntities notu) — hücre başına bir nesne allokasyonu daha az.
+ *
+ * Bu fonksiyon bir turda ızgara GERÇEKTEN değiştiğinde çağrılır; değişmediği
+ * tick'lerde snapshot önceki `rooms` nesnesini paylaşır (bkz. executeTurn).
+ */
 function cloneRooms(rooms: Record<string, RoomState>): Record<string, RoomState> {
     const clone: Record<string, RoomState> = {};
     for (const [rId, room] of Object.entries(rooms)) {
@@ -32,13 +44,32 @@ function cloneRooms(rooms: Record<string, RoomState>): Record<string, RoomState>
             grid: room.grid.map(row =>
                 row.map(cell => ({
                     ...cell,
-                    def: { ...cell.def },
                     customData: { ...cell.customData },
                 }))
             ),
         };
     }
     return clone;
+}
+
+/**
+ * `availableActions` tüm ızgarayı + tüm varlıkları tarar. Bir turda 50 snapshot
+ * üretilebiliyor ama bu listeyi yalnızca EN SON snapshot için okuyan bir tüketici
+ * var (ActionPanel). Bu yüzden hesap ilk okumaya ertelenir: ara snapshot'lar
+ * hiç ödemez.
+ */
+function withLazyActions(
+    snapshot: Omit<TickSnapshot, 'availableActions'>,
+): TickSnapshot {
+    let cached: ReturnType<typeof gatherAvailableActions> | null = null;
+    return Object.defineProperty(snapshot as TickSnapshot, 'availableActions', {
+        enumerable: true,
+        configurable: true,
+        get() {
+            if (cached === null) cached = gatherAvailableActions(this.rooms, this.entities);
+            return cached;
+        },
+    });
 }
 
 interface UseGameEngineOptions {
@@ -112,16 +143,13 @@ export function useGameEngine({
     const isAnimatingInternalRef = useRef(false);
 
     const [snapshots, setSnapshots] = useState<TickSnapshot[]>(() => {
-        const initialClonedRooms = cloneRooms(normalizedInitialRooms);
-        const initialClonedEntities = cloneEntities(initialEntities);
-        return [{
+        return [withLazyActions({
             tickNumber: 0,
-            rooms: initialClonedRooms,
-            entities: initialClonedEntities,
+            rooms: cloneRooms(normalizedInitialRooms),
+            entities: cloneEntities(initialEntities),
             vfxEvents: [],
             uiEvents: [],
-            availableActions: gatherAvailableActions(initialClonedRooms, initialClonedEntities),
-        }];
+        })];
     });
     const [isAnimating, setIsAnimating] = useState(false);
     const [uiEvents, setUiEvents] = useState<UIEvent[]>([]);
@@ -160,16 +188,16 @@ export function useGameEngine({
         const collectedSnapshots: TickSnapshot[] = [];
         const collectedUi: UIEvent[] = [];
 
-        const initialClonedRooms = cloneRooms(roomsRef.current);
-        const initialClonedEntities = cloneEntities(entitiesRef.current);
-        collectedSnapshots.push({
+        // Turun ilk snapshot'ı ızgaranın o andaki kopyası. Sonraki tick'ler
+        // ızgarayı değiştirmedikçe bu nesneyi referansla paylaşır.
+        let lastRoomsSnapshot = cloneRooms(roomsRef.current);
+        collectedSnapshots.push(withLazyActions({
             tickNumber: 0,
-            rooms: initialClonedRooms,
-            entities: initialClonedEntities,
+            rooms: lastRoomsSnapshot,
+            entities: cloneEntities(entitiesRef.current),
             vfxEvents: [],
             uiEvents: [],
-            availableActions: gatherAvailableActions(initialClonedRooms, initialClonedEntities),
-        });
+        }));
 
         let pending = [...startingIntents];
         let tickNumber = 0;
@@ -183,12 +211,14 @@ export function useGameEngine({
 
             const playerCountBefore = entitiesRef.current.filter(e => e.type === 'player').length;
 
+            const gridMark = beginGridTracking();
             const result = processSingleTick(
                 entitiesRef.current,
                 roomsRef.current,
                 pending,
                 levelBounds,
             );
+            const gridChanged = isGridDirty(gridMark);
 
             tickNumber++;
 
@@ -257,15 +287,18 @@ export function useGameEngine({
                 );
             }
 
-            const tickRooms = cloneRooms(roomsRef.current);
-            collectedSnapshots.push({
+            // Izgara bu tick'te değişmediyse kopyalama tamamen atlanır —
+            // tipik bir turda tick'lerin neredeyse tamamı bu daldan geçer.
+            if (gridChanged) {
+                lastRoomsSnapshot = cloneRooms(roomsRef.current);
+            }
+            collectedSnapshots.push(withLazyActions({
                 tickNumber,
-                rooms: tickRooms,
+                rooms: lastRoomsSnapshot,
                 entities: snapshotEntities,
                 vfxEvents: tickVfxEvents,
                 uiEvents: tickUiEvents,
-                availableActions: gatherAvailableActions(tickRooms, snapshotEntities),
-            });
+            }));
 
             collectedUi.push(...tickUiEvents);
             pending = result.pendingNextTick;
@@ -367,16 +400,13 @@ export function useGameEngine({
 
         isGameOverRef.current = false;
         setIsGameOver(false);
-        const resetRooms = cloneRooms(normalizedRooms);
-        const resetEntities = cloneEntities(newEntities);
-        setSnapshots([{
+        setSnapshots([withLazyActions({
             tickNumber: 0,
-            rooms: resetRooms,
-            entities: resetEntities,
+            rooms: cloneRooms(normalizedRooms),
+            entities: cloneEntities(newEntities),
             vfxEvents: [],
             uiEvents: [],
-            availableActions: gatherAvailableActions(resetRooms, resetEntities),
-        }]);
+        })]);
         historyRef.current = [];
         setCanUndo(false);
         setUiEvents([]);
@@ -398,16 +428,13 @@ export function useGameEngine({
         isGameOverRef.current = false;
         setIsGameOver(false);
 
-        const resetRooms = cloneRooms(roomsRef.current);
-        const resetEntities = cloneEntities(entitiesRef.current);
-        setSnapshots([{
+        setSnapshots([withLazyActions({
             tickNumber: 0,
-            rooms: resetRooms,
-            entities: resetEntities,
+            rooms: cloneRooms(roomsRef.current),
+            entities: cloneEntities(entitiesRef.current),
             vfxEvents: [],
             uiEvents: [],
-            availableActions: gatherAvailableActions(resetRooms, resetEntities),
-        }]);
+        })]);
         setUiEvents([]);
         setCanUndo(historyRef.current.length > 0);
 

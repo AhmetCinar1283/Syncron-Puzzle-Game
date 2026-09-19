@@ -34,6 +34,12 @@ export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-game-theme', theme);
+    }
+  }, [theme]);
+
   const setTheme = (newTheme: GameTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);

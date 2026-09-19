@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://syncron.polyvoclub.com/sitemap.xml
+Sitemap: https://syncron.polimelo.com/sitemap.xml

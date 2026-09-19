@@ -1,5 +1,6 @@
 'use client';
 
+import { useT } from '@/contexts/LanguageContext';
 import { GameIcon } from '@/components/icons';
 
 export interface ChapterInfo {
@@ -36,6 +37,8 @@ export function ChapterDock({
   isMobile,
   isGamepadConnected,
 }: ChapterDockProps) {
+  const t = useT();
+
   if (chapters.length === 0) return null;
 
   return (
@@ -60,7 +63,7 @@ export function ChapterDock({
               }}
             >
               <span className="text-[8px] font-extrabold uppercase tracking-wider" style={{ color: isActive ? '#ffd700' : '#475569' }}>
-                Chapter {idx + 1}
+                {t('levels.sector_n', { n: idx + 1 })}
               </span>
               <span className="truncate text-[11px] font-bold">{c.name}</span>
               {c.total > 0 && (
@@ -85,14 +88,14 @@ export function ChapterDock({
       <div className="flex shrink-0 items-center gap-1.5">
         <button
           onClick={onJumpToCurrent}
-          title="Kaldığım seviyeye git"
+          title={t('levels.jump_to_current')}
           className="relative flex h-10 w-10 items-center justify-center rounded-full border border-yellow-400/30 bg-white/[0.04] text-yellow-400"
         >
           <GameIcon name="target" size={20} color="#facc15" />
         </button>
         <button
           onClick={onToggleView}
-          title={viewMode === 'map' ? 'Liste görünümü' : 'Harita görünümü'}
+          title={viewMode === 'map' ? t('levels.view_list') : t('levels.view_map')}
           className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-white/[0.04] text-emerald-400"
         >
           {viewMode === 'map' ? (

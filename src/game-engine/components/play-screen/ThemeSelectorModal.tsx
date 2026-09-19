@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useT } from '@/contexts/LanguageContext';
 import { useGameTheme } from '../../contexts/GameThemeContext';
 import { ALL_THEMES, GameTheme } from '../../themes/themeConfig';
+import { THEME_CURSORS } from '../../themes/themeCursors';
 import { GameIcon } from '@/components/icons';
 
 interface ThemeSelectorModalProps {
@@ -80,11 +81,13 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                                 textShadow: '0 0 10px rgba(0, 255, 136, 0.4)',
                             }}
                         >
-                            {t('theme.title') || 'Oyun Teması'}
+                            {t('theme.title')}
                         </h2>
                     </div>
                     <button
                         onClick={onClose}
+                        title={t('common.close')}
+                        aria-label={t('common.close')}
                         style={{
                             background: 'none',
                             border: 'none',
@@ -105,7 +108,7 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
 
                 {/* Subtitle */}
                 <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>
-                    Oyun tahtasının, blokların ve nesnelerin görsel stilini seçin.
+                    {t('theme.subtitle')}
                 </p>
 
                 {/* Themes Grid */}
@@ -127,7 +130,18 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                         return (
                             <div
                                 key={themeDef.id}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={isSelected}
+                                aria-label={`${localizedName} - ${isSelected ? t('theme.active') : t('theme.select_theme')}`}
+                                title={isSelected ? t('theme.active') : t('theme.select_theme')}
                                 onClick={() => handleSelectTheme(themeDef.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleSelectTheme(themeDef.id);
+                                    }
+                                }}
                                 style={{
                                     padding: '12px 14px',
                                     borderRadius: 10,
@@ -146,6 +160,7 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                                     flexDirection: 'column',
                                     gap: 6,
                                     position: 'relative',
+                                    outline: 'none',
                                 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -164,6 +179,7 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                                     </div>
                                     {isSelected && (
                                         <div
+                                            title={t('theme.active')}
                                             style={{
                                                 width: 18,
                                                 height: 18,
@@ -194,25 +210,52 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                                     {localizedDesc}
                                 </p>
 
-                                {/* Mini Color Palette bar */}
-                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                                    <div
-                                        style={{
-                                            width: 14,
-                                            height: 6,
-                                            borderRadius: 2,
-                                            background: themeDef.accentColor,
-                                        }}
-                                    />
-                                    <div
-                                        style={{
-                                            width: 14,
-                                            height: 6,
-                                            borderRadius: 2,
-                                            background: themeDef.bgDark,
-                                            border: '1px solid rgba(255,255,255,0.2)',
-                                        }}
-                                    />
+                                {/* Mini Color Palette & Cursor Preview */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        <div
+                                            style={{
+                                                width: 14,
+                                                height: 6,
+                                                borderRadius: 2,
+                                                background: themeDef.accentColor,
+                                            }}
+                                        />
+                                        <div
+                                            style={{
+                                                width: 14,
+                                                height: 6,
+                                                borderRadius: 2,
+                                                background: themeDef.bgDark,
+                                                border: '1px solid rgba(255,255,255,0.2)',
+                                            }}
+                                        />
+                                    </div>
+                                    {/* Cursor icons preview */}
+                                    {THEME_CURSORS[themeDef.id] && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <div
+                                                title={t('theme.cursor_normal')}
+                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
+                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].default.svg }}
+                                            />
+                                            <div
+                                                title={t('theme.cursor_pointer')}
+                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
+                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].pointer.svg }}
+                                            />
+                                            <div
+                                                title={t('theme.cursor_crosshair')}
+                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
+                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].crosshair.svg }}
+                                            />
+                                            <div
+                                                title={t('theme.cursor_text')}
+                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
+                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].text.svg }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

@@ -1,87 +1,45 @@
 'use client';
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { userStorageGet, userStorageSet } from '@/lib/userStorage';
-import { assetUrl } from '@/lib/assetUrl';
+import { soundEngine } from '../audio/soundEngine';
+import type { SoundName } from '../audio/soundEngine';
 
-export type SoundName =
-  | 'move'
-  | 'portal'
-  | 'teleport'
-  | 'ice'
-  | 'conveyor'
-  | 'win'
-  | 'lose'
-  | 'toggle'
-  | 'box_push';
-
-const SOUND_FILES: Partial<Record<SoundName, string>> = {
-  move:      '/sounds/move.mp3',
-  portal:    '/sounds/portal.mp3',
-  teleport:  '/sounds/teleport.mp3',
-  ice:       '/sounds/ice.mp3',
-  conveyor:  '/sounds/conveyor.mp3',
-  win: '/sounds/win.mp3',
-  lose: '/sounds/lose.mp3',
-  toggle:    '/sounds/toggle.mp3',
-};
-
-const SOUND_VOLUME: Partial<Record<SoundName, number>> = {
-  move:      0.4,
-  portal:    0.7,
-  teleport:  0.7,
-  ice:       0.5,
-  conveyor:  0.4,
-  win:       0.8,
-  lose:      0.7,
-  toggle:    0.5,
-  box_push:  0.45,
-};
+export type { SoundName } from '../audio/soundEngine';
 
 const MUTED_KEY = 'soundMuted';
 
+/**
+ * PlayScreen'in ses arayüzü. Gerçek çalma işi modül seviyesindeki tekil
+ * `soundEngine`'de (Web Audio) yapılır — buffer'lar bir kez çözülür, bu hook
+ * yalnızca sessiz/sesli tercihini yönetir.
+ */
 export function useSoundManager() {
-  const audioRefs = useRef<Partial<Record<SoundName, HTMLAudioElement>>>({});
-  const [muted, setMuted] = useState(false);
-  const mutedRef = useRef(false);
+  const [muted, setMuted] = useState(() => (typeof window !== 'undefined' ? userStorageGet(MUTED_KEY) === 'true' : false));
+  const mutedRef = useRef(typeof window !== 'undefined' ? userStorageGet(MUTED_KEY) === 'true' : false);
 
-  // Restore muted state from user-scoped localStorage on mount
   useEffect(() => {
-    const saved = userStorageGet(MUTED_KEY) === 'true';
-    if (saved) {
-      setMuted(true);
-      mutedRef.current = true;
-    }
+    mutedRef.current = muted;
+  }, [muted]);
+
+  // Buffer'ları indir/çöz (tekil — ikinci çağrı iş yapmaz).
+  useEffect(() => {
+    soundEngine.preload();
   }, []);
 
-  // Sesleri ön yükle
+  // Otomatik oynatma politikası: AudioContext ilk kullanıcı etkileşimine kadar
+  // askıda kalır. İlk dokunuş/tuş/tıklamada aç, sonra dinleyicileri kaldır.
   useEffect(() => {
-    const names = Object.keys(SOUND_FILES) as SoundName[];
-    names.forEach((name) => {
-      const src = SOUND_FILES[name];
-      if (!src) return;
-      const audio = new Audio(assetUrl(src));
-      audio.volume = SOUND_VOLUME[name] ?? 0.5;
-      audio.preload = 'auto';
-      audioRefs.current[name] = audio;
-    });
-    return () => {
-      Object.values(audioRefs.current).forEach((audio) => {
-        if (audio) { audio.pause(); audio.src = ''; }
-      });
-      audioRefs.current = {};
-    };
+    if (typeof window === 'undefined') return;
+    const unlock = () => soundEngine.unlock();
+    const events = ['pointerdown', 'touchstart', 'keydown'] as const;
+    events.forEach((ev) => window.addEventListener(ev, unlock, { once: true, passive: true }));
+    return () => events.forEach((ev) => window.removeEventListener(ev, unlock));
   }, []);
 
   const play = useCallback((name: SoundName) => {
-    if (mutedRef.current) return;
-    const audio = audioRefs.current[name];
-    if (!audio) return;
-    // Aynı ses tekrar tetiklenirse baştan başlat
-    audio.currentTime = 0;
-    audio.play().catch(() => {
-      // Dosya bulunamazsa ya da tarayıcı izin vermezse sessizce devam et
-    });
+    if (mutedRef.current || userStorageGet(MUTED_KEY) === 'true') return;
+    soundEngine.play(name);
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -89,6 +47,7 @@ export function useSoundManager() {
       const next = !prev;
       mutedRef.current = next;
       userStorageSet(MUTED_KEY, String(next));
+      if (next) soundEngine.stopAll();
       return next;
     });
   }, []);

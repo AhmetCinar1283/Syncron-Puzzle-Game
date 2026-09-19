@@ -25,12 +25,14 @@ function OverlayCard({ accent, children }: { accent: 'red' | 'green'; children: 
             style={{
                 position: 'absolute',
                 inset: 0,
-                backgroundColor: 'rgba(3, 7, 18, 0.82)',
+                // backdrop-filter yok: kaybetme overlay'i tam da ölüm
+                // animasyonunun üstüne biniyor; WebView'de tam ekran blur
+                // geçişi orada birkaç kare düşürüyordu.
+                backgroundColor: 'rgba(3, 7, 18, 0.93)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 100,
-                backdropFilter: 'blur(8px)',
                 padding: 16,
             }}
         >

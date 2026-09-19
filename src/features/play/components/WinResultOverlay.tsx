@@ -79,9 +79,11 @@ export function WinResultOverlay({ result, moveCount, levelId, version, onRestar
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(2, 5, 14, 0.82)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
+                    // backdrop-filter yok: WebView'de kare başına tüm ekranı
+                    // yeniden bulanıklaştırır ve kazanma anında — animasyonun
+                    // en yoğun anında — belirgin takılma yaratır. Aynı görsel
+                    // ayrışmayı biraz daha opak düz bir zemin ücretsiz veriyor.
+                    background: 'rgba(2, 5, 14, 0.92)',
                     zIndex: 200,
                     // Güvenli alan (notch, home indicator)
                     padding: 'env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px)',

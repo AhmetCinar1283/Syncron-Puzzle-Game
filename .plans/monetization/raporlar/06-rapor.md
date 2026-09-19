@@ -109,7 +109,7 @@ Doğrulanan (değişiklik gerekmeyen) noktalar:
 5. **`timeSpent` istemci beyanı**: yalnızca eşit hamlede sıralamayı belirler; sunucu tarafı süre ölçümü (başlangıç jetonu) yok. Kampanya `/complete-level` ile aynı düzey.
 6. **Hız sınırı**: `/daily/complete` için hız sınırı yok (kampanya `/complete-level` ile aynı). Worker genelinde bir karar olarak ele alınmalı.
 7. **Admin/moderatör hilesi**: admin (moderatör artık değil) gelecek bulmacaları bilir; yönetici güveni varsayımı.
-8. **Paylaşım alan adı tutarsızlığı**: paylaşım linki `layout.tsx` ile uyumlu `syncron.polyvoclub.com`; bazı plan/rapor dokümanlarında (ör. `03-android-admob.md`) `polimelo.com` geçiyor. Doğru alan adı teyit edilmeli (`features/daily/lib/dailyConfig.ts`).
+8. **Paylaşım alan adı tutarsızlığı**: paylaşım linki `layout.tsx` ile uyumlu `syncron.polimelo.com`; bazı plan/rapor dokümanlarında (ör. `03-android-admob.md`) `polimelo.com` geçiyor. Doğru alan adı teyit edilmeli (`features/daily/lib/dailyConfig.ts`).
 9. **`epochDate`** (`2026-09-15`) lansman gününe göre ayarlanmalı; değişirse paylaşılan numaralar kayar.
 10. **Ödüllü ipucu `via:'ad'`** sunucuda reklam sağlayıcısıyla doğrulanmıyor (04'ten devralınan genel durum).
 11. **Android**: `npx cap sync android` çalıştırılmalı (yeni eklenti).

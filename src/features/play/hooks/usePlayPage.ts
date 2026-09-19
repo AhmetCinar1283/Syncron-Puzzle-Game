@@ -39,13 +39,14 @@ export function usePlayPage() {
         onBeforeLoad: () => {
             setShowWin(false);
             setWorkerResult(null);
+            resetWorker();
             resetTracking();
         },
         onLoaded: beginSession,
     });
     const { reload, nextLevelId } = level;
 
-    const callWorker = useLevelCompletion({
+    const { callWorker, resetWorker } = useLevelCompletion({
         firestoreId: level.firestoreId,
         levelId,
         session,
@@ -106,10 +107,16 @@ export function usePlayPage() {
     });
     const { onFailedAttempt: skipOnFailedAttempt } = skip;
 
+    // ── Zafer erken tetikleme (animasyon oynarken arka planda worker) ──
+    const onWinDetected = useCallback(() => {
+        resetHint();
+        callWorker();
+    }, [resetHint, callWorker]);
+
     // ── UI button handler ─────────────────────────────────────
     const handleButtonPressed = useCallback(async (buttonType: UIButtonType, details?: { isDeath?: boolean }) => {
         if (buttonType === 'next_level') {
-            // Kazandı → worker çağır, win overlay göster
+            // Kazandı → animasyon bitti, win overlay göster
             resetHint();
             setShowWin(true);
             callWorker();
@@ -120,6 +127,7 @@ export function usePlayPage() {
             recordRestart(details?.isDeath);
             hintOnRestart();
             skipOnFailedAttempt();
+            resetWorker();
             const result = await beforeRestart();
             reload(); // PlayScreen'i sıfırla
             if (result.shown) setShowAfterAdPrompt(true);
@@ -128,7 +136,7 @@ export function usePlayPage() {
             submitTelemetry('quit');
             router.push('/levels');
         }
-    }, [callWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart, resetHint, hintOnRestart, skipOnFailedAttempt]);
+    }, [callWorker, resetWorker, router, submitTelemetry, recordRestart, reload, notifyLevelCompleted, beforeRestart, resetHint, hintOnRestart, skipOnFailedAttempt]);
 
     // ── Kazanma ekranından ayrılış (sonraki level / menü) ─────
     // İkisi de aynı reklam kontrolünden geçer: level bitti, ekrandan ayrılıyoruz.
@@ -172,5 +180,6 @@ export function usePlayPage() {
         skip,
         onMoveExecuted,
         onUndoExecuted,
+        onWinDetected,
     };
 }

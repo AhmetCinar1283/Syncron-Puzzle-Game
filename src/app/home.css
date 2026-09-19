@@ -1,0 +1,960 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   DOSYA AMACI: Ana menünün (src/features/home) yerleşim ve animasyon katmanı.
+
+   NEDEN AYRI BİR CSS DOSYASI: Önceki sürümde her menü şeridi aynı @keyframes
+   bloğunu kendi <style> etiketiyle DOM'a basıyordu (8 kopya) ve stiller inline
+   obje olarak her render'da yeniden üretiliyordu. Keyframe'ler burada bir kez
+   tanımlanır, bileşenler yalnızca sınıf adı ve CSS değişkeni verir.
+
+   TEK KURAL — PERFORMANS: Bu dosyadaki hiçbir @keyframes / transition
+   `transform` ve `opacity` dışında bir özelliği animate etmez. box-shadow,
+   filter, background ve border-color geçişleri her karede repaint tetikler;
+   Android WebView'de (Capacitor) ana takılma sebebi budur. Parlama gerektiğinde
+   sabit box-shadow'lu ayrı bir katmanın yalnızca opacity'si oynatılır.
+
+   Ölçüler JS'ten değil clamp() ile gelir: `isMobile` state'i yeniden render
+   tetiklemeden mobil→masaüstü arası sürekli ölçeklenir.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.home-root {
+  /* Ölçü token'ları — tek kaynak. Bileşenler piksel hesabı yapmaz. */
+  --home-cell: clamp(46px, 13vw, 62px);
+  --home-hero-h: clamp(78px, 21vw, 112px);
+  --home-tile-h: clamp(68px, 18vw, 88px);
+  --home-gap: clamp(8px, 2.2vw, 14px);
+  --home-pad: clamp(10px, 2.6vw, 16px);
+  --home-max: 540px;
+  --home-player-scale: 0.62;
+
+  /* Tema token'ları — JS'ten inline set edilir (bkz. HomePage.tsx). */
+  --home-accent: #00c4ff;
+  --home-accent-glow: rgba(0, 196, 255, 0.5);
+  /* Vurgu renginin alfa varyantları. color-mix() yerine JS'ten hex+alfa olarak
+     gelir; eski Android WebView'lerde color-mix desteklenmiyor ve kuralı
+     tamamen düşürüyor (bkz. HomePage.tsx). */
+  --home-accent-09: #00c4ff17;
+  --home-accent-12: #00c4ff1f;
+  --home-accent-18: #00c4ff2e;
+  --home-accent-26: #00c4ff42;
+  --home-accent-35: #00c4ff59;
+  --home-accent-45: #00c4ff73;
+  --home-accent-50: #00c4ff80;
+  --home-accent-66: #00c4ffa8;
+  --home-accent-70: #00c4ffb3;
+  --home-radius: 14px;
+}
+
+@media (min-width: 768px) {
+  .home-root {
+    --home-player-scale: 0.8;
+  }
+}
+
+/* ── Sayfa iskeleti ─────────────────────────────────────────────────────── */
+
+.home-main {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100dvh - var(--ad-banner-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  box-sizing: border-box;
+  padding: clamp(14px, 4vw, 28px) clamp(12px, 4vw, 20px) clamp(24px, 6vw, 40px);
+}
+
+/*
+ * Birincil bölge tek ekrana sığar ve dikeyde ortalanır; SEO/rehber içeriği
+ * fold'un altında kalır. `min-height: 0` olmadan flex çocuğu taşabilir.
+ */
+.home-primary {
+  width: 100%;
+  max-width: var(--home-max);
+  flex: 1 0 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(12px, 3vw, 20px);
+}
+
+/* ── Üst bar ────────────────────────────────────────────────────────────── */
+
+.home-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.home-topbar__title {
+  margin: 0;
+  font-size: clamp(24px, 7vw, 40px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--home-accent);
+  /* Statik — animate edilmez. */
+  text-shadow: 0 0 18px var(--home-accent-glow);
+}
+
+.home-topbar__tagline {
+  margin: 3px 0 0;
+  font-size: clamp(8px, 2.2vw, 10px);
+  font-weight: 800;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.home-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  min-height: 34px;
+  border-radius: calc(var(--home-radius) * 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--home-accent-45);
+  color: var(--home-accent);
+  font-size: clamp(9px, 2.4vw, 11px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: transform 150ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.home-chip:active {
+  transform: scale(0.94);
+}
+
+/* ── Tahta çerçevesi (tahta = menü) ─────────────────────────────────────── */
+
+.home-board {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--home-gap);
+  padding: var(--home-pad);
+  box-sizing: border-box;
+  border-radius: var(--home-radius);
+  border: 2px solid var(--home-accent-50);
+  /* Statik gölge — hiçbir durumda animate edilmez. */
+  box-shadow: 0 0 30px var(--home-accent-glow), inset 0 0 26px rgba(0, 0, 0, 0.85);
+}
+
+/* CRT tarama çizgileri — statik doku, animasyonsuz. */
+.home-board__scan {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  /* Çerçeve `overflow: hidden` değil (hücre parlamaları kırpılmasın); doku
+     kendi yuvarlak köşesiyle kırpılır. */
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+}
+
+/* ── HERO: Play şeridi ──────────────────────────────────────────────────── */
+
+.home-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--home-cell) 1fr var(--home-cell);
+  gap: var(--home-gap);
+  align-items: center;
+  height: var(--home-hero-h);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: transform 160ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.home-hero:active {
+  transform: scale(0.985);
+}
+
+.home-hero[data-phase="freeze"],
+.home-hero[data-phase="sliding"],
+.home-hero[data-phase="won"] {
+  cursor: default;
+}
+
+/* Sol dock hücresi ve sağ hedef hücresi */
+.home-hero__dock,
+.home-hero__target {
+  position: relative;
+  width: var(--home-cell);
+  height: var(--home-cell);
+  border-radius: calc(var(--home-radius) * 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.home-hero__dock-mark {
+  width: 52%;
+  height: 52%;
+  border-radius: 50%;
+  border: 1.5px dashed var(--home-accent-70);
+  opacity: 0.55;
+}
+
+.home-hero__ring {
+  position: absolute;
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  border: 1.5px dashed var(--home-accent);
+  opacity: 0.8;
+  animation: homeSpin 7s linear infinite;
+}
+
+.home-hero__core {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(15px, 4vw, 20px);
+  line-height: 1;
+  color: var(--home-accent);
+  text-shadow: 0 0 10px var(--home-accent);
+  animation: homePulse 1900ms ease-in-out infinite;
+}
+
+/* Orta parkur */
+.home-hero__track {
+  position: relative;
+  height: 100%;
+  border-radius: calc(var(--home-radius) * 0.6);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 clamp(12px, 3.4vw, 20px);
+  box-sizing: border-box;
+}
+
+/* Parkur içi ızgara çizgileri — statik. */
+.home-hero__grid-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: var(--home-cell) 100%;
+}
+
+/*
+ * Buz katmanı: arka planı animate etmek yerine hazır buz görseli sabit durur,
+ * yalnızca opacity'si geçiş yapar.
+ */
+.home-hero__ice {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms linear;
+  background: linear-gradient(135deg, rgba(165, 243, 252, 0.4) 0%, rgba(147, 210, 255, 0.2) 100%);
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.35);
+}
+
+.home-hero[data-phase="freeze"] .home-hero__ice,
+.home-hero[data-phase="sliding"] .home-hero__ice,
+.home-hero[data-phase="won"] .home-hero__ice {
+  opacity: 1;
+}
+
+/* Işık süpürmesi — yalnızca transform. */
+.home-hero__sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 42%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--home-accent-18) 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    var(--home-accent-26) 70%,
+    transparent 100%
+  );
+}
+
+.home-hero[data-phase="sliding"] .home-hero__sweep,
+.home-hero[data-phase="won"] .home-hero__sweep {
+  animation: homeSweep 360ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+.home-hero__label {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.home-hero__label-title {
+  font-size: clamp(19px, 5.6vw, 28px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: #ffffff;
+  /* Statik parlama. */
+  text-shadow: 0 0 14px var(--home-accent), 0 0 30px var(--home-accent-glow);
+  white-space: nowrap;
+}
+
+.home-hero__label-sub {
+  font-size: clamp(9px, 2.6vw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--home-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-hero__chevrons {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  color: var(--home-accent);
+  font-size: clamp(13px, 3.6vw, 17px);
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* Hedefi işaret eden üç ok, sırayla nefes alır — yalnızca opacity+transform. */
+.home-hero__chevrons > span {
+  animation: homeChevron 1400ms ease-in-out infinite;
+}
+
+.home-hero__chevrons > span:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.home-hero__chevrons > span:nth-child(3) {
+  animation-delay: 280ms;
+}
+
+/* ── Oyuncu rayı ────────────────────────────────────────────────────────────
+   Ray, dock hücresinin merkezinden hedef hücresinin merkezine uzanır; içindeki
+   "runner" tam olarak bu mesafe kadar geniştir. Böylece kaymayı piksel hesabı
+   yapmadan `translateX(100%)` ile ifade edebiliyoruz — ekran boyutundan
+   bağımsız, layout tetiklemeyen saf transform.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.home-hero__rail {
+  position: absolute;
+  left: calc(var(--home-cell) / 2);
+  right: calc(var(--home-cell) / 2);
+  top: 50%;
+  height: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.home-hero__runner {
+  position: absolute;
+  inset: 0;
+}
+
+.home-hero[data-phase="sliding"] .home-hero__runner,
+.home-hero[data-phase="won"] .home-hero__runner {
+  animation: homeSlide 340ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+  /* Yalnızca hareket süresince katman terfisi; idle'da kaldırılır. */
+  will-change: transform;
+}
+
+.home-hero__player {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.home-hero__player-inner {
+  transform: scale(var(--home-player-scale));
+}
+
+.home-hero[data-phase="idle"] .home-hero__player-inner {
+  animation: homeBreathe 2600ms ease-in-out infinite;
+}
+
+.home-hero[data-phase="sliding"] .home-hero__player-inner {
+  animation: homeDash 340ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+/* Kayma izi — genişliği runner ile aynı, yalnızca scaleX + opacity. */
+.home-hero__trail {
+  position: absolute;
+  inset: 0;
+  top: -1.5px;
+  height: 3px;
+  border-radius: 2px;
+  transform-origin: left center;
+  opacity: 0;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--home-accent-35) 45%,
+    #cffafe 85%,
+    #ffffff 100%
+  );
+}
+
+.home-hero[data-phase="sliding"] .home-hero__trail,
+.home-hero[data-phase="won"] .home-hero__trail {
+  animation: homeTrail 420ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+/* ── İkincil hücre ızgarası ─────────────────────────────────────────────── */
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--home-gap);
+}
+
+@media (min-width: 560px) {
+  .home-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.home-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: var(--home-tile-h);
+  padding: 8px 6px;
+  box-sizing: border-box;
+  border-radius: calc(var(--home-radius) * 0.6);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  overflow: hidden;
+  transition: transform 160ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.home-tile:active {
+  transform: scale(0.95);
+}
+
+.home-tile[data-active="true"] {
+  transform: translateY(-2px);
+}
+
+.home-tile__label {
+  font-size: clamp(10px, 2.9vw, 12px);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-tile__badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 1px 4px;
+  border-radius: 999px;
+  line-height: 1.5;
+}
+
+/*
+ * Parlama katmanı: gölge sabit, yalnızca opacity geçiş yapar. Aktif/hover
+ * durumunda box-shadow'u doğrudan değiştirmek her seferinde repaint demekti.
+ */
+.home-glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 170ms ease;
+}
+
+.home-tile[data-active="true"] .home-glow,
+.home-hero[data-active="true"] .home-glow {
+  opacity: 1;
+}
+
+/* ── "Daha fazla" alt sayfası ───────────────────────────────────────────── */
+
+.home-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.home-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 16, 0.74);
+  animation: homeFade 180ms ease forwards;
+}
+
+.home-sheet__panel {
+  position: relative;
+  width: 100%;
+  max-width: var(--home-max);
+  max-height: 80dvh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 14px calc(18px + var(--ad-banner-height));
+  border-top: 2px solid var(--home-accent-50);
+  border-radius: var(--home-radius) var(--home-radius) 0 0;
+  animation: homeSheetIn 260ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+  will-change: transform;
+}
+
+@media (min-width: 640px) {
+  .home-sheet {
+    align-items: center;
+    padding: 20px;
+  }
+
+  .home-sheet__panel {
+    border-radius: var(--home-radius);
+    border: 2px solid var(--home-accent-50);
+    padding-bottom: 18px;
+    animation-name: homePop;
+  }
+}
+
+.home-sheet__handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 0 auto 12px;
+}
+
+@media (min-width: 640px) {
+  .home-sheet__handle {
+    display: none;
+  }
+}
+
+.home-sheet__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+  border-radius: calc(var(--home-radius) * 0.6);
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: transform 150ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.home-sheet__row:active {
+  transform: scale(0.98);
+}
+
+/* ── Rehber / SEO bölümü (fold altı) ────────────────────────────────────── */
+
+.home-info {
+  width: 100%;
+  max-width: var(--home-max);
+  margin-top: clamp(24px, 7vw, 44px);
+  box-sizing: border-box;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.home-info__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: calc(var(--home-radius) * 0.6);
+  color: var(--home-accent-70);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/*
+ * İçerik mobilde varsayılan olarak kapalıdır ama HTML kaynağında kalır —
+ * tarayıcı tarafı SEO içeriği kaybolmaz. Masaüstünde her zaman açık.
+ */
+.home-info__body[data-open="false"] {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .home-info__toggle {
+    display: none;
+  }
+
+  .home-info__body[data-open="false"] {
+    display: block;
+  }
+}
+
+.home-info__tips {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px 18px;
+}
+
+@media (min-width: 420px) {
+  .home-info__tips {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.home-info__tip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: clamp(11px, 2.9vw, 12px);
+  color: #94a3b8;
+}
+
+.home-links {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.home-links a {
+  color: var(--home-accent-66);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transition: color 180ms ease;
+}
+
+.home-links a:hover {
+  color: var(--home-accent);
+}
+
+/* ── Gamepad ipucu ──────────────────────────────────────────────────────── */
+
+.home-gamepad-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + var(--ad-banner-height));
+  z-index: 100;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  /* backdrop-filter yok: WebView'de kare başına pahalı bir blur geçişi. */
+  background: rgba(3, 7, 18, 0.94);
+  border: 1.5px solid var(--home-accent);
+  box-shadow: 0 4px 20px var(--home-accent-glow);
+  color: var(--home-accent);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* ── Arka plan ──────────────────────────────────────────────────────────── */
+
+.home-bg-canvas,
+.home-bg-static {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.home-bg-canvas {
+  transform: translateZ(0);
+  contain: strict;
+}
+
+/* Düşük performanslı cihazlarda partikül yerine tek statik katman. */
+.home-bg-static {
+  background:
+    radial-gradient(circle at 18% 12%, var(--home-accent-12, #00c4ff1f) 0%, transparent 55%),
+    radial-gradient(circle at 82% 82%, var(--home-accent-09, #00c4ff17) 0%, transparent 52%);
+}
+
+/* ── Zafer patlaması ────────────────────────────────────────────────────── */
+
+.home-burst {
+  position: absolute;
+  z-index: 50;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.home-burst__flash {
+  position: absolute;
+  top: -24px;
+  left: -24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  animation: homeBurstFlash 450ms ease-out forwards;
+}
+
+.home-burst__wave {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 40px;
+  height: 40px;
+  animation: homeBurstWave 500ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+.home-burst__spark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  animation: homeBurstSpark 550ms cubic-bezier(0.12, 0.8, 0.32, 1) forwards;
+}
+
+/* ── Keyframe'ler (yalnızca transform / opacity) ────────────────────────── */
+
+@keyframes homeSlide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes homeDash {
+  0% {
+    transform: scale(var(--home-player-scale));
+  }
+  22% {
+    transform: scale(var(--home-player-scale)) scaleX(1.16) scaleY(0.9);
+  }
+  100% {
+    transform: scale(var(--home-player-scale)) scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes homeBreathe {
+  0%,
+  100% {
+    transform: scale(var(--home-player-scale));
+  }
+  50% {
+    transform: scale(calc(var(--home-player-scale) * 1.07));
+  }
+}
+
+@keyframes homeTrail {
+  0% {
+    transform: scaleX(0);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scaleX(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes homeSweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.85;
+  }
+  82% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(300%);
+    opacity: 0;
+  }
+}
+
+@keyframes homeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes homePulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.82;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 1;
+  }
+}
+
+@keyframes homeChevron {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+
+@keyframes homeFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes homeSheetIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes homePop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes homeBurstFlash {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes homeBurstWave {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+@keyframes homeBurstSpark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* ── Hareket bütçesi ────────────────────────────────────────────────────────
+   `.home-ambient` yalnızca dekoratif, sürekli dönen animasyonlara verilir.
+   Düşük performanslı cihazda ve prefers-reduced-motion'da bunlar susturulur.
+   Kayma / patlama gibi İŞLEVSEL animasyonlar asla kapatılmaz: navigasyon
+   animationend olayına bağlı, kapatılsa akış kilitlenirdi.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.home-root[data-motion="lite"] .home-ambient {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-ambient {
+    animation: none !important;
+  }
+
+  .home-hero,
+  .home-tile,
+  .home-chip,
+  .home-sheet__row {
+    transition: none;
+  }
+}

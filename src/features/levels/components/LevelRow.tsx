@@ -57,8 +57,8 @@ function ContextMenu({ x, y, isPreset, index, total, onEdit, onDelete, onMoveUp,
         <MenuItem color="#00c4ff" icon={<GameIcon name="pencil" size={14} />} label={t('list.edit')} onClick={() => { onEdit(); onClose(); }} />
         {!isPreset && (
           <>
-            <MenuItem color="#9333ea" icon="↑" label="Yukarı taşı" onClick={() => { onMoveUp(); onClose(); }} disabled={index === 0} />
-            <MenuItem color="#9333ea" icon="↓" label="Aşağı taşı" onClick={() => { onMoveDown(); onClose(); }} disabled={index >= total - 1} />
+            <MenuItem color="#9333ea" icon="↑" label={t('list.move_up')} onClick={() => { onMoveUp(); onClose(); }} disabled={index === 0} />
+            <MenuItem color="#9333ea" icon="↓" label={t('list.move_down')} onClick={() => { onMoveDown(); onClose(); }} disabled={index >= total - 1} />
           </>
         )}
         <div className="my-1 h-px bg-white/[0.06]" />
@@ -239,8 +239,8 @@ export function LevelRow({
               <div className="flex items-center gap-1">
                 {!isPreset && (
                   <div className="flex flex-col gap-0.5">
-                    <ArrowBtn onClick={onMoveUp} disabled={index === 0} label="▲" />
-                    <ArrowBtn onClick={onMoveDown} disabled={index >= total - 1} label="▼" />
+                    <ArrowBtn onClick={onMoveUp} disabled={index === 0} label="▲" title={t('list.move_up')} />
+                    <ArrowBtn onClick={onMoveDown} disabled={index >= total - 1} label="▼" title={t('list.move_down')} />
                   </div>
                 )}
                 <SmallBtn onClick={onEdit} color="#00c4ff" label={<GameIcon name="pencil" size={13} />} title={t('list.edit')} />
@@ -293,11 +293,12 @@ export function LevelRow({
   );
 }
 
-function ArrowBtn({ onClick, disabled, label }: { onClick: () => void; disabled: boolean; label: string }) {
+function ArrowBtn({ onClick, disabled, label, title }: { onClick: () => void; disabled: boolean; label: string; title?: string }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className="flex h-5 w-[22px] items-center justify-center rounded border border-white/[0.07] bg-white/[0.02] text-[11px]"
       style={{ color: disabled ? '#1e3a5f' : '#475569', cursor: disabled ? 'not-allowed' : 'pointer' }}
     >

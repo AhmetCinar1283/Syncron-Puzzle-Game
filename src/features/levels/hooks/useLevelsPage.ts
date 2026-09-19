@@ -8,10 +8,13 @@ import { useT } from '@/contexts/LanguageContext';
 import { useAppSelector } from '@/store/hooks';
 import { selectUser } from '@/store/userSlice';
 import type { LevelPart } from '@/services/firebase/adminTypes';
-import { getMapTheme } from '../lib/mapThemes';
-import { computeLockedSet, isProgressed } from '../lib/progression';
-import { useLevelsNavigation } from './useLevelsNavigation';
-import type { ChapterInfo } from '../components/ChapterDock';
+import { computeLockedSet, isProgressed, isChapterUnlocked } from '../lib/progression';
+import { getResponsiveColumnCount, calculateChapterStars } from '../lib/gridCalculations';
+import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
+import { getLevelTheme } from '../themes/levelThemeAdapters';
+import { useCircuitNavigation } from './useCircuitNavigation';
+import { useLevelAudio } from './useLevelAudio';
+import type { ChapterItemData } from '../components/chapters/ChapterBar';
 
 export type LevelEntry = StoredLevel & { id: number };
 
@@ -23,32 +26,34 @@ export function useLevelsPage() {
   const searchParams = useAppSearchParams();
   const { isModerator, user } = useAuth();
   const { totalScore } = useAppSelector(selectUser);
+  const { theme: gameTheme } = useGameTheme();
+  const themeDef = useMemo(() => getLevelTheme(gameTheme), [gameTheme]);
+  const audio = useLevelAudio();
 
   const [presets, setPresets] = useState<LevelEntry[]>([]);
   const [userLevels, setUserLevels] = useState<LevelEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 400);
   const [isOffline, setIsOffline] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<LevelEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [parts, setParts] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedPartId, setSelectedPartId] = useState<string>('');
   const [playedMap, setPlayedMap] = useState<Map<string, StoredPlayedLevel>>(new Map());
-  /** Ödüllü reklamla atlanan bölümler (05): kilidi açar, skor/yıldız vermez. */
+  /** Ödüllü reklamla atlanan bölümler: kilidi açar, skor/yıldız vermez. */
   const [skippedSet, setSkippedSet] = useState<Set<string>>(new Set());
   const [partsMap, setPartsMap] = useState<Map<string, LevelPart>>(new Map());
 
   const [activeTab, setActiveTab] = useState<'campaign' | 'custom'>('campaign');
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [isWarping, setIsWarping] = useState(false);
   const [victoryModal, setVictoryModal] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const listContainerRef = useRef<HTMLDivElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── Çevrimdışı bandı ────────────────────────────────────────────────────
+  // ── 1. Çevrimdışı Durumu ────────────────────────────────────────────────
   useEffect(() => {
     setIsOffline(typeof navigator !== 'undefined' && !navigator.onLine);
     const goOnline = () => setIsOffline(false);
@@ -61,17 +66,21 @@ export function useLevelsPage() {
     };
   }, []);
 
-  // ── Responsive ──────────────────────────────────────────────────────────
+  // ── 2. Responsive Boyutlandırma ─────────────────────────────────────────
   useEffect(() => {
-    function check() {
-      setIsMobile(window.innerWidth < 600);
+    function handleResize() {
+      const w = window.innerWidth;
+      setWindowWidth(w);
+      setIsMobile(w < 640);
     }
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ── Veri yükleme ────────────────────────────────────────────────────────
+  const columns = useMemo(() => getResponsiveColumnCount(windowWidth), [windowWidth]);
+
+  // ── 3. Veri Yükleme ─────────────────────────────────────────────────────
   const reload = useCallback(async () => {
     const { getOrderedLevels, getPresetLevels, getAllPlayedLevels, getAllSkippedLevels } = await import('@/services/db');
     const [presetData, userData] = await Promise.all([getPresetLevels(), getOrderedLevels()]);
@@ -98,6 +107,7 @@ export function useLevelsPage() {
     };
   }, [reload]);
 
+  // ── 4. Senkronizasyon ───────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     import('@/services/sync/playedLevels').then(({ syncPlayedLevelsFromWorker }) => {
@@ -166,6 +176,7 @@ export function useLevelsPage() {
     setSyncing(false);
   }, [reload, user]);
 
+  // ── 5. Kullanıcı Seviyeleri Yönetimi ────────────────────────────────────
   const move = useCallback(
     async (index: number, dir: -1 | 1) => {
       const target = index + dir;
@@ -209,7 +220,15 @@ export function useLevelsPage() {
     setDeleteConfirm(null);
   }, [deleteConfirm, reload]);
 
-  // ── Türetilmiş veri ─────────────────────────────────────────────────────
+  // ── 6. İlerleme & Yıldız Hesaplamaları ──────────────────────────────────
+  const totalEarnedStars = useMemo(() => {
+    let sum = 0;
+    for (const p of playedMap.values()) {
+      if (p.stars) sum += p.stars;
+    }
+    return sum;
+  }, [playedMap]);
+
   const filteredPresets = useMemo(
     () => (selectedPartId ? presets.filter((lv) => String(lv.part) === selectedPartId) : presets),
     [presets, selectedPartId],
@@ -217,16 +236,21 @@ export function useLevelsPage() {
 
   const progressSets = useMemo(() => ({ played: playedMap, skipped: skippedSet }), [playedMap, skippedSet]);
 
+  const activePart = partsMap.get(selectedPartId);
+  const currentPartIdx = parts.findIndex((p) => p.id === selectedPartId);
+
+  // Chapter'ın kilit durumu (Yıldız bariyeri kontrolü)
+  const isCurrentChapterLocked = useMemo(() => {
+    if (isModerator || !activePart) return false;
+    return !isChapterUnlocked(activePart, totalEarnedStars);
+  }, [isModerator, activePart, totalEarnedStars]);
+
   const lockedSet = useMemo((): Set<string> => {
     if (isModerator || !selectedPartId) return new Set();
     const part = partsMap.get(selectedPartId);
-    return part ? computeLockedSet(part, progressSets, totalScore) : new Set();
-  }, [selectedPartId, partsMap, progressSets, totalScore, isModerator]);
+    return part ? computeLockedSet(part, progressSets, totalEarnedStars) : new Set();
+  }, [selectedPartId, partsMap, progressSets, totalEarnedStars, isModerator]);
 
-  const activePart = partsMap.get(selectedPartId);
-  const currentPartIdx = parts.findIndex((p) => p.id === selectedPartId);
-  const hasPortalStart = currentPartIdx > 0;
-  // Sonraki bölüme geçiş: tüm bölümler çözülmüş ya da atlanmış olmalı (bölüm sonu atlanamaz — sunucu kuralı).
   const isSessionCompleted =
     filteredPresets.length > 0 &&
     filteredPresets.every((lv) => lv.firestoreId && isProgressed(lv.firestoreId, progressSets));
@@ -240,92 +264,70 @@ export function useLevelsPage() {
     return idx !== -1 ? idx : 0;
   }, [filteredPresets, progressSets, lockedSet]);
 
-  const chapters: ChapterInfo[] = useMemo(
-    () =>
-      parts.map((p) => {
-        const partLevels = presets.filter((l) => String(l.part) === p.id);
-        return {
-          id: p.id,
-          name: p.name,
-          total: partLevels.length,
-          completed: partLevels.filter((l) => l.firestoreId && playedMap.has(l.firestoreId)).length,
-        };
-      }),
-    [parts, presets, playedMap],
-  );
+  // Chapter listesi ve yıldız istatistikleri
+  const chapters: ChapterItemData[] = useMemo(() => {
+    return parts.map((p) => {
+      const fullPart = partsMap.get(p.id);
+      const partLevels = presets.filter((l) => String(l.part) === p.id);
+      const { earned, max } = calculateChapterStars(partLevels, playedMap);
+      const req = fullPart?.unlockRequirement ?? 0;
+      const locked = !isModerator && totalEarnedStars < req;
 
-  // Sekme/görünüm değişince seçim varsayılana döner
+      return {
+        id: p.id,
+        name: p.name,
+        total: partLevels.length,
+        completed: partLevels.filter((l) => l.firestoreId && playedMap.has(l.firestoreId)).length,
+        earnedStars: earned,
+        maxStars: max,
+        isLocked: locked,
+        unlockRequirement: req,
+      };
+    });
+  }, [parts, partsMap, presets, playedMap, isModerator, totalEarnedStars]);
+
+  // ── 7. Navigasyon ve Başlatma ───────────────────────────────────────────
+  const currentList = activeTab === 'campaign' ? filteredPresets : userLevels;
+
   useEffect(() => {
     setSelectedIndex(activeTab === 'campaign' ? defaultActiveIdx : 0);
-  }, [activeTab, viewMode, defaultActiveIdx]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [selectedPartId]);
-
-  // ── Navigasyon eylemleri ─────────────────────────────────────────────────
-  const currentList = activeTab === 'campaign' ? filteredPresets : userLevels;
+  }, [activeTab, defaultActiveIdx, selectedPartId]);
 
   const playLevel = useCallback(
     (lv: LevelEntry, isPreset: boolean) => {
       const isLocked = isPreset && lv.firestoreId ? lockedSet.has(lv.firestoreId) : false;
-      if (isLocked) return;
+      if (isLocked) {
+        audio.playLock();
+        return;
+      }
+      audio.playSelect();
       router.push(isPreset ? `/play?id=${lv.id}&source=preset` : `/play?id=${lv.id}`);
     },
-    [lockedSet, router],
+    [lockedSet, router, audio],
   );
 
   const goToChapter = useCallback(
     (targetIdx: number) => {
       if (targetIdx < 0 || targetIdx >= parts.length) return;
+      audio.playWarp();
       setIsWarping(true);
       setTimeout(() => {
         setSelectedPartId(parts[targetIdx].id);
         setIsWarping(false);
-      }, 420);
+      }, 350);
     },
-    [parts],
+    [parts, audio],
   );
 
-  const { isGamepadConnected } = useLevelsNavigation({
-    itemCount: currentList.length,
-    disabled: !!deleteConfirm || victoryModal,
-    chapterModeVertical: activeTab === 'campaign' && viewMode === 'map',
-    scrollContainerRef: activeTab === 'campaign' && viewMode === 'map' ? mapContainerRef : listContainerRef,
-    onNavigate: (delta) => {
-      setSelectedIndex((prev) => {
-        const len = currentList.length;
-        if (len === 0) return prev;
-        const current = prev ?? 0;
-        return (current + delta + len) % len;
-      });
+  const handleSelectLevel = useCallback(
+    (idx: number) => {
+      setSelectedIndex(idx);
+      audio.playTick();
     },
-    onConfirm: () => {
-      const idx = selectedIndex ?? 0;
-      const lv = currentList[idx];
-      if (lv) playLevel(lv, activeTab === 'campaign');
-    },
-    onBack: () => router.push('/'),
-    onToggleView: () => {
-      if (activeTab === 'campaign') setViewMode((v) => (v === 'map' ? 'list' : 'map'));
-    },
-    onSwitchTab: () => setActiveTab((prev) => (prev === 'campaign' ? 'custom' : 'campaign')),
-    onChapterPrev: () => goToChapter(currentPartIdx - 1),
-    onChapterNext: () => {
-      if (currentPartIdx === parts.length - 1) {
-        if (isSessionCompleted) setVictoryModal(true);
-        return;
-      }
-      goToChapter(currentPartIdx + 1);
-    },
-    onAxisScroll: (dx, dy) => {
-      const el = mapContainerRef.current;
-      if (!el) return;
-      el.scrollLeft += dx;
-      el.scrollTop += dy;
-    },
-  });
+    [audio],
+  );
 
+  const hasPortalStart = currentPartIdx > 0;
   const handleEntryPortal = useCallback(() => goToChapter(currentPartIdx - 1), [goToChapter, currentPartIdx]);
   const handleExitPortal = useCallback(() => {
     if (!isSessionCompleted) return;
@@ -336,18 +338,34 @@ export function useLevelsPage() {
     goToChapter(currentPartIdx + 1);
   }, [isSessionCompleted, currentPartIdx, parts.length, goToChapter]);
 
-  const theme = getMapTheme(activePart?.mapTheme);
-  const selectedLevel = selectedIndex !== null ? filteredPresets[selectedIndex] : undefined;
-  const showPanel = !loading && activeTab === 'campaign' && viewMode === 'map' && !!selectedLevel;
-  const hudH = isMobile ? 52 : 60;
-  const dockH = isMobile ? 76 : 88;
-  const panelH = showPanel ? (isMobile ? 78 : 86) : 0;
+  const { isGamepadConnected } = useCircuitNavigation({
+    totalItems: currentList.length,
+    setSelectedIndex,
+    onConfirm: () => {
+      const idx = selectedIndex ?? defaultActiveIdx;
+      const lv = currentList[idx];
+      if (lv) playLevel(lv, activeTab === 'campaign');
+    },
+    onBack: () => router.push('/'),
+    onChapterPrev: () => goToChapter(currentPartIdx - 1),
+    onChapterNext: () => {
+      if (currentPartIdx === parts.length - 1 && isSessionCompleted) {
+        setVictoryModal(true);
+        return;
+      }
+      goToChapter(currentPartIdx + 1);
+    },
+    onJumpToCurrent: () => setSelectedIndex(defaultActiveIdx),
+    onSwitchTab: () => setActiveTab((prev) => (prev === 'campaign' ? 'custom' : 'campaign')),
+    disabled: !!deleteConfirm || victoryModal || isWarping,
+  });
 
   return {
     t,
     router,
     isModerator,
     totalScore,
+    totalEarnedStars,
     presets,
     userLevels,
     loading,
@@ -364,15 +382,12 @@ export function useLevelsPage() {
     skippedSet,
     activeTab,
     setActiveTab,
-    viewMode,
-    setViewMode,
     isWarping,
     victoryModal,
     setVictoryModal,
     selectedIndex,
-    setSelectedIndex,
-    mapContainerRef,
-    listContainerRef,
+    setSelectedIndex: handleSelectLevel,
+    gridContainerRef,
     handleRefresh,
     move,
     handleDelete,
@@ -380,19 +395,17 @@ export function useLevelsPage() {
     filteredPresets,
     lockedSet,
     activePart,
-    hasPortalStart,
+    isCurrentChapterLocked,
     isSessionCompleted,
+    hasPortalStart,
+    handleEntryPortal,
+    handleExitPortal,
     defaultActiveIdx,
     chapters,
     playLevel,
     isGamepadConnected,
-    handleEntryPortal,
-    handleExitPortal,
-    theme,
-    selectedLevel,
-    showPanel,
-    hudH,
-    dockH,
-    panelH,
+    goToChapter,
+    themeDef,
+    columns,
   };
 }

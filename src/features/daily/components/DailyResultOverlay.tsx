@@ -31,7 +31,8 @@ export function DailyResultOverlay({ completion, onRestart, onHub, onRetry }: Da
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: 'rgba(2,5,14,0.82)', backdropFilter: 'blur(6px)' }}
+      // backdrop-filter yok: WebView'de pahalı tam ekran blur geçişi.
+      style={{ background: 'rgba(2,5,14,0.92)' }}
     >
       <div
         className="flex w-full max-w-[340px] flex-col items-center gap-3 rounded-2xl p-6 text-center"

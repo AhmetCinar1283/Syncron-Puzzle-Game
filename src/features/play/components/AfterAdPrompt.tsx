@@ -53,9 +53,8 @@ export function AfterAdPrompt({ isRegisteredUser, onDismiss }: AfterAdPromptProp
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(2, 5, 14, 0.85)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
+                    // backdrop-filter yok (bkz. WinResultOverlay).
+                    background: 'rgba(2, 5, 14, 0.94)',
                     // Kazanma overlay'inin (200) üstünde kalmalı: reklam ondan sonra çıkar.
                     zIndex: 300,
                     padding: 'env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px)',

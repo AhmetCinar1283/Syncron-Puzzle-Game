@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -14,7 +14,7 @@ import { MonetizationProvider } from "@/contexts/MonetizationContext";
 import { MonetizationDebugPanel } from "@/components/common/MonetizationDebugPanel";
 import { CURRENT_PLATFORM, getCapabilities } from "@/services/monetization";
 
-const BASE_URL = 'https://syncron.polyvoclub.com';
+const BASE_URL = 'https://syncron.polimelo.com';
 
 const capabilities = getCapabilities(CURRENT_PLATFORM);
 
@@ -91,6 +91,26 @@ export const metadata: Metadata = {
     : {}),
 };
 
+/**
+ * Mobil "oyun gibi" davranış için viewport sabitleri:
+ * - `userScalable: false` + `maximumScale: 1` → çift dokunuş yakınlaştırma yok,
+ *   dolayısıyla WebView'in dokunuşu "çift dokunuş mu?" diye beklemesinden doğan
+ *   ~300ms tap gecikmesi de yok.
+ * - `viewportFit: 'cover'` → çentikli cihazlarda tam ekran; güvenli alan
+ *   `env(safe-area-inset-*)` ile CSS'ten yönetilir.
+ * - `interactiveWidget: 'resizes-content'` → klavye açıldığında board'un
+ *   altına kayması yerine alan yeniden ölçülür (useBoardScale doğru çalışır).
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+  themeColor: '#030712',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -100,6 +120,7 @@ export default function RootLayout({
     <html
       lang="en"
       className="h-full antialiased"
+      data-game-theme="arcade"
       suppressHydrationWarning
     >
       <head>
@@ -128,7 +149,7 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'WebApplication',
               name: 'Syncron',
-              url: 'https://syncron.polyvoclub.com',
+              url: 'https://syncron.polimelo.com',
               description:
                 'Syncron is a free browser-based grid puzzle game where you control two objects simultaneously and navigate them to their targets. Features include ice slides, teleporters, conveyors, power nodes, and a built-in level editor.',
               applicationCategory: 'Game',

@@ -56,8 +56,8 @@ export function HudControls({
             {/* Tema Seçici */}
             <button
                 onClick={() => setIsThemeModalOpen(true)}
-                title={`Theme: ${themeName}`}
-                aria-label={`Theme: ${themeName}`}
+                title={`${t('theme.title')}: ${themeName}`}
+                aria-label={`${t('theme.title')}: ${themeName}`}
                 style={{
                     width: btnSize,
                     height: btnSize,

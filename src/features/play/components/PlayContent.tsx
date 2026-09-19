@@ -29,6 +29,7 @@ export function PlayContent() {
         skip,
         onMoveExecuted,
         onUndoExecuted,
+        onWinDetected,
     } = usePlayPage();
 
     // ── Render ───────────────────────────────────────────────
@@ -67,6 +68,7 @@ export function PlayContent() {
                 onMoveExecuted={onMoveExecuted}
                 onUndoExecuted={onUndoExecuted}
                 onButtonPressed={handleButtonPressed}
+                onWinDetected={onWinDetected}
                 hint={hint.screenHint}
                 inputLocked={skip.inputLocked}
                 areaAccessory={skip.buttonVisible ? (

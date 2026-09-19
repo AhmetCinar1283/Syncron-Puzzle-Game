@@ -5,6 +5,7 @@ import { Entity } from '../entityTypes';
 import { ActionIntent, Direction, UIEvent, RoomState, Position } from '../types';
 import { LevelBounds, getNextTopologyPosition } from './getNextTopologyPosition';
 import { getCellAt, mapCrossEdgeIndex } from './rooms';
+import { markGridDirty } from './gridRevision';
 
 // ============================================================
 // SIFIR MANTIK MOTORU — ALTIN KURAL
@@ -35,6 +36,7 @@ export function updateRoomVisibility(entities: Entity[], rooms: Record<string, R
                 
                 if (isClose) {
                     cell.customData.explored = true;
+                    markGridDirty();
                 }
             }
         }
@@ -89,7 +91,12 @@ export function processSingleTick(
     for (const intent of startingIntents) {
         if (intent.uiEvent) collectedUi.push(intent.uiEvent);
 
-        if (intent.type === 'mutate_entity') {
+        if (intent.type === 'destroy') {
+            // Yok etme de bir durum mutasyonudur — bekletilirse nesne öldüğü tick'te
+            // bir adım daha hareket eder ve arkasındaki nesneyi iter.
+            const entity = entities.find(e => e.id === intent.entityId);
+            if (entity) entity.customData._destroyed = true;
+        } else if (intent.type === 'mutate_entity') {
             const entity = entities.find(e => e.id === intent.entityId);
             if (entity) {
                 if (intent.newDirection  !== undefined) entity.physics.direction  = intent.newDirection;
@@ -105,9 +112,11 @@ export function processSingleTick(
                     if (intent.newCellType) {
                         targetCell.type = intent.newCellType;
                         targetCell.def  = CELL_DEFS[intent.newCellType];
+                        markGridDirty();
                     }
                     if (intent.newElectrifiedState !== undefined) {
                         targetCell.isElectrified = intent.newElectrifiedState;
+                        markGridDirty();
                     }
                 }
             }
@@ -146,6 +155,7 @@ export function processSingleTick(
     }
 
     for (const entity of entities) {
+        if (entity.customData._destroyed) continue; // Ölü nesne niyet üretmez
         const behavior = ENTITY_BEHAVIORS[entity.type];
         if (behavior?.onTick) {
             intents.push(...behavior.onTick(entity));
@@ -194,6 +204,10 @@ export function processSingleTick(
         const entity = intent.entityId !== undefined ? entities.find(e => e.id === intent.entityId) : undefined;
         if (!entity && intent.type !== 'mutate_room' && intent.type !== 'mutate_cell') continue;
 
+        // Bu tick içinde yok edilen nesne artık yer değiştirmez (aynı tick'te lav,
+        // ezilme veya yasaklı hücre ile ölenler dâhil).
+        if (entity?.customData._destroyed && (intent.type === 'move' || intent.type === 'fall')) continue;
+
         switch (intent.type) {
 
             case 'move': {
@@ -221,9 +235,9 @@ export function processSingleTick(
 
                 // Cable laying electrification:
                 if (entity.type === 'player' && entity.customData.holdingCable) {
-                    if (oldCell) oldCell.isElectrified = true;
+                    if (oldCell) { oldCell.isElectrified = true; markGridDirty(); }
                     const newCell = getCellAt(rooms, intent.targetPos);
-                    if (newCell) newCell.isElectrified = true;
+                    if (newCell) { newCell.isElectrified = true; markGridDirty(); }
 
                     if (oldCell && newCell && (oldCell.position.roomId ?? 'main') === (newCell.position.roomId ?? 'main')) {
                         const r1 = oldCell.position.row;
@@ -237,30 +251,38 @@ export function processSingleTick(
                         if (r2 === r1 && c2 === c1 + 1) {
                             if (!oldConns.includes('right')) {
                                 oldCell.customData.cableConnections = [...oldConns, 'right'];
+                                markGridDirty();
                             }
                             if (!newConns.includes('left')) {
                                 newCell.customData.cableConnections = [...newConns, 'left'];
+                                markGridDirty();
                             }
                         } else if (r2 === r1 && c2 === c1 - 1) {
                             if (!oldConns.includes('left')) {
                                 oldCell.customData.cableConnections = [...oldConns, 'left'];
+                                markGridDirty();
                             }
                             if (!newConns.includes('right')) {
                                 newCell.customData.cableConnections = [...newConns, 'right'];
+                                markGridDirty();
                             }
                         } else if (r2 === r1 + 1 && c2 === c1) {
                             if (!oldConns.includes('down')) {
                                 oldCell.customData.cableConnections = [...oldConns, 'down'];
+                                markGridDirty();
                             }
                             if (!newConns.includes('up')) {
                                 newCell.customData.cableConnections = [...newConns, 'up'];
+                                markGridDirty();
                             }
                         } else if (r2 === r1 - 1 && c2 === c1) {
                             if (!oldConns.includes('up')) {
                                 oldCell.customData.cableConnections = [...oldConns, 'up'];
+                                markGridDirty();
                             }
                             if (!newConns.includes('down')) {
                                 newCell.customData.cableConnections = [...newConns, 'down'];
+                                markGridDirty();
                             }
                         }
                     }
@@ -272,6 +294,7 @@ export function processSingleTick(
                     const EXCLUDED_TRAIL_CELL_TYPES = ['teleport', 'trampoline', 'conveyor', 'toggle', 'power'];
                     if (!EXCLUDED_TRAIL_CELL_TYPES.includes(oldCell.type)) {
                         oldCell.customData.trailPlayerIndex = playerIndex;
+                        markGridDirty();
                     }
                 }
 
@@ -302,12 +325,13 @@ export function processSingleTick(
                 if (intent.triggerLanded) {
                     const landCell = getCellAt(rooms, entity.position);
 
-                    // Sürtünmeli zeminde iniş momentumu öldürür.
-                    // Sürtünmesiz zeminde (buz vb.) momentum korunur; ne olacağına
-                    // hücrenin kendi onEnter'ı karar verir.
-                    if (!landCell || (landCell.def.friction ?? 1) > 0) {
-                        entity.physics.force = 0;
-                    }
+                    // İniş momentumu öldürür: uçuşun menzili zaten z ile harcandı,
+                    // kalan force bayat bir değerdir ve fazladan adım kazandırmamalı.
+                    // Sürtünmesiz zeminde (buz vb.) nesne tam durmaz ama hızı 1 adıma
+                    // indirilir — böylece buz, bittiği yerdeki ilk sürtünmeli karede
+                    // nesneyi durdurur; tek bir buz karesi 3 adım ilerletmez.
+                    const landsOnFrictionless = !!landCell && (landCell.def.friction ?? 1) === 0;
+                    entity.physics.force = landsOnFrictionless ? 1 : 0;
 
                     // İniş anında aynı konumdaki entity'leri ez
                     for (const other of entities) {
@@ -330,6 +354,7 @@ export function processSingleTick(
                     if (landCell?.type === 'obstacle') {
                         landCell.type = 'normal';
                         landCell.def  = CELL_DEFS['normal'];
+                        markGridDirty();
                     } else if (landCell) {
                         const landCellBehavior = CELL_BEHAVIORS[landCell.type];
                         if (landCellBehavior?.onEnter) {
@@ -363,12 +388,15 @@ export function processSingleTick(
                 if (intent.newCellType !== undefined) {
                     targetCell.type = intent.newCellType;
                     targetCell.def  = CELL_DEFS[intent.newCellType];
+                    markGridDirty();
                 }
                 if (intent.newElectrifiedState !== undefined) {
                     targetCell.isElectrified = intent.newElectrifiedState;
+                    markGridDirty();
                 }
                 if (intent.customDataPatch) {
                     targetCell.customData = { ...targetCell.customData, ...intent.customDataPatch };
+                    markGridDirty();
                 }
                 break;
             }
@@ -529,6 +557,7 @@ function filterMutualCollisions(intents: ActionIntent[], entities: Entity[]): Ac
             e.position.row === intent.targetPos!.row &&
             e.position.col === intent.targetPos!.col &&
             e.def.isSolid &&
+            !e.customData._destroyed &&
             getDestinationZ(e.id, e.physics.z, intents) === 0
         );
         if (targetEntity) {
@@ -669,6 +698,8 @@ function resolveDependencyChains(
                     e.position.row === targetPos.row &&
                     e.position.col === targetPos.col &&
                     e.def.isSolid &&
+            !e.customData._destroyed &&
+                    !e.customData._destroyed &&
                     getDestinationZ(e.id, e.physics.z, intents) === 0
                 )
                 : undefined;
@@ -754,6 +785,9 @@ function resolveDependencyChains(
                         e.position.row === intent.targetPos!.row &&
                         e.position.col === intent.targetPos!.col &&
                         e.def.isSolid &&
+                        !e.customData._destroyed &&
+            !e.customData._destroyed &&
+                    !e.customData._destroyed &&
                         getDestinationZ(e.id, e.physics.z, unfilteredIntents) === 0
                     );
                     if (blocker) {
@@ -911,8 +945,9 @@ function propagateElectricity(rooms: Record<string, RoomState>, entities: Entity
     for (const entity of entities) {
         if (entity.type === 'player' && entity.customData.holdingCable && !entity.customData._destroyed) {
             const currentCell = getCellAt(rooms, entity.position);
-            if (currentCell) {
+            if (currentCell && !currentCell.isElectrified) {
                 currentCell.isElectrified = true;
+                markGridDirty();
             }
         }
     }

@@ -42,7 +42,7 @@ Sonuç kartı: hamle / par, yıldız, seri, sıra, "Paylaş"
 
 ```
 Syncron #142 ⭐⭐⭐ 14 hamle 🔥5
-https://syncron.polyvoclub.com/daily/
+https://syncron.polimelo.com/daily/
 ```
 
 - İpuçlu sonuçta metne "ipuçlu" eklenir. Link yalnızca `capabilities.externalLinks` true ise eklenir (portallar).

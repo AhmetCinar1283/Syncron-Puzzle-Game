@@ -5,6 +5,7 @@ import type { RefObject, TouchEvent as ReactTouchEvent } from 'react';
 import type { Direction, UIButtonType } from '../logic/types';
 import { useGamepad } from '@/hooks/useGamepad';
 import { KEY_TO_DIRECTION, SWIPE_THRESHOLD } from '../components/play-screen/constants';
+import { hapticImpact } from '@/lib/haptics';
 
 interface UsePlayInputArgs {
     /** Render sırasında güncellenen ref; oyun bittiyse yön girdileri yok sayılır. */
@@ -105,35 +106,67 @@ export function usePlayInput({
     });
 
     // ── Swipe (Touch) Kontrolü ─────────────────────────────────────────────
+    // Hamle, parmak kalkınca değil, swipe eşiği AŞILDIĞI ANDA (touchmove)
+    // tetiklenir — bu tek başına 80-150ms algılanan gecikme kazandırır.
+    // Haptik darbe simülasyondan ÖNCE verilir: cihaz, oyun durumu hesaplanmaya
+    // başlamadan tepki vermiş olur.
     const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+    /** Bu dokunuş için hamle zaten tetiklendi mi? (tek dokunuş = tek hamle) */
+    const swipeFiredRef = useRef(false);
+
+    /** Eşiği aşan bir delta'yı yöne çevirir; aşmıyorsa null. */
+    const resolveDirection = (dx: number, dy: number): Direction | null => {
+        if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return null;
+        if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+        return dy > 0 ? 'down' : 'up';
+    };
+
+    const fireSwipe = useCallback((direction: Direction) => {
+        // Önce dokunsal geri bildirim, sonra (senkron ve pahalı olan) simülasyon.
+        hapticImpact('light');
+        triggerMove(direction);
+    }, [triggerMove]);
 
     const handleTouchStart = useCallback((e: ReactTouchEvent) => {
         const t0 = e.touches[0];
         touchStartRef.current = { x: t0.clientX, y: t0.clientY };
+        swipeFiredRef.current = false;
     }, []);
 
     const handleTouchMove = useCallback((e: ReactTouchEvent) => {
         e.preventDefault();
-    }, []);
+        if (swipeFiredRef.current || !touchStartRef.current) return;
+        if (isGameOverRef.current || inputLockedRef?.current) return;
+
+        const touch = e.touches[0];
+        if (!touch) return;
+        const direction = resolveDirection(
+            touch.clientX - touchStartRef.current.x,
+            touch.clientY - touchStartRef.current.y,
+        );
+        if (!direction) return;
+
+        swipeFiredRef.current = true;
+        fireSwipe(direction);
+    }, [fireSwipe, isGameOverRef, inputLockedRef]);
 
     const handleTouchEnd = useCallback((e: ReactTouchEvent) => {
-        if (!touchStartRef.current || isGameOverRef.current || inputLockedRef?.current) return;
-        const touch = e.changedTouches[0];
-        const dx = touch.clientX - touchStartRef.current.x;
-        const dy = touch.clientY - touchStartRef.current.y;
+        const start = touchStartRef.current;
         touchStartRef.current = null;
 
-        if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+        // touchmove'da zaten tetiklendiyse burada bir şey yapma.
+        if (swipeFiredRef.current) return;
+        if (!start || isGameOverRef.current || inputLockedRef?.current) return;
 
-        let direction: Direction;
-        if (Math.abs(dx) >= Math.abs(dy)) {
-            direction = dx > 0 ? 'right' : 'left';
-        } else {
-            direction = dy > 0 ? 'down' : 'up';
-        }
+        // Yedek yol: touchmove hiç gelmeden (çok hızlı flick) parmak kalktıysa.
+        const touch = e.changedTouches[0];
+        if (!touch) return;
+        const direction = resolveDirection(touch.clientX - start.x, touch.clientY - start.y);
+        if (!direction) return;
 
-        triggerMove(direction);
-    }, [triggerMove, isGameOverRef, inputLockedRef]);
+        swipeFiredRef.current = true;
+        fireSwipe(direction);
+    }, [fireSwipe, isGameOverRef, inputLockedRef]);
 
     return { handleTouchStart, handleTouchMove, handleTouchEnd };
 }

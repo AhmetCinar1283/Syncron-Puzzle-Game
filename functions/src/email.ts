@@ -9,7 +9,7 @@
  *
  * Setup (one-time):
  *   1. Create an account at https://resend.com
- *   2. Verify your sending domain (syncron.polyvoclub.com) in the Resend dashboard
+ *   2. Verify your sending domain (syncron.polimelo.com) in the Resend dashboard
  *   3. Deploy the secret:  firebase functions:secrets:set RESEND_API_KEY
  *   4. For local dev, create functions/.secret.local and add: RESEND_API_KEY=re_xxxxxxxx
  *   5. Update SUPPORT_FROM_EMAIL below to match your verified Resend sender.
@@ -25,7 +25,7 @@ const RESEND_API_URL = 'https://api.resend.com/emails';
  * The verified Resend sender address.
  * MUST match a domain verified in your Resend account dashboard.
  */
-export const SUPPORT_FROM_EMAIL = 'Syncron Support <support@syncron.polyvoclub.com>';
+export const SUPPORT_FROM_EMAIL = 'Syncron Support <support@syncron.polimelo.com>';
 
 /** Characters of the admin reply shown in the email preview */
 const MESSAGE_PREVIEW_MAX = 300;
@@ -67,7 +67,7 @@ export async function sendSupportReplyEmail(
       ? messageBody.slice(0, MESSAGE_PREVIEW_MAX) + '…'
       : messageBody;
 
-  const ticketUrl = `https://syncron.polyvoclub.com/support/my-tickets/${ticketId}`;
+  const ticketUrl = `https://syncron.polimelo.com/support/my-tickets/${ticketId}`;
   // Display only first 8 chars of the UUID in the subject line for readability
   const shortId = ticketId.slice(0, 8).toUpperCase();
 

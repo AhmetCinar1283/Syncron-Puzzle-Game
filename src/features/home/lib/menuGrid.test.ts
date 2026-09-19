@@ -25,4 +25,21 @@ describe('menuGrid', () => {
     expect(moveMenuSelection(3, 'right', WEB_ADMIN)).toBe(4);
     expect(moveMenuSelection(4, 'right', WEB_ADMIN)).toBe(4);
   });
+
+  it('handles 2-column arcade layout where daily and levels are paired', () => {
+    // play(hero), daily, levels, editor, friends, controls
+    const ARCADE_LAYOUT = [true, false, false, false, false, false];
+    expect(buildMenuRows(ARCADE_LAYOUT)).toEqual([[0], [1, 2], [3, 4], [5]]);
+
+    // Down from play selects daily (col 0)
+    expect(moveMenuSelection(0, 'down', ARCADE_LAYOUT)).toBe(1);
+    // Right from daily moves to levels
+    expect(moveMenuSelection(1, 'right', ARCADE_LAYOUT)).toBe(2);
+    // Left from levels moves back to daily
+    expect(moveMenuSelection(2, 'left', ARCADE_LAYOUT)).toBe(1);
+    // Down from levels moves to friends (col 1 of next row)
+    expect(moveMenuSelection(2, 'down', ARCADE_LAYOUT)).toBe(4);
+    // Up from daily moves to play
+    expect(moveMenuSelection(1, 'up', ARCADE_LAYOUT)).toBe(0);
+  });
 });

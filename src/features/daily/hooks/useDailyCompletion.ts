@@ -5,7 +5,7 @@
  * (`POST /daily/complete`), sonucu döner ve kazanılan XP'yi Redux'a işler.
  * Sonuç yalnızca sunucudan gelir; ağ hatasında yerelde skor hesaplanmaz.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { addXpAndScore } from '@/store/userSlice';
 import { completeDaily, type CompleteDailyResponse } from '@/services/api/dailyClient';
@@ -22,8 +22,11 @@ export function useDailyCompletion(session: PlaySession) {
   const dispatch = useAppDispatch();
   const [state, setState] = useState<DailyCompletionState>({ kind: 'idle' });
   const { moveHistoryRef, startTimeRef, hintsUsedRef } = session;
+  const inFlightOrDoneRef = useRef(false);
 
   const submit = useCallback(async (resolvedDate: string) => {
+    if (inFlightOrDoneRef.current) return;
+    inFlightOrDoneRef.current = true;
     setState({ kind: 'pending' });
     try {
       const result = await completeDaily({
@@ -48,7 +51,10 @@ export function useDailyCompletion(session: PlaySession) {
     }
   }, [dispatch, moveHistoryRef, startTimeRef, hintsUsedRef]);
 
-  const reset = useCallback(() => setState({ kind: 'idle' }), []);
+  const reset = useCallback(() => {
+    inFlightOrDoneRef.current = false;
+    setState({ kind: 'idle' });
+  }, []);
 
   return { state, submit, reset };
 }

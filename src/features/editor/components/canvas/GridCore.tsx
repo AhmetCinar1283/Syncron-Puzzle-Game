@@ -54,7 +54,7 @@ export default function GridCore() {
         borderRadius: themeConfig.board.borderRadius ?? 6,
         overflow: 'hidden',
         background: themeConfig.board.background ?? '#060d1a',
-        cursor: 'crosshair',
+        cursor: 'var(--cursor-crosshair, crosshair)',
         userSelect: 'none',
         boxShadow: themeConfig.board.boxShadow(true),
         touchAction: 'none',

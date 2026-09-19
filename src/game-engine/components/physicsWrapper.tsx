@@ -122,7 +122,11 @@ export const PhysicsWrapper = ({ entity, prevEntity, currentCellType, frameMs, r
                 left: 0,
                 width: CELL_SIZE,
                 height: CELL_SIZE,
-                transform: `translate(${x}px, ${y + zOffset}px)`,
+                // translate3d + will-change: hareketi compositor'a taşır. Düz
+                // `translate` mobil WebView'de her karede layout/paint
+                // tetikleyebiliyor; 3d biçim katmanı GPU'ya sabitliyor.
+                transform: `translate3d(${x}px, ${y + zOffset}px, 0)`,
+                willChange: 'transform',
                 transition: isTeleporting ? 'none' : `transform ${frameMs}ms cubic-bezier(0.25, 1.1, 0.5, 1.1)`,
                 zIndex: 10 + z,
             }}
@@ -132,6 +136,7 @@ export const PhysicsWrapper = ({ entity, prevEntity, currentCellType, frameMs, r
                     width: '100%',
                     height: '100%',
                     transform: `scale(${baseScale * stretchX}, ${baseScale * stretchY}) ${skew}`,
+                    willChange: 'transform',
                     filter: isSliding ? 'brightness(1.15) contrast(1.05)' : undefined,
                     animation: customAnimation,
                 }}

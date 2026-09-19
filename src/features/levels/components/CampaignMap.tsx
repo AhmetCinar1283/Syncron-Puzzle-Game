@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useT } from '@/contexts/LanguageContext';
 import type { StoredLevel, StoredPlayedLevel } from '@/services/db';
 import type { LevelPart } from '@/services/firebase/adminTypes';
 import { getMapTheme } from '../lib/mapThemes';
@@ -62,6 +63,7 @@ export function CampaignMap({
   onExitPortal,
   containerRef,
 }: CampaignMapProps) {
+  const t = useT();
   const theme = getMapTheme(activePart?.mapTheme);
   const canvasHeight = isMobile ? 900 : 1000;
   const nodeRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
@@ -212,7 +214,7 @@ export function CampaignMap({
 
         {/* Giriş portalı */}
         {hasPortalStart && (
-          <PortalNode x={portalStart.x} y={portalStart.y} kind="start" isUnlocked title="Önceki bölüme dön" onActivate={onEntryPortal} />
+          <PortalNode x={portalStart.x} y={portalStart.y} kind="start" isUnlocked title={t('levels.portal_prev_tooltip')} onActivate={onEntryPortal} />
         )}
 
         {/* Seviye düğümleri */}
@@ -255,7 +257,7 @@ export function CampaignMap({
           y={portalEnd.y}
           kind="end"
           isUnlocked={isSessionCompleted}
-          title={isSessionCompleted ? 'Sonraki bölüme geç' : 'Önce bu bölümü tamamla'}
+          title={isSessionCompleted ? t('levels.portal_next_tooltip_unlocked') : t('levels.portal_next_tooltip_locked')}
           onActivate={onExitPortal}
         />
       </div>

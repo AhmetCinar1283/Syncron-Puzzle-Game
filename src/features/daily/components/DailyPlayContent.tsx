@@ -42,6 +42,7 @@ export function DailyPlayContent() {
         onMoveExecuted={page.onMoveExecuted}
         onUndoExecuted={page.onUndoExecuted}
         onButtonPressed={page.handleButtonPressed}
+        onWinDetected={page.onWinDetected}
         hint={page.hint.screenHint}
       />
 

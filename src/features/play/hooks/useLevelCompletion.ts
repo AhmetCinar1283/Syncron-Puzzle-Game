@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { addXpAndScore } from '@/store/userSlice';
 import { completeLevel } from '@/services/api/gameClient';
@@ -19,14 +19,22 @@ interface UseLevelCompletionArgs {
  * Kazanma akışı: önce Dexie'ye iyimser kayıt, sonra (sadece firestoreId varsa)
  * `/complete-level` worker doğrulaması + Redux XP/puan + sunucu yıldızlarıyla Dexie.
  *
- * `firestoreId` yoksa (kullanıcı seviyesi) worker çağrılmaz ve `workerResult`
- * null kalır → overlay yükleniyor yıldızlarında kalır (önceki davranış).
+ * Zafer animasyonu sırasında erken tetiklenebilir; `inFlightOrDoneRef` sayesinde
+ * aynı bölüm için mükerrer istek atılmaz.
  */
 export function useLevelCompletion({ firestoreId, levelId, session, setWorkerResult }: UseLevelCompletionArgs) {
     const dispatch = useAppDispatch();
     const { moveHistoryRef, startTimeRef, hintsUsedRef, submitTelemetry } = session;
+    const inFlightOrDoneRef = useRef(false);
 
-    return useCallback(async () => {
+    const resetWorker = useCallback(() => {
+        inFlightOrDoneRef.current = false;
+    }, []);
+
+    const callWorker = useCallback(async () => {
+        if (inFlightOrDoneRef.current) return;
+        inFlightOrDoneRef.current = true;
+
         const levelKey = firestoreId || (levelId !== null ? String(levelId) : null);
         const timeSpent = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
 
@@ -129,4 +137,6 @@ export function useLevelCompletion({ firestoreId, levelId, session, setWorkerRes
             setWorkerResult({ success: false, reason: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error' });
         }
     }, [firestoreId, levelId, submitTelemetry, dispatch, moveHistoryRef, startTimeRef, hintsUsedRef, setWorkerResult]);
+
+    return { callWorker, resetWorker };
 }
