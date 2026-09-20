@@ -13,10 +13,10 @@ src/
 │   └── common/          # Uygulama genelinde kullanılan ortak bileşenler ve korumalar (AuthModal, AdminGuard, BackButtonManager, ...).
 ├── contexts/            # React Context API ile yönetilen global durumlar (Oturum, Dil).
 ├── hooks/               # API, gamepad, arkadaşlık vb. işlevleri sarmalayan React kancaları.
-├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls, rewarded-actions, daily).
+├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls, rewarded-actions, daily, settings).
 │   └── <isim>/          #   components/ (sunum), hooks/ (state+efekt), lib/ (saf yardımcılar), index.ts (public API).
 ├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü, prosedürel üretici, par.ts — günlük bulmaca par'ı) + components/LevelMiniPreview (küçük level önizlemesi) + hint/ (sunucudan gelen ipucunun gösterimi; hesaplama worker'da).
-├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı), levels/ (kampanya bölüm listesi önbelleği), share/ (yerel paylaşım → navigator.share → pano) — eski app/src/lib/{api,firebase,db,sync}.
+├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı), levels/ (kampanya bölüm listesi önbelleği), share/ (yerel paylaşım → navigator.share → pano), settings/ (tercih ve ayarlar kalıcılık motoru) — eski app/src/lib/{api,firebase,db,sync}.
 ├── lib/                 # i18n/, userStorage.ts, navigation/ (next/navigation adaptörü — portal'da bellek içi router), assetUrl.ts, dailyDraftHandoff.ts (takvim → editör aktarımı), saf yardımcı fonksiyonlar.
 └── store/               # Redux durum yönetimi (User state, Store yapılandırması).
 ```
@@ -27,6 +27,7 @@ src/
 * **AuthContext / useAuth:** Kullanıcının Firebase kimlik doğrulama durumunu (anonim veya kayıtlı oyuncu) dinler, JWT (ID Token) yenileme süreçlerini ve Google entegrasyonunu yönetir.
 * **Redux Store (`store/`):** Kullanıcı rolü, toplam puan, tamamlanan bölüm sayısı gibi profil verilerini tüm React ağacında performansı yüksek şekilde paylaşır.
 * **LanguageContext:** Kullanıcının tercih ettiği dili tarayıcı hafızasında saklar ve dil paketlerini dinamik olarak yükler.
+* **SettingsContext / useSettings (`features/settings` & `services/settings`):** Kullanıcının dil, tema, ses açma/kapama ve ses seviyesi tercihlerini birleşik `syncron_settings_v1` altında saklar. Her sayfadan tek satırda erişilir, global `SettingsModal` ile yönetilir ve eski anahtarlara geriye dönük migration/dual-write desteği sunar.
 
 ### 2. Yerel Veritabanı ve Senkronizasyon (`services/db` & `services/sync`)
 * **Dexie.js Yerel Veritabanı (`schema.ts`):** Kullanıcının tasarladığı bölümleri, hazır kampanya bölümlerini ve tamamladığı bölümlerin skorlarını tarayıcıda IndexedDB kullanarak saklar. Çevrimdışı çalışmayı destekler.

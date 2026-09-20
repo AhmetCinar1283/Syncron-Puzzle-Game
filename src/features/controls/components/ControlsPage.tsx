@@ -1,22 +1,18 @@
 'use client';
 
 import { useControlsPage } from '../hooks/useControlsPage';
-import { BackgroundParticles } from './BackgroundParticles';
 import { KeyboardCard } from './KeyboardCard';
 import { GamepadMappingCard } from './GamepadMappingCard';
 import { GamepadTester } from './GamepadTester';
 
 export function ControlsPage() {
-  const { t, router, particles, activeButtons, axes, gamepad, isConnected } = useControlsPage();
+  const { t, router, activeButtons, axes, gamepad, isConnected } = useControlsPage();
 
   return (
     <>
       {/* Head details for SEO */}
       <title>{`${t('controls.title')} | Syncron`}</title>
       <meta name="description" content="Learn how to play Syncron using Gamepad or Keyboard. View the interactive control scheme." />
-
-      {/* Background Particles */}
-      <BackgroundParticles particles={particles} />
 
       <main
         style={{
@@ -26,7 +22,7 @@ export function ControlsPage() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          background: '#030712',
+          background: 'transparent',
           padding: '40px 16px',
           boxSizing: 'border-box',
           color: '#ffffff',

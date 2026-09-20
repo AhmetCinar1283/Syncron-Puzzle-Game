@@ -1,7 +1,7 @@
 # 08 — Ölçüm, Varsayılanın Çevrilmesi ve Temizlik
 
 > Bağlayıcı: `.plans/canvas-render/00-ilkeler.md`. Önce `raporlar/01..07-rapor.md`
-> dosyalarının **hepsini** oku.
+> ve `raporlar/04b-rapor.md` dosyalarının **hepsini** oku.
 > **Model: opus.** Bu fazda "yeterince iyi mi" kararı veriliyor ve üretim yolu
 > değiştiriliyor. Yanlış karar, iyileştirme sanılan bir gerileme demek.
 
@@ -11,7 +11,7 @@
 
 | Dosya | Neden |
 |---|---|
-| `.plans/canvas-render/00-ilkeler.md` ve `raporlar/` altındaki 7 rapor | İzin tamamı; özellikle "Görsel farklar" başlıkları |
+| `.plans/canvas-render/00-ilkeler.md` ve `raporlar/` altındaki tüm raporlar (01–07 ve 04b) | İzin tamamı; özellikle "Görsel farklar" başlıkları |
 | `src/game-engine/render/boardRenderer.ts` | Varsayılanı çevireceğin yer |
 | `src/game-engine/render/BoardCanvas.tsx` | Ölçüm kancalarını ekleyeceğin yer |
 | `src/game-engine/components/play-screen/BoardArea.tsx` | İki yolun ayrıldığı nokta |
@@ -21,24 +21,14 @@
 
 ## 2. Yapılacaklar
 
-### 2.1 Ölçüm kancası — `render/profiler.ts`
+### 2.1 Ölçüm kancası — `render/profiler.ts` — **Faz 07'ye taşındı**
 
-Geliştirme ve cihaz testi için, **üretimde kapalı** bir ölçüm katmanı:
+`profiler.ts` artık Faz 07 §2.6'da yazılıyor; proje sahibi ölçümü bu fazı
+beklemeden yapabilsin diye öne alındı. Bu fazın işi onu **kullanmak**, yeniden
+yazmak değil.
 
-```ts
-/** `userStorage`'da `boardProfiler='1'` iken açılır. Kapalıyken sıfır maliyet. */
-export function isProfilerEnabled(): boolean;
-export function recordFrame(layer: LayerName, ms: number): void;
-export function frameStats(): { layer: LayerName; avg: number; p95: number; count: number }[];
-```
-
-`BoardCanvas` bu istatistikleri, profiler açıkken tahtanın köşesinde küçük bir
-DOM katmanında gösterir: her katmanın ortalama ve p95 kare süresi, saniyedeki
-çizim sayısı, `cache.size()`.
-
-**Kapalıyken hiçbir `performance.now()` çağrısı yapılmamalı** — ölçümün kendisi
-ölçtüğü şeyi bozmasın. `isProfilerEnabled()` bir kez okunup modül seviyesinde
-saklanır.
+Eksik bir şey görürsen (ör. sprite belleği gösterilmiyorsa, §2.5b) tamamla ve
+rapora yaz.
 
 ### 2.2 Karşılaştırmalı ölçüm — proje sahibiyle birlikte
 
@@ -138,6 +128,17 @@ Yani bu animasyonlar **bugün de çalışmıyor**; canvas onları çizmiyor çü
 çizmiyor. Kasıtlı mı, yoksa kopmuş bir bağ mı — karar proje sahibinin. Ajan
 **düzeltmez**, listeyi rapora taşır.
 
+**(a2) DOM'dan birebir taşınan iki tuhaflık.** Faz 04, `RoomOverlays.tsx`'te iki
+şey buldu ve 00-ilkeler §4 gereği **aynen** taşıdı:
+
+- İz ve kablo katmanları hücrelere göre kenarlık kalınlığı (2–3px) kadar kayık duruyor.
+- İz kolunun oyuncuya bitişikliği `roomId`'ye bakmıyor; yani farklı odadaki bir
+  oyuncu da bitişik sayılabiliyor.
+
+İkisi de DOM'da **bugün de** böyle; canvas onları kopyaladı. Birer hata olabilir.
+Karar proje sahibinin: "DOM'da düzelt, canvas da düzelsin" mi, yoksa "kalsın" mı.
+Ajan **düzeltmez**, listeyi taşır.
+
 **(b) Birikmiş görsel farklar.** 02-rapor §4, 03-rapor §11 ve sonraki raporların
 "Görsel farklar" başlıkları tek bir tabloda birleştirilir. Bilinen başlıklar:
 `innerShadow`'un doğrusal solması ve köşe koyulaşması, `backdrop-filter`'ın yok
@@ -186,8 +187,7 @@ Bu, 00-ilkeler §5'teki "iki kaynak" riskine karşı tek gerçek savunma.
 
 ## 4. Kabul kriterleri
 
-- [ ] `profiler.ts` yazıldı; kapalıyken ölçüm yapmıyor, açıkken katman başına
-      avg/p95/sayı gösteriyor.
+- [ ] Faz 07'nin `profiler.ts`'i kullanıldı; eksiği varsa tamamlandı (§2.1).
 - [ ] §2.2 protokolü uygulandı ve **gerçek sayılar** rapora işlendi.
 - [ ] §2.3 kararı rapora yazıldı, gerekçesiyle.
 - [ ] Karar olumluysa varsayılan `'canvas'`; `boardRenderer='dom'` hâlâ çalışıyor.

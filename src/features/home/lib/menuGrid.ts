@@ -1,7 +1,8 @@
 /**
  * DOSYA AMACI: Ana menü kartları arasında klavye/gamepad gezinmesi. Kart ızgarası
- * 2 sütunludur; "hero" kartlar tam satır kaplar. Satırlar kart listesinden türetilir,
- * böylece kart eklemek/kaldırmak (platform yeteneklerine göre) haritayı bozmaz.
+ * geniş ekranda 4 sütun, dar ekranda 2 sütunludur; "hero" kartlar tam satır kaplar.
+ * Satırlar kart listesinden türetilir, böylece kart eklemek/kaldırmak (platform
+ * yeteneklerine göre) haritayı bozmaz.
  * `-1` = profil rozeti (ızgaranın üstü).
  */
 
@@ -10,7 +11,7 @@ export type MenuDirection = 'up' | 'down' | 'left' | 'right';
 export const PROFILE_INDEX = -1;
 
 /** Kart indekslerini ekrandaki satırlara böler. */
-export function buildMenuRows(heroFlags: readonly boolean[]): number[][] {
+export function buildMenuRows(heroFlags: readonly boolean[], columns: number = 2): number[][] {
   const rows: number[][] = [];
   let pending: number[] = [];
   heroFlags.forEach((isHero, index) => {
@@ -20,7 +21,7 @@ export function buildMenuRows(heroFlags: readonly boolean[]): number[][] {
       rows.push([index]);
     } else {
       pending.push(index);
-      if (pending.length === 2) {
+      if (pending.length === columns) {
         rows.push(pending);
         pending = [];
       }
@@ -30,8 +31,14 @@ export function buildMenuRows(heroFlags: readonly boolean[]): number[][] {
   return rows;
 }
 
-export function moveMenuSelection(current: number, direction: MenuDirection, heroFlags: readonly boolean[]): number {
-  const rows = buildMenuRows(heroFlags);
+export function moveMenuSelection(
+  current: number,
+  direction: MenuDirection,
+  heroFlags: readonly boolean[],
+  columns: number = 2,
+  preferredCol?: number
+): number {
+  const rows = buildMenuRows(heroFlags, columns);
   if (rows.length === 0) return current;
   const lastRow = rows.length - 1;
 
@@ -54,12 +61,14 @@ export function moveMenuSelection(current: number, direction: MenuDirection, her
     case 'up': {
       if (rowIndex === 0) return PROFILE_INDEX;
       const above = rows[rowIndex - 1];
-      return above[Math.min(col, above.length - 1)];
+      const targetCol = rowIndex - 1 === 0 ? 0 : (preferredCol ?? col);
+      return above[Math.min(targetCol, above.length - 1)];
     }
     case 'down': {
       if (rowIndex === lastRow) return rows[0][0];
       const below = rows[rowIndex + 1];
-      return below[Math.min(col, below.length - 1)];
+      const targetCol = preferredCol ?? col;
+      return below[Math.min(targetCol, below.length - 1)];
     }
   }
 }

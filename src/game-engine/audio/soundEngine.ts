@@ -20,6 +20,7 @@
  */
 
 import { assetUrl } from '@/lib/assetUrl';
+import { settingsService } from '@/services/settings';
 
 export type SoundName =
   | 'move'
@@ -31,7 +32,8 @@ export type SoundName =
   | 'lose'
   | 'toggle'
   | 'box_push'
-  | 'boing';
+  | 'boing'
+  | 'tick';
 
 export const SOUND_FILES: Record<SoundName, string> = {
   move:      '/sounds/move.mp3',
@@ -44,6 +46,7 @@ export const SOUND_FILES: Record<SoundName, string> = {
   toggle:    '/sounds/toggle.mp3',
   box_push:  '/sounds/box_push.flac',
   boing:     '/sounds/boing.mp3',
+  tick:      '/sounds/toggle.mp3',
 };
 
 export const SOUND_VOLUME: Record<SoundName, number> = {
@@ -57,6 +60,7 @@ export const SOUND_VOLUME: Record<SoundName, number> = {
   toggle:    0.5,
   box_push:  0.45,
   boing:     0.5,
+  tick:      0.25,
 };
 
 const SOUND_NAMES = Object.keys(SOUND_FILES) as SoundName[];
@@ -85,6 +89,42 @@ class SoundEngine {
   private useFallback = false;
   private loadStarted = false;
   private lastPlayedAt = new Map<SoundName, number>();
+  private isAdMuted = false;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      settingsService.subscribe((settings) => {
+        this.applySettings(settings.sound.muted, settings.sound.volume);
+      });
+    }
+  }
+
+  /**
+   * Reklam gösterimi sırasında Web Audio'yu geçici susturur veya geri açar.
+   */
+  setAdMuted(muted: boolean): void {
+    this.isAdMuted = muted;
+    const s = settingsService.getSettings().sound;
+    this.applySettings(s.muted, s.volume);
+  }
+
+  /**
+   * Ses ayarlarını master gain'e ve fallback elementlere uygular.
+   */
+  private applySettings(muted: boolean, volume: number): void {
+    const effectiveVolume = (this.isAdMuted || muted) ? 0 : Math.max(0, Math.min(1, volume / 100));
+    if (this.masterGain && this.ctx) {
+      try {
+        this.masterGain.gain.setValueAtTime(effectiveVolume, this.ctx.currentTime);
+      } catch {}
+    }
+    if (this.isAdMuted || muted) {
+      this.stopAll();
+    }
+    for (const [name, audio] of this.fallbackAudio.entries()) {
+      audio.volume = (SOUND_VOLUME[name] ?? 0.5) * effectiveVolume;
+    }
+  }
 
   /** AudioContext'i oluşturur (yoksa) ve askıdaysa devam ettirir. */
   private ensureContext(): AudioContext | null {
@@ -99,7 +139,9 @@ class SoundEngine {
     try {
       this.ctx = new Ctor();
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = 1;
+      const s = settingsService.getSettings().sound;
+      const initialVol = (this.isAdMuted || s.muted) ? 0 : Math.max(0, Math.min(1, s.volume / 100));
+      this.masterGain.gain.value = initialVol;
       this.masterGain.connect(this.ctx.destination);
       return this.ctx;
     } catch {
@@ -147,7 +189,9 @@ class SoundEngine {
     if (existing) return existing;
     try {
       const audio = new Audio(assetUrl(SOUND_FILES[name]));
-      audio.volume = SOUND_VOLUME[name] ?? 0.5;
+      const s = settingsService.getSettings().sound;
+      const effectiveVolume = (this.isAdMuted || s.muted) ? 0 : Math.max(0, Math.min(1, s.volume / 100));
+      audio.volume = (SOUND_VOLUME[name] ?? 0.5) * effectiveVolume;
       audio.preload = 'auto';
       this.fallbackAudio.set(name, audio);
       return audio;
@@ -168,6 +212,8 @@ class SoundEngine {
   }
 
   play(name: SoundName): void {
+    if (this.isAdMuted || settingsService.isSoundMuted()) return;
+
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const last = this.lastPlayedAt.get(name);
     if (last !== undefined && now - last < RETRIGGER_WINDOW_MS) return;
@@ -213,10 +259,13 @@ class SoundEngine {
   /** Sessize alındığında çalan her şeyi anında keser. */
   stopAll(): void {
     if (this.masterGain && this.ctx) {
-      // Master gain'i sıfırlayıp hemen geri açmak, çalan tüm source'ları susturur.
+      const s = settingsService.getSettings().sound;
+      const effectiveVolume = (this.isAdMuted || s.muted) ? 0 : Math.max(0, Math.min(1, s.volume / 100));
       try {
         this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime);
-        this.masterGain.gain.setValueAtTime(1, this.ctx.currentTime + 0.01);
+        if (effectiveVolume > 0) {
+          this.masterGain.gain.setValueAtTime(effectiveVolume, this.ctx.currentTime + 0.01);
+        }
       } catch { /* yoksay */ }
     }
     for (const audio of this.fallbackAudio.values()) {

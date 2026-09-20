@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState, useEffect, useRef } from 'react';
 import { PlayerGraphic } from '@/game-engine/components/entities/PlayerGraphic';
 import { Entity } from '@/game-engine/logic/entityTypes';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
@@ -35,6 +35,23 @@ function HeroPlayCellBase({
   const { themeConfig } = useGameTheme();
   const color = item.color;
   const isBusy = phase !== 'idle';
+
+  // Seçim giriş/çıkış animasyonu: Play'den ayrılınca ani kesilmemesi için 'exiting' geçişi kullanılır
+  const [animMode, setAnimMode] = useState<'idle' | 'active' | 'exiting'>('idle');
+  const wasActiveRef = useRef(isActive);
+
+  useEffect(() => {
+    if (isActive) {
+      setAnimMode('active');
+    } else if (wasActiveRef.current) {
+      setAnimMode('exiting');
+      const timer = setTimeout(() => {
+        setAnimMode('idle');
+      }, 360);
+      return () => clearTimeout(timer);
+    }
+    wasActiveRef.current = isActive;
+  }, [isActive]);
 
   // Karakter grafiği gerçek oyun varlığını kullanır — menü ile oyun aynı dili konuşur.
   const playerEntity: Entity = useMemo(
@@ -150,7 +167,17 @@ function HeroPlayCellBase({
         >
           <div className="home-hero__player">
             <div className="home-hero__player-inner">
-              <PlayerGraphic entity={playerEntity} />
+              <div
+                className="home-hero__player-float"
+                data-anim={phase !== 'idle' ? phase : animMode}
+              >
+                <div
+                  className="home-hero__player-spin"
+                  data-anim={phase !== 'idle' ? phase : animMode}
+                >
+                  <PlayerGraphic entity={playerEntity} />
+                </div>
+              </div>
             </div>
           </div>
         </div>

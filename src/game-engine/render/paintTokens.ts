@@ -33,6 +33,45 @@ export * from './cssValues';
 /** CSS `dashed` kenarının tire/boşluk oranı — Chromium'un kullandığı yaklaşık değer. */
 const DASH_RATIO = 3;
 
+/** Rasterleyici bağlamının DPR'si; `spriteCache` bağlamı kurarken yazar. */
+const rasterDpr = new WeakMap<CanvasRenderingContext2D, number>();
+
+/** Yalnızca `spriteCache` çağırır: bu bağlam DPR ölçekli rasterize ediliyor. */
+export function registerRasterDpr(ctx: CanvasRenderingContext2D, dpr: number): void {
+    rasterDpr.set(ctx, dpr);
+}
+
+/**
+ * Bu rasterleyici bağlamının DPR'si; kayıtlı değilse 1.
+ *
+ * NEDEN dışa açık (Faz 06): zafer sprite'ları ara bir tuvale çizip onu
+ * bulanıklaştırıyor (bkz. blur.ts). Ara tuvalin cihaz pikseli cinsinden
+ * kurulması gerekiyor, yoksa bulanık varyant DPR 2'de yarı çözünürlükte kalır.
+ */
+export function rasterDprOf(ctx: CanvasRenderingContext2D): number {
+    return rasterDpr.get(ctx) ?? 1;
+}
+
+/**
+ * CSS `box-shadow`/`drop-shadow` yarıçapının canvas karşılığı.
+ * `shadowBlur` dönüşüm matrisini yok saydığı için DPR ile elle çarpılır;
+ * aksi halde DPR 2'de parlamalar yarı yarıçapta çıkar (04-rapor §5).
+ * YALNIZCA sprite rasterizasyonunda çağrılır (00-ilkeler §2.1).
+ */
+export function setShadow(
+    ctx: CanvasRenderingContext2D,
+    color: string,
+    blurCssPx: number,
+    offsetXCssPx = 0,
+    offsetYCssPx = 0,
+): void {
+    const dpr = rasterDpr.get(ctx) ?? 1;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blurCssPx * dpr;
+    ctx.shadowOffsetX = offsetXCssPx * dpr;
+    ctx.shadowOffsetY = offsetYCssPx * dpr;
+}
+
 /** Köşeleri yuvarlatılmış kutu yolu. `ctx.beginPath()` burada yapılır. */
 export function roundRectPath(ctx: CanvasRenderingContext2D, box: Box, radius: string | number): void {
     const r = parseRadius(radius, box);
@@ -187,10 +226,7 @@ export function outerShadows(ctx: CanvasRenderingContext2D, box: Box, radius: st
         ctx.rect(box.x - 1e4, box.y - 1e4, 2e4, 2e4);
         roundRectPath(ctx, box, radius);
         ctx.clip('evenodd');
-        ctx.shadowColor = sh.color;
-        ctx.shadowBlur = sh.blur;
-        ctx.shadowOffsetX = sh.ox;
-        ctx.shadowOffsetY = sh.oy;
+        setShadow(ctx, sh.color, sh.blur, sh.ox, sh.oy);
         ctx.fillStyle = '#000';
         roundRectPath(
             ctx,
@@ -209,8 +245,7 @@ export function outerShadows(ctx: CanvasRenderingContext2D, box: Box, radius: st
  */
 export function outerGlow(ctx: CanvasRenderingContext2D, drawShape: () => void, color: string, blur: number): void {
     ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = blur;
+    setShadow(ctx, color, blur);
     drawShape();
     ctx.restore();
 }

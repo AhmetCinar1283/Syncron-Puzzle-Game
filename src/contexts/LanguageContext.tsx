@@ -9,10 +9,12 @@ import {
   createContext,
   useContext,
   useState,
+  useEffect,
   useCallback,
   type ReactNode,
 } from 'react';
 import { translate, LANGS, type Lang } from '@/lib/i18n';
+import { settingsService } from '@/services/settings';
 
 export type T = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -24,22 +26,21 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-// Tarayıcı yerel depolama (localStorage) kaydına göre başlangıç dilini (varsayılan 'en') belirler.
-function getInitialLang(): Lang {
-  try {
-    const stored = localStorage.getItem('lang');
-    if (stored && LANGS.some((l) => l.code === stored)) return stored as Lang;
-  } catch {}
-  return 'en';
-}
-
 // Dil durumunu (state) yöneten ve çeviri fonksiyonunu (t) sağlayarak alt bileşenleri sarmalayan sağlayıcı bileşendir.
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(getInitialLang);
+  const [lang, setLangState] = useState<Lang>(() => settingsService.getLanguage());
+
+  // settingsService değişikliklerini dinle
+  useEffect(() => {
+    const unsubscribe = settingsService.subscribe((s) => {
+      setLangState(s.language);
+    });
+    return unsubscribe;
+  }, []);
 
   const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang);
-    try { localStorage.setItem('lang', newLang); } catch {}
+    settingsService.setLanguage(newLang);
   }, []);
 
   const t: T = useCallback(

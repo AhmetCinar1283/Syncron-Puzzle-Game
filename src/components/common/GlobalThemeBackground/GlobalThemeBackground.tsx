@@ -1,30 +1,46 @@
 'use client';
 
+/**
+ * DOSYA AMACI: Uygulama genelinde (RootLayout seviyesinde) çalışan merkezi
+ * tema arka planı ve GPU hızlandırmalı parçacık katmanı.
+ *
+ * MİMARİ:
+ * - Sayfalar arasında gezinirken (Next.js client-side navigation) `layout.tsx`
+ *   unmount olmadığı için parçacıklar ve tuval asla sıfırlanmaz, kesintisiz
+ *   akmaya devam eder.
+ * - Kullanıcı ayarlarından tema değiştiğinde (`useGameTheme`), `themeConfig.bgDark`
+ *   ve geometrik motifler anında ve yumuşakça güncellenir.
+ * - `/play` ve `/editor` rotalarında oyun tahtası odaklılığı ve mobil pil/GPU
+ *   tasarrufu için parçacık çizim döngüsü otomatik olarak duraklatılır.
+ * - Düşük performanslı cihazlarda (`lite` motion tier) statik katmana düşer.
+ */
+
 import React, { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
-import type { MotionTier } from '../../lib/motionTier';
+import { useMotionTier } from '@/lib/motionTier';
 import {
   createParticlePool,
   getThemePalette,
   updateAndRenderPool,
 } from './particleEngine';
 
-interface ThemeBackgroundProps {
-  motionTier: MotionTier;
-}
-
 /** Mobil (dar ekran) için partikül sayısı; masaüstünde iki katı. */
 const MOBILE_BREAKPOINT = 768;
 const PARTICLES_MOBILE = 10;
 const PARTICLES_DESKTOP = 22;
 
-export function ThemeBackground({ motionTier }: ThemeBackgroundProps) {
+export function GlobalThemeBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pathname = usePathname();
   const { theme, themeConfig } = useGameTheme();
+  const motionTier = useMotionTier();
+
   const isLite = motionTier === 'lite';
+  const isExcludedRoute = pathname?.startsWith('/play') || pathname?.startsWith('/editor');
 
   useEffect(() => {
-    if (isLite) return;
+    if (isLite || isExcludedRoute) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -38,16 +54,9 @@ export function ThemeBackground({ motionTier }: ThemeBackgroundProps) {
     let width = window.innerWidth;
     let height = window.innerHeight;
     const isMobile = width < MOBILE_BREAKPOINT;
-    // Mobilde dpr'yi 1'e sabitliyoruz: 2x tuval, ekranı dolduran bir efekt için
-    // WebView'de dört katı fill-rate demek ve gözle görülür bir kazanç yok.
+    // Mobilde dpr'yi 1'e sabitliyoruz: WebView'de gereksiz fill-rate yükünü önler.
     const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
 
-    /*
-     * DİKKAT: `ctx.scale()` KÜMÜLATİFTİR. Önceki sürüm her resize'da tekrar
-     * scale çağırıyordu; mobilde adres çubuğunun açılıp kapanması bile resize
-     * ürettiği için ölçek katlanıyor ve arka plan bozuluyordu. `setTransform`
-     * matrisi her seferinde sıfırdan kurar.
-     */
     const applySize = () => {
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -102,13 +111,33 @@ export function ThemeBackground({ motionTier }: ThemeBackgroundProps) {
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLite, theme, themeConfig.accentColor]);
+  }, [isLite, isExcludedRoute, theme, themeConfig.accentColor]);
 
-  // Düşük performanslı cihaz / reduced-motion: kare başına iş yapmayan,
-  // yalnızca bir kez boyanan statik katman.
-  if (isLite) {
-    return <div className="home-bg-static" aria-hidden="true" />;
+  if (isExcludedRoute) {
+    return null;
   }
 
-  return <canvas ref={canvasRef} className="home-bg-canvas" aria-hidden="true" />;
+  return (
+    <div
+      className="global-theme-bg"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: themeConfig.bgDark || '#050505',
+        transition: 'background-color 0.4s ease',
+        zIndex: 0,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+      }}
+      aria-hidden="true"
+    >
+      {isLite ? (
+        <div className="home-bg-static" aria-hidden="true" />
+      ) : !isExcludedRoute ? (
+        <canvas ref={canvasRef} className="home-bg-canvas" aria-hidden="true" />
+      ) : null}
+    </div>
+  );
 }

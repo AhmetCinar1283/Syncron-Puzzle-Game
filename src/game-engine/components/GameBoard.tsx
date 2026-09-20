@@ -15,7 +15,6 @@ import { useGameTheme } from '../contexts/GameThemeContext';
 import { GameIcon } from '@/components/icons';
 import { VictoryCelebration, VICTORY_CELEBRATION_DURATION } from './effects/VictoryCelebration';
 import type { SoundName } from '../hooks/useSoundManager';
-import { userStorageGet } from '@/lib/userStorage';
 import { soundEngine } from '../audio/soundEngine';
 import { hapticImpact, hapticNotify } from '@/lib/haptics';
 import { BoardCell } from './board/BoardCell';
@@ -285,7 +284,7 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
             if (!soundName) return;
             if (onPlaySound) {
                 onPlaySound(soundName);
-            } else if (typeof window !== 'undefined' && userStorageGet('soundMuted') !== 'true') {
+            } else {
                 // PlayScreen dışındaki kullanımlar (ör. editör önizleme) için
                 // aynı Web Audio motoru — HTMLAudioElement gecikmesi yok.
                 soundEngine.play(soundName);

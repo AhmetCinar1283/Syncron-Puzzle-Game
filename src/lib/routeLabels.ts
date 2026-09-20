@@ -14,6 +14,7 @@ const ROUTE_LABEL_KEYS: Record<string, string> = {
   '/friends': 'nav.friends',
   '/leaderboard': 'nav.leaderboard',
   '/controls': 'nav.controls',
+  '/settings': 'settings.title',
   '/admin': 'nav.admin',
   '/admin/level-parts': 'nav.level_parts',
   '/admin/daily-calendar': 'nav.daily_calendar',

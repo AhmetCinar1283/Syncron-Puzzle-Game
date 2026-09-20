@@ -15,6 +15,8 @@ import PrivacyPage from '@/app/privacy/page';
 import TermsPage from '@/app/terms/page';
 import KvkkPage from '@/app/kvkk/page';
 
+import { SettingsPage } from '@/features/settings';
+
 function PlayRoute() {
   return (
     <Suspense fallback={<LoadingScreen />}>
@@ -36,6 +38,7 @@ export const PORTAL_ROUTES: Record<string, ComponentType> = {
   '/levels': LevelsPage,
   '/play': PlayRoute,
   '/controls': ControlsPage,
+  '/settings': SettingsPage,
   // Günlük bulmaca: giriş noktası yalnızca `capabilities.dailyPuzzle` + worker varsa görünür.
   '/daily': DailyHubPage,
   '/daily/play': DailyPlayRoute,

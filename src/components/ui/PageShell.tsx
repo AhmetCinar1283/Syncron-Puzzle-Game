@@ -16,7 +16,7 @@ export interface PageShellProps {
  */
 export function PageShell({ header, children, className, maxWidth = 'max-w-2xl' }: PageShellProps) {
   return (
-    <div className="min-h-screen w-full px-4 py-6">
+    <div className="relative z-1 min-h-screen w-full px-4 py-6">
       <div className={cn('mx-auto w-full', maxWidth, className)}>
         {header && <div className="mb-6">{header}</div>}
         {children}

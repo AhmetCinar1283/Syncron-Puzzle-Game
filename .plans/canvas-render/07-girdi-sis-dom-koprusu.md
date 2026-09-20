@@ -96,7 +96,50 @@ Yine de iki şey yap:
   `BoardCanvas` sessizce `GameBoard`'a düşsün. Bu bir emniyet kemeri; Faz 08'de
   varsayılan canvas olduğunda tek koruma bu olacak.
 
-### 2.5 `LevelMiniPreview` ve editör — dokunma
+### 2.5 Devralınan iş: vignette sprite'ı küçültülür (06-rapor §4.1)
+
+Faz 06, zafer vignette'ini plandaki gibi tek sprite yaptı ve 640×640 bir tahtada
+**7,91 MB** ölçtü — önbelleğin tek başına en pahalı girdisi. Ajan kendi başına
+değiştirmedi, doğru yaptı. Karar (proje sahibi):
+
+- Vignette **yarı çözünürlükte** rasterize edilir ve blit sırasında `drawImage`'in
+  hedef boyutuyla iki katına ölçeklenir. Düz bir radial gradient olduğu için
+  yüksek frekanslı detayı yok; gözle ayırt edilemez, bellek **1,98 MB**'a iner.
+  `ctx.imageSmoothingEnabled` açık kalsın.
+- Vignette **tek yuvalıdır**: tahta boyutu değişince eski vignette sprite'ı
+  önbellekten **silinir**, yenisi yazılır. Bu, 00-ilkeler §3.1'deki "ayıklama yok"
+  kararının bilinçli tek istisnası ve gerekçesi o kararın kendi gerekçesidir:
+  ayıklama yasağı "animasyon sürerken yeniden rasterizasyon tetiklenmesin" diye
+  konmuştu; vignette ise koreografi **başlamadan** üretiliyor. Bu istisnayı
+  `victory.ts` içinde bir yorumla belgele; genel bir ayıklama mekanizması **kurma**.
+- Faz 08'in 20MB eşiği yine de aşılırsa yedek çözüm hazır: vignette'i sprite
+  yapmayıp, önbelleğe alınmış bir `CanvasGradient` nesnesiyle `fillRect` etmek.
+  Şimdi yapma — ölçüm bunu gerektirirse Faz 08 yapar.
+
+### 2.6 Ölçüm kancası — `render/profiler.ts` (Faz 08'den öne alındı)
+
+Bu faz canvas yolunun son eksiğini kapatıyor; bitince oyun canvas modunda **baştan
+sona oynanabilir** olacak. Proje sahibinin ölçüm yapabilmesi için ölçüm aracının da
+o anda hazır olması gerekiyor, yoksa Faz 08'e kadar hiçbir sayı üretilemiyor.
+Bu yüzden `profiler.ts` bu faza alındı.
+
+```ts
+/** `userStorage`'da `boardProfiler='1'` iken açılır. Kapalıyken sıfır maliyet. */
+export function isProfilerEnabled(): boolean;
+export function recordFrame(layer: LayerName, ms: number): void;
+export function frameStats(): { layer: LayerName; avg: number; p95: number; count: number }[];
+```
+
+`BoardCanvas`, profiler açıkken tahtanın köşesinde küçük bir DOM katmanı gösterir:
+katman başına ortalama ve p95 kare süresi, saniyedeki çizim sayısı, `cache.size()`
+ve yaklaşık sprite belleği (Faz 08 §2.5b formülü).
+
+**Kapalıyken hiçbir `performance.now()` çağrısı yapılmamalı** — ölçümün kendisi
+ölçtüğü şeyi bozmasın. `isProfilerEnabled()` bir kez okunup modül seviyesinde
+saklanır. Bayrağın nasıl açılacağını rapora **tek satırlık komut** olarak yaz
+(tarayıcı konsolundan çalıştırılabilir hâlde).
+
+### 2.7 `LevelMiniPreview` ve editör — dokunma
 
 00-ilkeler §5 gereği bu iz oynanış tahtasıyla sınırlı. Bu fazda da öyle.
 Önizlemelerin yavaş olduğu görülürse rapora yaz, düzeltme.
@@ -127,6 +170,12 @@ Yine de iki şey yap:
       **her** hücre sprite'ını ikiye katlar. Karartmayı sprite varyantı yerine
       blit sırasında üstüne `globalAlpha`'lı siyah dikdörtgenle yapmak önbelleği
       iki kat küçültür — hangisini seçtiğini gerekçesiyle rapora yaz.
+- [ ] Vignette yarı çözünürlükte (§2.5); yeni ölçülen bellek rapora yazıldı.
+- [ ] Vignette tek yuvalı; tahta boyutu değişince eskisi siliniyor, genel bir
+      ayıklama mekanizması **kurulmadı**.
+- [ ] `profiler.ts` yazıldı (§2.6); kapalıyken ölçüm yapmıyor, açıkken katman
+      başına avg/p95/sayı + `cache.size()` + yaklaşık bellek gösteriyor.
+      Açma komutu rapora tek satır olarak yazıldı.
 - [ ] 00-ilkeler §6 tablosundaki dört kontrol yeşil.
 - [ ] `raporlar/07-rapor.md` yazıldı; sis geçişi basitleştirmesinin (§2.1) görsel
       sonucu içinde.

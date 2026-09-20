@@ -285,6 +285,25 @@ const tr: Record<string, string> = {
   'theme.active': 'Aktif',
   'theme.select_theme': 'Bu temayı seç',
 
+  // Settings
+  'settings.title': 'Ayarlar',
+  'settings.subtitle': 'Oyun deneyiminizi, arayüz dilinizi ve ses tercihlerinizi kişiselleştirin.',
+  'settings.tab_general': 'Genel',
+  'settings.tab_sound': 'Ses',
+  'settings.tab_theme': 'Tema',
+  'settings.language_title': 'Uygulama Dili',
+  'settings.language_desc': 'Arayüz ve menü metinlerinin görüntüleneceği dili seçin.',
+  'settings.theme_title': 'Görsel Tema',
+  'settings.theme_desc': 'Oyun tahtası, bloklar ve imleçlerin stilini belirleyin.',
+  'settings.sound_title': 'Ses Tercihleri',
+  'settings.sound_desc': 'Oyun ses efektleri ve ana ses seviyesi ayarları.',
+  'settings.sound_toggle': 'Ses Efektleri',
+  'settings.sound_muted': 'Sessiz',
+  'settings.sound_active': 'Açık',
+  'settings.sound_volume': 'Ses Seviyesi',
+  'settings.reset_defaults': 'Varsayılanlara Sıfırla',
+  'settings.reset_confirm': 'Tüm ayarlar varsayılan değerlere döndürülsün mü?',
+
   // Win overlay
   'win.title': 'Level Tamamlandı',
   'win.solved_in': '{n} hamlede çözüldü',

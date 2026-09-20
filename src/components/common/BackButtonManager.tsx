@@ -47,6 +47,7 @@ export function getHierarchicalBackRoute(
     norm === '/profile' ||
     norm === '/friends' ||
     norm === '/controls' ||
+    norm === '/settings' ||
     norm === '/admin' ||
     norm === '/leaderboard' ||
     norm === '/donate' ||

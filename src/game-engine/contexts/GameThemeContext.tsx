@@ -8,6 +8,7 @@ import {
   isValidTheme, 
   ALL_THEMES 
 } from '../themes/themeConfig';
+import { settingsService } from '@/services/settings';
 
 export type { GameTheme, ThemeDefinition };
 export { getThemeConfig };
@@ -22,16 +23,14 @@ interface GameThemeContextType {
 
 const GameThemeContext = createContext<GameThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'know_and_conquer_game_theme';
-
 export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<GameTheme>('arcade');
+  const [theme, setThemeState] = useState<GameTheme>(() => settingsService.getTheme());
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem(STORAGE_KEY);
-    if (savedTheme && isValidTheme(savedTheme)) {
-      setThemeState(savedTheme);
-    }
+    const unsubscribe = settingsService.subscribe((s) => {
+      setThemeState(s.theme);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const setTheme = (newTheme: GameTheme) => {
     setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
+    settingsService.setTheme(newTheme);
   };
 
   const cycleTheme = () => {

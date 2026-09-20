@@ -19,6 +19,7 @@ export function PartCard({
   onReorderLevel,
   onDeleteLevel,
   onEditLevel,
+  onPreviewLevel,
   onDesignMap,
 }: {
   part: LevelPart;
@@ -29,6 +30,7 @@ export function PartCard({
   onReorderLevel: (levelId: string, dir: 'up' | 'down') => void;
   onDeleteLevel: (levelId: string) => void;
   onEditLevel: (levelId: string) => void;
+  onPreviewLevel: (entry: LevelOrderEntry) => void;
   onDesignMap: () => void;
 }) {
   const t = useT();
@@ -219,6 +221,7 @@ export function PartCard({
                 onReorder={onReorderLevels}
                 onMoveUp={(levelId) => onReorderLevel(levelId, 'up')}
                 onMoveDown={(levelId) => onReorderLevel(levelId, 'down')}
+                onPreviewLevel={onPreviewLevel}
                 onEditLevel={onEditLevel}
                 onDeleteLevel={onDeleteLevel}
               />

@@ -12,7 +12,9 @@ import StoreProvider from "@/store/StoreProvider";
 import { GameThemeProvider } from "@/game-engine/contexts/GameThemeContext";
 import { MonetizationProvider } from "@/contexts/MonetizationContext";
 import { MonetizationDebugPanel } from "@/components/common/MonetizationDebugPanel";
+import { GlobalThemeBackground } from "@/components/common/GlobalThemeBackground";
 import { CURRENT_PLATFORM, getCapabilities } from "@/services/monetization";
+import { SettingsProvider, SettingsModal } from "@/features/settings";
 
 const BASE_URL = 'https://syncron.polimelo.com';
 
@@ -171,24 +173,30 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <LanguageProvider>
-          <StoreProvider>
-            <AuthProvider>
-              <ToastProvider>
-                <GameThemeProvider>
-                  <MonetizationProvider>
-                    <FirestoreSync />
-                    <UserBadge />
-                    <BackButtonManager />
-                    <AdBannerMount />
-                    {children}
-                    <MonetizationDebugPanel />
-                  </MonetizationProvider>
-                </GameThemeProvider>
-              </ToastProvider>
-            </AuthProvider>
-          </StoreProvider>
-        </LanguageProvider>
+        <SettingsProvider>
+          <LanguageProvider>
+            <StoreProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  <GameThemeProvider>
+                    <MonetizationProvider>
+                      <FirestoreSync />
+                      <UserBadge />
+                      <BackButtonManager />
+                      <AdBannerMount />
+                      <GlobalThemeBackground />
+                      <div className="relative z-1 flex-1 flex flex-col min-h-0 w-full">
+                        {children}
+                      </div>
+                      <SettingsModal />
+                      <MonetizationDebugPanel />
+                    </MonetizationProvider>
+                  </GameThemeProvider>
+                </ToastProvider>
+              </AuthProvider>
+            </StoreProvider>
+          </LanguageProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

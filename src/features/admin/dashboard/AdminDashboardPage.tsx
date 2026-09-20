@@ -1,12 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { GameIcon } from '@/components/icons';
 import { AdminCard } from './components/AdminCard';
 import { useAdminDashboard } from './hooks/useAdminDashboard';
 
 export default function AdminDashboardPage() {
-  const { router, role, loading, particles, unreadTicketsCount } = useAdminDashboard();
+  const { router, role, loading, unreadTicketsCount } = useAdminDashboard();
 
   if (loading || role !== 'admin') {
     return (
@@ -70,33 +69,9 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <>
-      {/* Background Particles */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              top: 0, left: 0,
-              width: p.size, height: p.size,
-              borderRadius: p.borderRadius,
-              background: p.color,
-              boxShadow: p.glow,
-            }}
-            animate={{
-              x: [p.startX, p.startX + p.driftX],
-              y: [p.startY, -50],
-              opacity: [0, p.opacity, p.opacity, 0],
-            }}
-            transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'linear' }}
-          />
-        ))}
-      </div>
-
-      <main
-        style={{
-          position: 'relative',
+    <main
+      style={{
+        position: 'relative',
           zIndex: 1,
           minHeight: '100dvh',
           display: 'flex',
@@ -184,6 +159,5 @@ export default function AdminDashboardPage() {
           ))}
         </div>
       </main>
-    </>
   );
 }

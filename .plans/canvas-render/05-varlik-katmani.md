@@ -1,6 +1,6 @@
 # 05 — Varlık Katmanı: Oyuncu, Kutu ve Hareketin Tamamı
 
-> Bağlayıcı: `.plans/canvas-render/00-ilkeler.md`. Önce `raporlar/04-rapor.md` oku.
+> Bağlayıcı: `.plans/canvas-render/00-ilkeler.md`. Önce `raporlar/04-rapor.md` ve `raporlar/04b-rapor.md` oku.
 > **Model: opus.** Bu fazda CSS'in bedavaya verdiği her şey elle yazılıyor: geçiş
 > zamanlaması, easing, 20'den fazla keyframe animasyonu ve bunların birbirini ezme
 > kuralları. Oyunun okunabilirliği doğrudan buna bağlı.
@@ -11,7 +11,7 @@
 
 | Dosya | Neden |
 |---|---|
-| `.plans/canvas-render/00-ilkeler.md`, `raporlar/04-rapor.md` | Sözleşme ve devir |
+| `.plans/canvas-render/00-ilkeler.md`, `raporlar/04-rapor.md`, `raporlar/04b-rapor.md` | Sözleşme ve devir |
 | `src/game-engine/render/` altındaki mevcut dosyalar | Altyapı ve desen |
 | `src/game-engine/render/cells/common.ts` | **`cssBezier` burada** — §3.1'de `motion.ts`'e taşınacak |
 | `src/game-engine/render/cells/ice.ts` | `easeInOut` burada, `cssBezier`'e delege ediyor — §3.1 |

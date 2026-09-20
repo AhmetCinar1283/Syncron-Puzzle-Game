@@ -1,3 +1,9 @@
+/**
+ * DOSYA AMACI: Temaya özel geometrik parçacık ve motif çizim fonksiyonları.
+ * Arcade, Neon, Blueprint, Cosmic ve Legacy temalarının her biri için
+ * kendine özgü çizim elemanları barındırır.
+ */
+
 import { ParticleItem } from './types';
 
 export function drawArcadeMotif(ctx: CanvasRenderingContext2D, p: ParticleItem) {

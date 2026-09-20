@@ -5,7 +5,7 @@ import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { BoardInfoTicker } from './BoardInfoTicker';
 import { BoardCellNode, BoardCellNodeOption } from './BoardCellNode';
 import { BoardPlayerLayer } from './BoardPlayerLayer';
-import { assetUrl } from '@/lib/assetUrl';
+import { soundEngine } from '@/game-engine/audio/soundEngine';
 
 interface InteractiveBoardMenuProps {
   options: BoardCellNodeOption[];
@@ -34,11 +34,7 @@ export function InteractiveBoardMenu({
   const handleSelect = (index: number) => {
     if (activeMenuIndex !== index) {
       setActiveMenuIndex(index);
-      try {
-        new Audio(assetUrl('/sounds/tick.mp3')).play().catch(() => {});
-      } catch {
-        // Audio playback catch
-      }
+      soundEngine.play('tick');
     }
   };
 

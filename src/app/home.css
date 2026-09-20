@@ -399,12 +399,56 @@
   transform: scale(var(--home-player-scale));
 }
 
-.home-hero[data-phase="idle"] .home-hero__player-inner {
+.home-hero[data-phase="idle"]:not([data-active="true"]) .home-hero__player-inner {
   animation: homeBreathe 2600ms ease-in-out infinite;
 }
 
 .home-hero[data-phase="sliding"] .home-hero__player-inner {
   animation: homeDash 340ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+/* Karakter süzülme (float) katmanı: dikey levitation ve yumuşak iniş/çıkış */
+.home-hero__player-float {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.home-hero__player-float[data-anim="active"] {
+  animation: homePlayerFloat 2600ms ease-in-out infinite;
+}
+
+.home-hero__player-float[data-anim="exiting"] {
+  transform: translateY(0) scale(1);
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-hero__player-float[data-anim="idle"] {
+  transform: translateY(0) scale(1);
+}
+
+/* Karakter dönüş (spin) katmanı: 360° süzülerek dönme ve çıkışta frenleme */
+.home-hero__player-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.home-hero__player-spin[data-anim="active"] {
+  animation: homePlayerSpinGlide 2800ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.home-hero__player-spin[data-anim="exiting"] {
+  animation: homePlayerSettle 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.home-hero[data-active="true"] .home-hero__dock-mark {
+  opacity: 0.95;
+  border-style: solid;
+  animation: homeSpin 5s linear infinite;
 }
 
 /* Kayma izi — genişliği runner ile aynı, yalnızca scaleX + opacity. */
@@ -462,7 +506,8 @@
   -webkit-tap-highlight-color: transparent;
   outline: none;
   overflow: hidden;
-  transition: transform 160ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .home-tile:active {
@@ -470,7 +515,19 @@
 }
 
 .home-tile[data-active="true"] {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+}
+
+.home-tile__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.home-tile[data-active="true"] .home-tile__icon-wrap {
+  animation: homeIconFloat 2200ms ease-in-out infinite;
 }
 
 .home-tile__label {
@@ -508,10 +565,14 @@
   border-radius: inherit;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 170ms ease;
+  transition: opacity 240ms ease;
 }
 
-.home-tile[data-active="true"] .home-glow,
+.home-tile[data-active="true"] .home-glow {
+  opacity: 1;
+  animation: homeNeonPulse 2200ms ease-in-out infinite;
+}
+
 .home-hero[data-active="true"] .home-glow {
   opacity: 1;
 }
@@ -592,11 +653,29 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   outline: none;
-  transition: transform 150ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .home-sheet__row:active {
   transform: scale(0.98);
+}
+
+.home-sheet__row[data-active="true"] {
+  transform: translateX(6px);
+}
+
+.home-sheet__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.home-sheet__row[data-active="true"] .home-sheet__icon-wrap {
+  animation: homeIconFloatSmall 2200ms ease-in-out infinite;
 }
 
 /* ── Rehber / SEO bölümü (fold altı) ────────────────────────────────────── */
@@ -845,6 +924,66 @@
   }
 }
 
+@keyframes homePlayerSpinGlide {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes homePlayerFloat {
+  0%, 100% {
+    transform: translateY(-8px) scale(1.1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.12);
+  }
+}
+
+@keyframes homePlayerSettle {
+  0% {
+    transform: rotate(50deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes homeIconFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-3px) rotate(-3.5deg);
+  }
+  75% {
+    transform: translateY(1.5px) rotate(3deg);
+  }
+}
+
+@keyframes homeIconFloatSmall {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  30% {
+    transform: translateY(-2px) rotate(-2.5deg);
+  }
+  70% {
+    transform: translateY(1px) rotate(2deg);
+  }
+}
+
+@keyframes homeNeonPulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @keyframes homePulse {
   0%,
   100% {
@@ -942,12 +1081,19 @@
    animationend olayına bağlı, kapatılsa akış kilitlenirdi.
    ──────────────────────────────────────────────────────────────────────── */
 
-.home-root[data-motion="lite"] .home-ambient {
+.home-root[data-motion="lite"] .home-ambient,
+.home-root[data-motion="lite"] .home-hero__player-spin,
+.home-root[data-motion="lite"] .home-tile__icon-wrap,
+.home-root[data-motion="lite"] .home-sheet__icon-wrap {
   animation: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-ambient {
+  .home-ambient,
+  .home-hero__player-spin,
+  .home-hero__player-float,
+  .home-tile__icon-wrap,
+  .home-sheet__icon-wrap {
     animation: none !important;
   }
 

@@ -72,7 +72,7 @@ export default function EditorScreen() {
 
   return (
     <EditorContextProvider value={ctxValue}>
-      <div className="h-[100dvh]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#030712', color: '#e2e8f0', overflow: 'hidden' }}>
+      <div className="h-[100dvh]" style={{ position: 'relative', zIndex: 1, height: '100dvh', display: 'flex', flexDirection: 'column', background: '#030712', color: '#e2e8f0', overflow: 'hidden' }}>
 
         {/* Top bar */}
         <EditorTopBar

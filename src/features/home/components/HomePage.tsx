@@ -4,7 +4,6 @@ import React, { useMemo } from 'react';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { ThemeSelectorModal } from '@/game-engine/components/play-screen/ThemeSelectorModal';
 import { GameIcon } from '@/components/icons';
-import { ThemeBackground } from './background/ThemeBackground';
 import { HomeTopBar } from './HomeTopBar';
 import { HeroPlayCell } from './HeroPlayCell';
 import { MenuTileGrid } from './MenuTileGrid';
@@ -88,8 +87,6 @@ export function HomePage() {
 
   return (
     <div className="home-root" data-motion={motionTier} style={themeVars}>
-      <ThemeBackground motionTier={motionTier} />
-
       <main className="home-main">
         <div className="home-primary">
           <HomeTopBar onOpenThemeModal={() => setIsThemeModalOpen(true)} />

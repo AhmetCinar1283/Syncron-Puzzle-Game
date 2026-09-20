@@ -224,3 +224,15 @@ export async function getPartLevels(partId: string): Promise<FirestoreLevel[]> {
     });
 }
 
+/**
+ * Belirtilen Firestore ID'sine sahip tek bir bölümün detaylı verisini çeker.
+ */
+export async function getFirestoreLevel(firestoreId: string): Promise<FirestoreLevel | null> {
+  const snap = await getDoc(doc(db, 'levels', firestoreId));
+  if (!snap.exists()) return null;
+  return {
+    firestoreId: snap.id,
+    ...(snap.data() as Omit<FirestoreLevel, 'firestoreId'>),
+  };
+}
+

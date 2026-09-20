@@ -7,7 +7,7 @@ import { PuzzleMenuOption, PuzzleMenuLane } from './PuzzleMenuLane';
 import { PuzzleMenuPlayer } from './PuzzleMenuPlayer';
 import { PuzzleWinBurst } from './PuzzleWinBurst';
 import { GameIcon } from '@/components/icons';
-import { assetUrl } from '@/lib/assetUrl';
+import { soundEngine } from '@/game-engine/audio/soundEngine';
 
 interface PuzzleBoardMenuProps {
   options: PuzzleMenuOption[];
@@ -70,11 +70,7 @@ export function PuzzleBoardMenu({
     if (isSliding) return;
     if (activeMenuIndex !== index) {
       setActiveMenuIndex(index);
-      try {
-        new Audio(assetUrl('/sounds/tick.mp3')).play().catch(() => {});
-      } catch {
-        // audio play catch
-      }
+      soundEngine.play('tick');
     }
   };
 

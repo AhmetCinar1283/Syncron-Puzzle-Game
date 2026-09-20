@@ -54,11 +54,13 @@ export function clipCell(ctx: CanvasRenderingContext2D, radius: string | number)
 export interface TextStyle {
     size: number;
     color: string;
-    weight?: 'normal' | 'bold';
+    weight?: 'normal' | 'bold' | number;
     /** `text-shadow` dizgisi; yalnızca ofsetsiz (`0 0 Npx c`) katmanlar desteklenir. */
     textShadow?: string;
     /** px cinsinden; CSS `letter-spacing`. */
     letterSpacing?: number;
+    /** CSS `font-family`; verilmezse gövde yazı tipi (`FONT_STACK`). */
+    family?: string;
     align?: CanvasTextAlign;
 }
 
@@ -66,7 +68,7 @@ export interface TextStyle {
 type SpacedContext = CanvasRenderingContext2D & { letterSpacing?: string };
 
 function applyFont(ctx: CanvasRenderingContext2D, style: TextStyle): void {
-    ctx.font = `${style.weight ?? 'normal'} ${style.size}px ${FONT_STACK}`;
+    ctx.font = `${style.weight ?? 'normal'} ${style.size}px ${style.family ?? FONT_STACK}`;
     ctx.textAlign = style.align ?? 'center';
     ctx.textBaseline = 'middle';
     if (style.letterSpacing) (ctx as SpacedContext).letterSpacing = `${style.letterSpacing}px`;
@@ -112,25 +114,11 @@ export function drawIconGlow(
 }
 
 /**
- * CSS `cubic-bezier(x1, y1, x2, y2)` zamanlama eğrisi. Newton ile t→s çözülür.
- * `ease-in-out` = (0.42, 0, 0.58, 1), `ease-out` = (0, 0, 0.58, 1).
- *
- * NEDEN burada: 00-ilkeler §3'te easing'in evi `motion.ts` (Faz 05). O dosya
- * henüz yok; üç hücre (`ice`, `target`, `teleport`) aynı çözücüye ihtiyaç
- * duyduğu için üçüncü kopya yerine buraya alındı. Faz 05 taşımalı.
+ * CSS `cubic-bezier` çözücüsü artık `render/motion.ts`'te (00-ilkeler §3;
+ * faz planı 05 §3.1). Faz 02–03'te bu dosyada açılmıştı çünkü `motion.ts`
+ * henüz yoktu. `teleport.ts` ve `ice.ts` buradan içe aktarmaya devam ediyor.
  */
-export function cssBezier(x1: number, x2: number, y1: number, y2: number, t: number): number {
-    const curve = (a: number, b: number, s: number) =>
-        3 * a * s * (1 - s) * (1 - s) + 3 * b * s * s * (1 - s) + s * s * s;
-    let s = t;
-    for (let i = 0; i < 6; i++) {
-        const x = curve(x1, x2, s) - t;
-        const dx = 3 * x1 * (1 - s) * (1 - 3 * s) + 3 * x2 * s * (2 - 3 * s) + 3 * s * s;
-        if (Math.abs(dx) < 1e-6) break;
-        s -= x / dx;
-    }
-    return curve(y1, y2, Math.max(0, Math.min(1, s)));
-}
+export { cssBezier } from '../motion';
 
 /** CSS `dashed` kenarının tire/boşluk oranı — `paintTokens` ile aynı. */
 const DASH_RATIO = 3;

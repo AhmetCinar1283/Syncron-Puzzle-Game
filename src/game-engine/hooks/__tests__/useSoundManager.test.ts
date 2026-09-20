@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { userStorageGet, userStorageSet } from '@/lib/userStorage';
+import { settingsService } from '@/services/settings';
 
 const mockStorage: Record<string, string> = {};
 
@@ -19,21 +19,27 @@ const mockLocalStorage = {
 };
 
 vi.stubGlobal('localStorage', mockLocalStorage);
+vi.stubGlobal('window', { localStorage: mockLocalStorage });
 
-describe('Sound mute preferences', () => {
+describe('Sound preferences via settingsService', () => {
   beforeEach(() => {
     mockLocalStorage.clear();
+    settingsService.resetToDefaults();
   });
 
-  it('defaults to not muted when no key exists', () => {
-    expect(userStorageGet('soundMuted')).toBeNull();
+  it('defaults to not muted and 80 volume', () => {
+    expect(settingsService.isSoundMuted()).toBe(false);
+    expect(settingsService.getSoundVolume()).toBe(80);
   });
 
-  it('correctly persists soundMuted flag in user-scoped storage', () => {
-    userStorageSet('soundMuted', 'true');
-    expect(userStorageGet('soundMuted')).toBe('true');
+  it('correctly toggles and persists soundMuted flag in settingsService', () => {
+    settingsService.setSoundMuted(true);
+    expect(settingsService.isSoundMuted()).toBe(true);
 
-    userStorageSet('soundMuted', 'false');
-    expect(userStorageGet('soundMuted')).toBe('false');
+    settingsService.toggleSoundMute();
+    expect(settingsService.isSoundMuted()).toBe(false);
+
+    settingsService.setSoundVolume(45);
+    expect(settingsService.getSoundVolume()).toBe(45);
   });
 });

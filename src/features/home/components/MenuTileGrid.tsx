@@ -77,7 +77,9 @@ function MenuTileGridBase({
               </span>
             )}
 
-            <GameIcon name={tile.icon} size={22} color={isActive ? color : '#94a3b8'} />
+            <span className="home-tile__icon-wrap">
+              <GameIcon name={tile.icon} size={22} color={isActive ? color : '#94a3b8'} />
+            </span>
 
             <span
               className="home-tile__label"

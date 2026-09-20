@@ -1,26 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { userStorageGet, userStorageSet } from '@/lib/userStorage';
+import { useCallback, useEffect, useState } from 'react';
+import { settingsService } from '@/services/settings';
 import { soundEngine } from '../audio/soundEngine';
 import type { SoundName } from '../audio/soundEngine';
 
 export type { SoundName } from '../audio/soundEngine';
 
-const MUTED_KEY = 'soundMuted';
-
 /**
- * PlayScreen'in ses arayüzü. Gerçek çalma işi modül seviyesindeki tekil
- * `soundEngine`'de (Web Audio) yapılır — buffer'lar bir kez çözülür, bu hook
- * yalnızca sessiz/sesli tercihini yönetir.
+ * PlayScreen ve arayüz bileşenlerinin ses arayüzü.
+ * Gerçek çalma işi modül seviyesindeki tekil `soundEngine`'de (Web Audio) yapılır.
+ * Bu hook, ses açık/kapalı ve ses seviyesi tercihlerini `settingsService` üzerinden yönetir.
  */
 export function useSoundManager() {
-  const [muted, setMuted] = useState(() => (typeof window !== 'undefined' ? userStorageGet(MUTED_KEY) === 'true' : false));
-  const mutedRef = useRef(typeof window !== 'undefined' ? userStorageGet(MUTED_KEY) === 'true' : false);
+  const [soundSettings, setSoundSettings] = useState(() => settingsService.getSettings().sound);
 
   useEffect(() => {
-    mutedRef.current = muted;
-  }, [muted]);
+    const unsubscribe = settingsService.subscribe((settings) => {
+      setSoundSettings(settings.sound);
+    });
+    return unsubscribe;
+  }, []);
 
   // Buffer'ları indir/çöz (tekil — ikinci çağrı iş yapmaz).
   useEffect(() => {
@@ -38,19 +38,27 @@ export function useSoundManager() {
   }, []);
 
   const play = useCallback((name: SoundName) => {
-    if (mutedRef.current || userStorageGet(MUTED_KEY) === 'true') return;
     soundEngine.play(name);
   }, []);
 
   const toggleMute = useCallback(() => {
-    setMuted((prev) => {
-      const next = !prev;
-      mutedRef.current = next;
-      userStorageSet(MUTED_KEY, String(next));
-      if (next) soundEngine.stopAll();
-      return next;
-    });
+    settingsService.toggleSoundMute();
   }, []);
 
-  return { play, muted, toggleMute };
+  const setMuted = useCallback((muted: boolean) => {
+    settingsService.setSoundMuted(muted);
+  }, []);
+
+  const setVolume = useCallback((volume: number) => {
+    settingsService.setSoundVolume(volume);
+  }, []);
+
+  return {
+    play,
+    muted: soundSettings.muted,
+    volume: soundSettings.volume,
+    toggleMute,
+    setMuted,
+    setVolume,
+  };
 }

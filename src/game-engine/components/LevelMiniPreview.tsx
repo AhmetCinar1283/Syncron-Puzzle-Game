@@ -4,11 +4,17 @@ import type { CellType, LevelData } from '@/game-engine/level-format';
 import GameCellAdapter from '@/game-engine/components/GameCellAdapter';
 import { getPlayerColor } from '@/game-engine/components/playerColors';
 
+export interface LevelMiniPreviewProps {
+  level: LevelData;
+  cellSize?: number;
+  maxBoardSize?: number;
+}
+
 /**
  * DOSYA AMACI: Bir level'ın küçük, etkileşimsiz önizlemesi (çok odalı yerleşim ya da
- * tek grid). Editörün üretici adayları ve admin günlük bulmaca takvimi kullanır.
+ * tek grid). Editörün üretici adayları, admin günlük bulmaca takvimi ve önizleme modalı kullanır.
  */
-export default function LevelMiniPreview({ level }: { level: LevelData }) {
+export default function LevelMiniPreview({ level, cellSize, maxBoardSize }: LevelMiniPreviewProps) {
   const isMultiRoom = level.rooms && level.rooms.length > 0;
 
   if (isMultiRoom) {
@@ -20,8 +26,10 @@ export default function LevelMiniPreview({ level }: { level: LevelData }) {
     const layoutCols = maxX - minX + 1;
     const layoutRows = maxY - minY + 1;
 
-    // Keep cell size compact so multi-room preview fits card container (width ~110px max)
-    const miniCellSize = Math.max(3, Math.min(8, Math.floor(65 / Math.max(level.width, level.height) / Math.max(layoutCols, layoutRows))));
+    // Keep cell size compact so multi-room preview fits card container (or scales with maxBoardSize)
+    const baseTarget = maxBoardSize ? maxBoardSize * 0.75 : 65;
+    const maxAllowed = maxBoardSize ? 24 : 8;
+    const miniCellSize = cellSize ?? Math.max(3, Math.min(maxAllowed, Math.floor(baseTarget / Math.max(level.width, level.height) / Math.max(layoutCols, layoutRows))));
     const roomGap = 3;
     const boardWidth = layoutCols * (level.width * miniCellSize) + (layoutCols - 1) * roomGap;
     const boardHeight = layoutRows * (level.height * miniCellSize) + (layoutRows - 1) * roomGap;
@@ -130,7 +138,9 @@ export default function LevelMiniPreview({ level }: { level: LevelData }) {
     );
   }
 
-  const miniCellSize = Math.max(12, Math.min(20, Math.floor(100 / Math.max(level.width, level.height))));
+  const baseTarget = maxBoardSize ?? 100;
+  const maxAllowed = maxBoardSize ? 36 : 20;
+  const miniCellSize = cellSize ?? Math.max(12, Math.min(maxAllowed, Math.floor(baseTarget / Math.max(level.width, level.height))));
   const boardWidth = level.width * miniCellSize;
   const boardHeight = level.height * miniCellSize;
 

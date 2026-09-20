@@ -3,7 +3,6 @@
 import { useT } from '@/contexts/LanguageContext';
 import AuthModal from '@/components/common/AuthModal';
 import { useFriendsPage } from '../hooks/useFriendsPage';
-import { ParticlesBackground } from './ParticlesBackground';
 import { FriendsNavBar } from './FriendsNavBar';
 import { StatusMessages } from './StatusMessages';
 import { UnauthPanel } from './UnauthPanel';
@@ -38,7 +37,6 @@ export function FriendsPage() {
     authModalOpen,
     setAuthModalOpen,
     searchInput,
-    particles,
     myTag,
     copied,
     handleCopyMyTag,
@@ -53,7 +51,7 @@ export function FriendsPage() {
     <div
       style={{
         minHeight: '100dvh',
-        background: '#030712',
+        background: 'transparent',
         color: '#e2e8f0',
         fontFamily: 'var(--font-sans)',
         padding: '24px 16px 48px',
@@ -66,8 +64,6 @@ export function FriendsPage() {
         position: 'relative',
       }}
     >
-      <ParticlesBackground particles={particles} />
-
       {/* Main Container */}
       <div
         style={{

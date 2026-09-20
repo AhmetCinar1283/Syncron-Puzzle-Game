@@ -9,7 +9,7 @@ import { useBadges } from '@/hooks/useBadges';
 import { Badge } from '@/services/api/badgesClient';
 import { useFriends } from '@/features/friends/hooks/useFriends';
 import { useGamepad } from '@/hooks/useGamepad';
-import { NEON_TYPES, Particle, ProfileDoc } from '../lib/constants';
+import { ProfileDoc } from '../lib/constants';
 
 /**
  * Core profile page data: auth/owner resolution, Firestore profile doc,
@@ -39,9 +39,6 @@ export function useProfileData(pickerOpen: boolean) {
   // Firestore local state for owner profile
   const [profileDoc, setProfileDoc] = useState<ProfileDoc>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
-
-  // Background particles
-  const [particles, setParticles] = useState<Particle[]>([]);
 
   // Load badges API
   const { badges, loading: loadingBadges, error: badgesError, saveShowcase, saving: savingShowcase } = useBadges(viewUid);
@@ -93,29 +90,6 @@ export function useProfileData(pickerOpen: boolean) {
 
     return 'none';
   }, [currentUser, isCurrentAnonymous, isOwner, viewUid, searchResults, friends, requests]);
-
-  // Generate floating neon background particles
-  useEffect(() => {
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 800;
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 600;
-    const list = Array.from({ length: 20 }, (_, i) => {
-      const type = NEON_TYPES[i % NEON_TYPES.length];
-      return {
-        id: i,
-        color: type.color,
-        glow: type.glow,
-        size: 8 + Math.random() * 14,
-        startX: Math.random() * vw,
-        startY: Math.random() * vh,
-        driftX: (Math.random() - 0.5) * 80,
-        duration: 15 + Math.random() * 15,
-        delay: -(Math.random() * 20),
-        opacity: 0.08 + Math.random() * 0.15,
-      };
-    });
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only randomized decoration, needs window size at mount; behavior preserved from pre-refactor code.
-    setParticles(list);
-  }, []);
 
   // Redirect unauthenticated guests away from their own profile page
   useEffect(() => {
@@ -240,7 +214,6 @@ export function useProfileData(pickerOpen: boolean) {
     profileDoc,
     setProfileDoc,
     loadingProfile,
-    particles,
     badges,
     loadingBadges,
     badgesError,

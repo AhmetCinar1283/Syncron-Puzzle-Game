@@ -86,7 +86,7 @@ export function occupancySignature(scene: BoardScene): string {
  * ve kenarı İÇERİDE olduğu için ızgara o kadar içeriden başlar. Beş temanın
  * hiçbirinde kalınlık `isControlled`'a göre değişmiyor, bu yüzden `true` yeterli.
  */
-function roomBorderWidth(scene: BoardScene): number {
+export function roomBorderWidth(scene: BoardScene): number {
     return parseBorder(getThemeConfig(scene.theme).board.border(true))?.width ?? 0;
 }
 

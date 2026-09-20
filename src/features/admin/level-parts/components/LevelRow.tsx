@@ -13,6 +13,7 @@ export function LevelRow({
   isLast,
   onMoveUp,
   onMoveDown,
+  onPreview,
   onEdit,
   onDelete,
 }: {
@@ -21,6 +22,7 @@ export function LevelRow({
   isLast: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onPreview: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -130,6 +132,7 @@ export function LevelRow({
           </>
         ) : (
           <>
+            <NeonBtn color="#10b981" small onClick={onPreview}>Preview</NeonBtn>
             <NeonBtn color="#00c4ff" small onClick={onEdit}>Edit</NeonBtn>
             <NeonBtn color="#ef4444" small onClick={() => setConfirmDelete(true)}>Delete</NeonBtn>
           </>

@@ -21,6 +21,9 @@ export function useLevelPartsPage() {
   // Map Designer state
   const [designerPart, setDesignerPart] = useState<LevelPart | null>(null);
 
+  // Level preview modal state
+  const [previewLevelEntry, setPreviewLevelEntry] = useState<LevelOrderEntry | null>(null);
+
   // Create part modal
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -279,6 +282,8 @@ export function useLevelPartsPage() {
     isDirty,
     designerPart,
     setDesignerPart,
+    previewLevelEntry,
+    setPreviewLevelEntry,
     showCreate,
     setShowCreate,
     newName,

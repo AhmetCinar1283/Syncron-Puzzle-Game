@@ -285,6 +285,25 @@ const en: Record<string, string> = {
   'theme.active': 'Active',
   'theme.select_theme': 'Select this theme',
 
+  // Settings
+  'settings.title': 'Settings',
+  'settings.subtitle': 'Customize your gameplay experience, interface language, and audio preferences.',
+  'settings.tab_general': 'General',
+  'settings.tab_sound': 'Audio',
+  'settings.tab_theme': 'Theme',
+  'settings.language_title': 'App Language',
+  'settings.language_desc': 'Select your preferred language for menus and interface text.',
+  'settings.theme_title': 'Visual Theme',
+  'settings.theme_desc': 'Choose the aesthetic look of the board, blocks, and cursors.',
+  'settings.sound_title': 'Audio Preferences',
+  'settings.sound_desc': 'Control game sound effects and master volume levels.',
+  'settings.sound_toggle': 'Sound Effects',
+  'settings.sound_muted': 'Muted',
+  'settings.sound_active': 'Enabled',
+  'settings.sound_volume': 'Volume Level',
+  'settings.reset_defaults': 'Reset to Defaults',
+  'settings.reset_confirm': 'Are you sure you want to reset all settings to default values?',
+
   // Win overlay
   'win.title': 'Level Complete',
   'win.solved_in': 'Solved in {n} moves',

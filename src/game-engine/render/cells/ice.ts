@@ -23,7 +23,7 @@ import { NATIVE_CELL_SIZE, PHASES } from '../types';
 import { getIcon } from '../icons';
 import { outerGlow, paintBox, roundRectPath } from '../paintTokens';
 import type { Box } from '../paintTokens';
-import { cssBezier } from './common';
+import { EASE_IN_OUT } from '../motion';
 
 const CELL_BOX: Box = { x: 0, y: 0, w: NATIVE_CELL_SIZE, h: NATIVE_CELL_SIZE };
 const ICON_SIZE = 20;
@@ -102,12 +102,11 @@ function iceStyle(theme: GameTheme, isOccupied: boolean): IceStyle {
 /**
  * CSS `ease-in-out` (`cubic-bezier(0.42, 0, 0.58, 1)`).
  *
- * Faz 02'de bu dosyada açılmıştı; Faz 03'te `target` ve `teleport` de aynı
- * çözücüyü istediği için gövdesi `cells/common.ts`'e taşındı. 00-ilkeler §3'te
- * easing'in evi `motion.ts` (Faz 05) — oraya taşınması hâlâ bekliyor.
+ * Gövde Faz 05'te `render/motion.ts`'e taşındı (00-ilkeler §3). Bu ad
+ * `target.ts` ve `overlays/timing.ts` için ince bir sarmalayıcı olarak kaldı.
  */
 export function easeInOut(t: number): number {
-    return cssBezier(0.42, 0.58, 0, 1, t);
+    return EASE_IN_OUT(t);
 }
 
 /** `@keyframes icePulse`: 0%/100% → scale(1) opacity .82, 50% → scale(1.15) opacity 1. */

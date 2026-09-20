@@ -7,7 +7,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useGamepad } from '@/hooks/useGamepad';
 import { useAppSelector } from '@/store/hooks';
 import { useFriends } from './useFriends';
-import { generateParticles, Particle } from '../lib/particles';
 
 export interface FriendLike {
   uid: string;
@@ -16,7 +15,7 @@ export interface FriendLike {
   showcaseBadges?: any[];
 }
 
-// Combines the friends data hook with all Friends-page-level UI state (particles, search input,
+// Combines the friends data hook with all Friends-page-level UI state (search input,
 // tag copy, keyboard/gamepad navigation). Behavior mirrors the former FriendsClient component 1:1.
 export function useFriendsPage() {
   const { lang } = useLanguage();
@@ -24,7 +23,6 @@ export function useFriendsPage() {
   const { user, isAnonymous } = useAuthContext();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
-  const [particles, setParticles] = useState<Particle[]>([]);
 
   const myTag = useAppSelector((state) => state.user.tag);
   const [copied, setCopied] = useState(false);
@@ -58,11 +56,6 @@ export function useFriendsPage() {
   };
 
   const friendsState = useFriends();
-
-  // Floating background particles
-  useEffect(() => {
-    setParticles(generateParticles(20));
-  }, []);
 
   // Ref to the search input for gamepad focus
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +149,6 @@ export function useFriendsPage() {
     setAuthModalOpen,
     searchInput,
     setSearchInput,
-    particles,
     myTag,
     copied,
     handleCopyMyTag,

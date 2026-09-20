@@ -1,6 +1,6 @@
 # 06 — Zafer Koreografisinin Canvas Portu
 
-> Bağlayıcı: `.plans/canvas-render/00-ilkeler.md`. Önce `raporlar/05-rapor.md` oku.
+> Bağlayıcı: `.plans/canvas-render/00-ilkeler.md`. Önce `raporlar/05-rapor.md` oku (ve 04b bulgularını 00-ilkeler §3.3'ten).
 > **Model: opus.** Üç aşamalı koreografi matematiği, hayalet izler ve 36 parçacık;
 > hepsi zamana bağlı ve hepsi birbirine geçmiş. Yanlış port = oyunun en sevilen anı bozulur.
 
@@ -119,6 +119,11 @@ Gradient nesnesini **her karede yeniden oluşturma**; `createRadialGradient` ucu
 değil. Yarıçap değiştiği için birim yarıçapta bir gradient hazırla ve
 `ctx.scale` ile ölçekle.
 
+> **Taşma payı.** Faz 04b tuvale her yönde `BOARD_BLEED` (32 CSS piksel) pay
+> verdi; şok dalgaları ve parçacıklar tahtanın dışına o kadar taşabilir.
+> Daha fazlası gerekiyorsa `BOARD_BLEED`'i büyüt — koordinat kodu etkilenmez
+> (00-ilkeler §3.3) — ama büyüttüğünü rapora yaz, tuval alanı DPR² ile büyür.
+
 ### 4.5 Vignette
 
 Kaynakta tahtayı karartan bir vignette var. Tek bir radial gradient; tahta boyutu
@@ -154,7 +159,9 @@ ile kurulu — değiştirme.
       (Ölçüm proje sahibinde — rapora "ölçülmeyi bekliyor" yaz.)
 - [ ] Koreografi bitince `actors` katmanı temizleniyor ve RAF döngüsü **duruyor**.
 - [ ] `onAnimationEnd` DOM modundakiyle aynı anda tetikleniyor; sonuç ekranı gecikmiyor.
-- [ ] Zafer sırasında `cache.size()` artışı 40'ın altında. Değeri rapora yaz.
+- [ ] Zafer sırasındaki `cache.size()` artışı ve yaklaşık bellek etkisi (Faz 08 §2.5b
+      formülü) ölçüldü ve **rapora yazıldı**. Sayısal tavan yok (00-ilkeler §3.1);
+      denetlenen şey anahtarlama kuralıdır.
 - [ ] `grep -rn "shadowBlur\|ctx\.filter" src/game-engine/render/victory.ts` çıktısı boş.
 - [ ] 00-ilkeler §6 tablosundaki dört kontrol yeşil.
 - [ ] `raporlar/06-rapor.md` yazıldı; bulanık iz varyantı kararı (§4.2) ve şok dalgası

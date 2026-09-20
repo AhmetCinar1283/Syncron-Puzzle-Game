@@ -1,3 +1,7 @@
+/**
+ * DOSYA AMACI: Global tema arka planı ve parçacık motorunun veri tipleri.
+ */
+
 export type MotifType = 'primary' | 'secondary' | 'accent' | 'dot';
 
 export interface ParticleItem {

@@ -95,4 +95,12 @@ export interface BoardScene {
     frameMs: number;
     /** Bu tick'in başladığı `performance.now()` damgası. */
     tickStartedAt: number;
+    /**
+     * Zafer koreografisi oynuyor mu (`GameBoard`'daki `isVictoryActive`).
+     *
+     * NEDEN Faz 05'te eklendi: varlık katmanı bu sırada oyuncuları ÇİZMEZ
+     * (`isPlayerCelebrating` → `opacity: 0.0`), çünkü onları Faz 06 çiziyor.
+     * `ambientMode === 'off'` bu bilgiyi veremez: zayıf cihazda da 'off' olur.
+     */
+    isVictoryActive: boolean;
 }

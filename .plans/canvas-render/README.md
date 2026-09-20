@@ -55,6 +55,7 @@ Sıra "sözleşmeyi önce dondur, sonra doldur" mantığıyla kuruldu. **Sıray�
 | 02 | `02-hucre-cizim-deseni.md` | Tema jetonlarının canvas karşılığı + ilk 4 hücre (desen belirleyici) | **opus** |
 | 03 | `03-kalan-hucreler.md` | Kalan 8 hücre tipi — desen belli, mekanik tekrar | **sonnet** |
 | 04 | `04-overlay-katmanlari.md` | İz, kablo, kenar şeritleri, portal yolları, oda çerçevesi | **sonnet** |
+| 04b | `04b-duzeltmeler.md` | Taşma payı, DPR'ye duyarlı gölge, çerçeve sprite'ı — **Faz 05'ten önce** | **sonnet** |
 | 05 | `05-varlik-katmani.md` | Oyuncu/kutu çizimi + hareket, zıplama, çarpma, ölüm, ışınlanma | **opus** |
 | 06 | `06-zafer-koreografisi.md` | `VictoryCelebration`'ın canvas portu | **opus** |
 | 07 | `07-girdi-sis-dom-koprusu.md` | Swipe, sis geçişleri, ipucu işareti köprüsü, erişilebilirlik | **sonnet** |
@@ -69,6 +70,15 @@ Her faz bitince `raporlar/<numara>-rapor.md` yazılır. Sonraki faz o raporu oku
 > sözleşmesi (§3.4). Ayrıca `dev-cell-compare` route'unun üretim build'ine
 > sızma riski ve DOM'da bağlanmamış süs listesi Faz 08'e madde olarak eklendi.
 > Faz 04'ten itibaren başlayan ajanlar **güncel** 00-ilkeler'i okur.
+
+> **Ara faz eklendi (Faz 04 sonrası).** 04-rapor üç gerçek sorun bildirdi:
+> tuvalin tahta sınırında kenar etiketlerini kırpması, `shadowBlur`'ün dönüşüm
+> matrisini yok sayması nedeniyle DPR 2'de parlamaların yarı yarıçapta çıkması,
+> ve `static` katmanı artık her oyuncu adımında yeniden çizildiği için oda
+> çerçevesinin gölgesinin ana yolda hesaplanması. Üçü de **`04b-duzeltmeler.md`**
+> olarak ayrıldı ve Faz 05'ten önce çalıştırılır; 05 ve 06 bunların üstüne
+> koordinat ve gölge ekleyeceği için sonraya bırakmak işi büyütür.
+> 00-ilkeler §3.3 buna göre güncellendi (`BOARD_BLEED`, `setShadow`).
 
 ---
 
@@ -117,3 +127,8 @@ gerektiriyorsa, faz yanlış bölünmüştür — proje sahibine bildir.
 **Gerçek cihazda ölçüm.** Giriş seviyesi Android telefonda `npm run build:mobile` +
 `cap open android` ile çalıştırıp kare hızına, ısınmaya ve şarj tüketimine bakmak
 proje sahibinin işi. Ajanlar bunu raporlarına "senin yapman gereken" başlığıyla yazar.
+
+**Nasıl ölçüleceği `olcum-rehberi.md`'de**: Chrome uzaktan hata ayıklama,
+`adb shell dumpsys gfxinfo`, oyunun kendi profiler'ı, ısınma/şarj protokolü ve
+Faz 08'e götürülecek karşılaştırma tablosu. Ölçüm **Faz 07'den sonra** anlamlı
+(sis o zaman geliyor); `profiler.ts` de o yüzden Faz 08'den Faz 07'ye alındı.

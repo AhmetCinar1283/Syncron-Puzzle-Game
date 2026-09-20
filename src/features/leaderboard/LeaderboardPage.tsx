@@ -41,7 +41,7 @@ export default function LeaderboardPage() {
     <div
       style={{
         minHeight: '100dvh',
-        background: '#030712',
+        background: 'transparent',
         color: '#e2e8f0',
         fontFamily: 'var(--font-sans)',
         padding: '24px 16px 48px',

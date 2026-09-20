@@ -1,16 +1,16 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { useCapabilities } from '@/contexts/MonetizationContext';
-import { useLevelsPage } from '../hooks/useLevelsPage';
+import { useLevelsPage, type LevelEntry } from '../hooks/useLevelsPage';
 import { LevelsHUD } from './LevelsHUD';
 import { ChapterBar } from './chapters/ChapterBar';
 import { ChapterLockShield } from './chapters/ChapterLockShield';
 import { ConstellationCircuit } from './circuit/ConstellationCircuit';
 import { CustomLevelsView } from './custom/CustomLevelsView';
-import { LevelsThemeBackground } from './background/LevelsThemeBackground';
 import { WarpTransition } from './WarpTransition';
 import { GameIcon } from '@/components/icons';
+import LevelPreviewModal from '@/components/common/LevelPreviewModal';
 
 function LevelsPageContent() {
   const { devTools } = useCapabilities();
@@ -58,18 +58,14 @@ function LevelsPageContent() {
     themeDef,
   } = useLevelsPage();
 
+  const [previewLevel, setPreviewLevel] = useState<LevelEntry | null>(null);
+  const [previewIsPreset, setPreviewIsPreset] = useState<boolean>(true);
+
   return (
     <div
-      className="relative flex h-[100dvh] w-screen flex-col overflow-hidden text-slate-200"
-      style={{
-        background: themeDef.bgDark,
-        transition: 'background 0.4s ease',
-      }}
+      className="relative flex h-[100dvh] w-screen flex-col overflow-hidden text-slate-200 bg-transparent"
     >
-      {/* 1. Arka Plan: GPU Hızlandırmalı Parçacık Motoru */}
-      <LevelsThemeBackground />
-
-      {/* 2. Üst HUD */}
+      {/* 1. Üst HUD */}
       <div className="relative z-30" style={{ height: isMobile ? 52 : 60 }}>
         <LevelsHUD
           isMobile={isMobile}
@@ -142,7 +138,10 @@ function LevelsPageContent() {
                 themeDef={themeDef}
                 isMobile={isMobile}
                 onSelect={setSelectedIndex}
-                onPlay={(lv) => playLevel(lv, true)}
+                onPlay={(lv) => {
+                  setPreviewLevel(lv);
+                  setPreviewIsPreset(true);
+                }}
                 onEntryPortal={handleEntryPortal}
                 onExitPortal={handleExitPortal}
                 containerRef={gridContainerRef}
@@ -159,7 +158,10 @@ function LevelsPageContent() {
             lockedSet={lockedSet}
             selectedIndex={selectedIndex}
             onHover={setSelectedIndex}
-            onPlay={(lv) => playLevel(lv, false)}
+            onPlay={(lv) => {
+              setPreviewLevel(lv);
+              setPreviewIsPreset(false);
+            }}
             onEdit={(lv) => router.push(`/editor?id=${lv.id}`)}
             onDelete={handleDelete}
             onMove={move}
@@ -236,6 +238,39 @@ function LevelsPageContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 7. Bölüm Detay & Harita Önizleme Modalı */}
+      {previewLevel && (
+        <LevelPreviewModal
+          isOpen={!!previewLevel}
+          onClose={() => setPreviewLevel(null)}
+          levelId={previewLevel.id}
+          levelData={
+            previewLevel.grid && Array.isArray(previewLevel.grid) && previewLevel.grid.length > 0
+              ? (previewLevel as any)
+              : undefined
+          }
+          metadata={{
+            name: previewLevel.name,
+            width: previewLevel.width,
+            height: previewLevel.height,
+            difficulty: previewLevel.difficulty,
+            creatorName: previewLevel.creatorName,
+            position: previewLevel.position,
+            firestoreId: previewLevel.firestoreId,
+            playedData: previewLevel.firestoreId ? playedMap.get(previewLevel.firestoreId) : undefined,
+            isSkipped: !!previewLevel.firestoreId && skippedSet.has(previewLevel.firestoreId),
+            isLocked: previewLevel.firestoreId ? lockedSet.has(previewLevel.firestoreId) : false,
+          }}
+          mode="play"
+          onPlay={() => {
+            const lv = previewLevel;
+            const isPreset = previewIsPreset;
+            setPreviewLevel(null);
+            playLevel(lv, isPreset);
+          }}
+        />
       )}
     </div>
   );

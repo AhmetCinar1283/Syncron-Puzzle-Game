@@ -4,7 +4,6 @@ import BadgeShowcase from '@/components/common/BadgeShowcase';
 import BadgePicker from '@/components/common/BadgePicker';
 import { GameIcon } from '@/components/icons';
 import { useProfileState } from '../hooks/useProfileState';
-import BackgroundParticles from './BackgroundParticles';
 import ProfileHeaderCard from './ProfileHeaderCard';
 import DisplayNamePanel from './DisplayNamePanel';
 import TagPanel from './TagPanel';
@@ -37,7 +36,6 @@ export default function ProfileClient() {
     displayNameSuccess,
     copied,
     handleCopyTag,
-    particles,
     badges,
     loadingBadges,
     badgesError,
@@ -66,7 +64,7 @@ export default function ProfileClient() {
     <div
       style={{
         minHeight: '100dvh',
-        background: '#030712',
+        background: 'transparent',
         color: '#e2e8f0',
         fontFamily: 'var(--font-sans)',
         padding: '24px 16px 48px',
@@ -79,9 +77,6 @@ export default function ProfileClient() {
         position: 'relative',
       }}
     >
-      {/* Background neon particles */}
-      <BackgroundParticles particles={particles} />
-
       {/* Main Content Card */}
       <div
         style={{

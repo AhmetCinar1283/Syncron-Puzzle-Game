@@ -5,6 +5,7 @@ import { NeonBtn } from './components/NeonBtn';
 import { PartCard } from './components/PartCard';
 import { CreatePartModal } from './components/CreatePartModal';
 import { MapDesignerModal } from './components/MapDesignerModal';
+import LevelPreviewModal from '@/components/common/LevelPreviewModal';
 
 export default function LevelPartsPage() {
   const {
@@ -17,6 +18,8 @@ export default function LevelPartsPage() {
     isDirty,
     designerPart,
     setDesignerPart,
+    previewLevelEntry,
+    setPreviewLevelEntry,
     showCreate,
     setShowCreate,
     newName,
@@ -115,6 +118,7 @@ export default function LevelPartsPage() {
               onReorderLevel={(levelId, dir) => handleReorderLevel(part.partId, levelId, dir)}
               onDeleteLevel={(levelId) => handleDeleteLevel(part.partId, levelId)}
               onEditLevel={handleEditLevel}
+              onPreviewLevel={(entry) => setPreviewLevelEntry(entry)}
               onDesignMap={() => setDesignerPart(part)}
             />
           ))
@@ -140,6 +144,29 @@ export default function LevelPartsPage() {
           part={designerPart}
           onClose={() => setDesignerPart(null)}
           onSave={handleSaveMapLayout}
+        />
+      )}
+
+      {/* Level Preview Modal */}
+      {previewLevelEntry && (
+        <LevelPreviewModal
+          isOpen={!!previewLevelEntry}
+          onClose={() => setPreviewLevelEntry(null)}
+          levelId={previewLevelEntry.id}
+          metadata={{
+            name: previewLevelEntry.name,
+            width: previewLevelEntry.width,
+            height: previewLevelEntry.height,
+            difficulty: previewLevelEntry.difficulty,
+            creatorName: previewLevelEntry.creatorName,
+            position: previewLevelEntry.position,
+            firestoreId: previewLevelEntry.id,
+          }}
+          mode="test"
+          onEdit={(firestoreId) => {
+            setPreviewLevelEntry(null);
+            handleEditLevel(String(firestoreId));
+          }}
         />
       )}
     </div>

@@ -3,7 +3,6 @@
 import { AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useGreatSupporterPage } from '../hooks/useGreatSupporterPage';
-import { ParticleCanvas } from './ParticleCanvas';
 import { CapacitorBlockedView } from './CapacitorBlockedView';
 import { ConfettiOverlay } from './ConfettiOverlay';
 import { LoadingState } from './LoadingState';
@@ -37,10 +36,7 @@ export function GreatSupporterPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#030712] text-[#e2e8f0] relative overflow-hidden flex items-center justify-center p-4">
-      {/* Particle Background */}
-      <ParticleCanvas />
-
+    <main className="min-h-[100dvh] bg-transparent text-[#e2e8f0] relative overflow-hidden flex items-center justify-center p-4">
       {/* Styled inline CSS for custom animations */}
       <style jsx global>{`
         @keyframes glow {

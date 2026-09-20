@@ -1,3 +1,7 @@
+/**
+ * DOSYA AMACI: Arka plan parçacık motorunun matematik, havuz yönetimi ve render döngüsü.
+ */
+
 import { ParticleItem, MotifType } from './types';
 import { drawMotifByTheme } from './themeMotifs';
 

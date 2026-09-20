@@ -9,6 +9,7 @@ interface LevelReorderListProps {
   onReorder: (newLevels: LevelOrderEntry[]) => void;
   onMoveUp: (levelId: string) => void;
   onMoveDown: (levelId: string) => void;
+  onPreviewLevel: (entry: LevelOrderEntry) => void;
   onEditLevel: (levelId: string) => void;
   onDeleteLevel: (levelId: string) => void;
 }
@@ -18,6 +19,7 @@ export function LevelReorderList({
   onReorder,
   onMoveUp,
   onMoveDown,
+  onPreviewLevel,
   onEditLevel,
   onDeleteLevel,
 }: LevelReorderListProps) {
@@ -44,6 +46,7 @@ export function LevelReorderList({
           isLast={idx === levels.length - 1}
           onMoveUp={() => onMoveUp(entry.id)}
           onMoveDown={() => onMoveDown(entry.id)}
+          onPreview={() => onPreviewLevel(entry)}
           onEdit={() => onEditLevel(entry.id)}
           onDelete={() => onDeleteLevel(entry.id)}
         />

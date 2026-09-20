@@ -29,15 +29,19 @@ import { VICTORY_CELEBRATION_DURATION } from '../components/effects/VictoryCeleb
 import { NATIVE_CELL_SIZE, ROOM_LAYOUT_GAP } from '../components/play-screen/constants';
 import type { BoardAmbientMode } from '../components/board/boardKeyframes';
 import { soundEngine } from '../audio/soundEngine';
-import { userStorageGet } from '@/lib/userStorage';
 import { hapticImpact, hapticNotify } from '@/lib/haptics';
 import { useMotionTier } from '@/lib/motionTier';
-import { createSurfaces, resize, dispose, clearLayer, currentDpr, type Surfaces } from './surface';
+import { boardBleedFor, createSurfaces, resize, dispose, clearLayer, currentDpr, type Surfaces } from './surface';
 import { createScheduler, type Scheduler } from './scheduler';
 import { createSpriteCache, type SpriteCache } from './spriteCache';
 import { onIconsReady, clearIcons } from './icons';
 import { drawCellsAmbient, drawCellsStatic, occupancySignature } from './cells';
 import { createActivityTracker, type ActivityTracker } from './cells/activity';
+import { drawAmbientOverlays, drawRoomFrames, drawStaticOverlays } from './overlays';
+import { drawActorsLayer as drawActors } from './entities';
+import { createEntityMotionTracker, type EntityMotionTracker } from './entityMotion';
+import { createVictoryTracker, type VictoryTracker } from './victory';
+import { playersSignature } from '../components/board/boardIndex';
 import type { BoardScene } from './types';
 
 /** Bir tick'in ekranda kalma süresi (ms) — `GameBoard` ile aynı değerler. */
@@ -157,7 +161,7 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
             if (!soundName) return;
             if (onPlaySound) {
                 onPlaySound(soundName);
-            } else if (typeof window !== 'undefined' && userStorageGet('soundMuted') !== 'true') {
+            } else {
                 soundEngine.play(soundName);
             }
         });
@@ -204,7 +208,8 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
         ambientMode,
         frameMs,
         tickStartedAt,
-    } : null), [rooms, snapshot, prevSnapshot, layout, theme, controlledRoomIds, ambientMode, frameMs, tickStartedAt]);
+        isVictoryActive,
+    } : null), [rooms, snapshot, prevSnapshot, layout, theme, controlledRoomIds, ambientMode, frameMs, tickStartedAt, isVictoryActive]);
 
     // Çizim geri çağrıları render döngüsünün dışında çalışır; sahneyi bir ref
     // üzerinden okurlar ki zamanlayıcı her sahnede yeniden kurulmak zorunda kalmasın.
@@ -216,13 +221,33 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
     const activity = useMemo<ActivityTracker>(() => createActivityTracker(), []);
     const activityRef = useRef(activity);
     activityRef.current = activity;
+
+    // Varlıkların süren efekt durumu (iniş, çarpma, ölüm, zafer). Sahne
+    // değişince güncellenir; çizim yalnızca okur (bkz. entityMotion.ts).
+    const motion = useMemo<EntityMotionTracker>(() => createEntityMotionTracker(), []);
+    const motionRef = useRef(motion);
+    motionRef.current = motion;
     const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Zafer koreografisinin kare dışı durumu (Faz 06). Sahne değişince kurulur
+    // veya sıfırlanır; çizim yalnızca okur ve ilerletir (bkz. victory.ts).
+    const victory = useMemo<VictoryTracker>(() => createVictoryTracker(), []);
+    const victoryRef = useRef(victory);
+    victoryRef.current = victory;
+
+    // Tuvalin taşma payı cihaz kademesine bağlı (bkz. surface.ts). Yüzey
+    // efekti yalnızca `host`a bağlı olduğu için değer bir ref üzerinden okunur.
+    const bleed = boardBleedFor(motionTier);
+    const bleedRef = useRef(bleed);
+    bleedRef.current = bleed;
 
     useEffect(() => () => {
         if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
         expiryTimerRef.current = null;
         activity.clear();
-    }, [activity]);
+        motion.clear();
+        victory.clear();
+    }, [activity, motion, victory]);
 
     const [host, setHost] = useState<HTMLDivElement | null>(null);
     const surfacesRef = useRef<Surfaces | null>(null);
@@ -255,7 +280,12 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
                     const alive = drawAmbientLayer(ctx, current, cache, now, activityRef.current);
                     if (alive && current.ambientMode === 'on') loop?.invalidate('ambient');
                 }
-                else drawActorsLayer(ctx, current, cache, now);
+                else {
+                    // Hareket, efekt veya zıplama sürüyorsa bir kare daha
+                    // lazım; yoksa döngü GERÇEKTEN durur (00-ilkeler §2.2).
+                    const moving = drawActorsLayer(ctx, current, cache, now, motionRef.current, victoryRef.current);
+                    if (moving) loop?.invalidate('actors');
+                }
             },
         });
         loop = scheduler;
@@ -278,7 +308,7 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
             cacheRef.current = cache;
             clearIcons();
             const s = sceneRef.current;
-            if (s) resize(surfaces, s.totalWidth, s.totalHeight, dpr);
+            if (s) resize(surfaces, s.totalWidth, s.totalHeight, dpr, bleedRef.current);
             invalidateAll();
         };
         window.addEventListener('resize', onResize);
@@ -301,19 +331,22 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
     // Sahne değişince hangi katmanın kirlendiğine karar verilir. `rooms` ızgara
     // değişmediği tick'lerde referans olarak aynı kalıyor (gridRevision.ts); bu,
     // `static` katmanının geçersizleştirme sinyalidir (00-ilkeler §2.3).
-    const lastStaticRooms = useRef<unknown>(null);
+    // `static` katmanının TEK geçersizleştirme noktası: `rooms` referansı,
+    // varlık doluluk imzası (buz hücresi) ve oyuncu imzası (iz kolları). Tema
+    // ve yeniden boyutlandırma `null` yazarak tetikler. Yeni bir sinyal buraya
+    // eklenir, ayrı bir ref açılmaz.
+    const lastStatic = useRef<{ rooms: unknown; occupancy: string; players: string } | null>(null);
     const lastTheme = useRef<string | null>(null);
     const lastAmbientMode = useRef<BoardAmbientMode | null>(null);
-    const lastOccupancy = useRef<string | null>(null);
 
     useEffect(() => {
         const surfaces = surfacesRef.current;
         const scheduler = schedulerRef.current;
         if (!surfaces || !scheduler || !scene) return;
 
-        if (resize(surfaces, scene.totalWidth, scene.totalHeight, surfaces.dpr || currentDpr())) {
+        if (resize(surfaces, scene.totalWidth, scene.totalHeight, surfaces.dpr || currentDpr(), bleed)) {
             // Boyut yazmak tuvalleri temizledi; üç katman da yeniden çizilmeli.
-            lastStaticRooms.current = null;
+            lastStatic.current = null;
             lastAmbientMode.current = null;
         }
 
@@ -323,18 +356,27 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
             // tek ayıklanmaz. İkon rasterleri de tema rengine bağlı.
             cacheRef.current?.clear();
             clearIcons();
-            lastStaticRooms.current = null;
+            lastStatic.current = null;
             lastAmbientMode.current = null;
         }
 
-        // `static` katmanı varlık konumlarına DA bağlı: buz hücresi dolu/boş
-        // hâllerinde farklı görünüyor ve bu, `rooms` referansı değişmeden
-        // değişebiliyor. İmza yalnızca varlık sayısı kadar uzun, tick başına bir
-        // kez hesaplanıyor; değişmediği sürece katman yeniden çizilmiyor.
-        const occupancy = occupancySignature(scene);
-        if (lastStaticRooms.current !== scene.rooms || lastOccupancy.current !== occupancy) {
-            lastStaticRooms.current = scene.rooms;
-            lastOccupancy.current = occupancy;
+        // `static` katmanı varlıklara DA bağlı ve bu, `rooms` referansı değişmeden
+        // değişebiliyor: buz hücresi dolu/boş hâllerinde farklı görünüyor
+        // (doluluk imzası) ve iz kolları oyuncunun KOMŞU hücrede olup olmadığına
+        // bakıyor (oyuncu imzası). İmzalar yalnızca varlık sayısı kadar uzun,
+        // tick başına bir kez hesaplanıyor; değişmedikleri sürece katman yeniden
+        // çizilmiyor.
+        const staticSignal = {
+            rooms: scene.rooms,
+            occupancy: occupancySignature(scene),
+            players: playersSignature(scene.entities),
+        };
+        const prevStatic = lastStatic.current;
+        if (!prevStatic
+            || prevStatic.rooms !== staticSignal.rooms
+            || prevStatic.occupancy !== staticSignal.occupancy
+            || prevStatic.players !== staticSignal.players) {
+            lastStatic.current = staticSignal;
             scheduler.invalidate('static');
         }
 
@@ -376,12 +418,17 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
             else scheduler.invalidate('ambient');
         }
 
+        // Efekt seçim zinciri tick başına BİR KEZ uygulanır; çizim saf kalır.
+        motion.update(scene, performance.now());
+        // Zafer başlangıç damgası burada konur; `drawVictory`nin `now`u ile aynı
+        // zaman kaynağı (`performance.now()` ↔ RAF damgası).
+        victory.update(scene, performance.now());
         scheduler.invalidate('actors');
         // `host` de bağımlılık: ref geri çağrısı state'i commit sırasında kurar,
         // yani yüzeyler ancak İKİNCİ render'da var olur. `scene` o iki render
         // arasında değişmediği için bu efektin bir kez daha çalışması şart —
         // yoksa ilk kare hiç çizilmez.
-    }, [scene, host, activity]);
+    }, [scene, host, activity, motion, victory, bleed]);
 
     if (!snapshots || snapshots.length === 0 || !snapshot || !rooms) return null;
 
@@ -397,11 +444,10 @@ const BoardCanvas = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
 export default BoardCanvas;
 
 // ─── Katman çizicileri — imzalar DONDURULMUŞ, sonraki fazlar doldurur ────────
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 /**
- * Hücrelerin durağan gövdesi. Faz 04 buraya iz, kablo, kenar şeritleri ve oda
- * çerçevesini ekleyecek.
+ * Durağan katman: oda çerçevesi → hücrelerin gövdesi → iz, kablo, wall
+ * şeritleri, oda başlığı (sıra ve gerekçe: overlays/index.ts).
  */
 export function drawStaticLayer(
     ctx: CanvasRenderingContext2D,
@@ -409,7 +455,9 @@ export function drawStaticLayer(
     cache: SpriteCache,
     activity: ActivityTracker | null = null,
 ): void {
+    drawRoomFrames(ctx, scene, cache);
     drawCellsStatic(ctx, scene, cache, activity);
+    drawStaticOverlays(ctx, scene, cache);
 }
 
 /**
@@ -428,8 +476,23 @@ export function drawAmbientLayer(
     now: number,
     activity: ActivityTracker | null = null,
 ): boolean {
-    return drawCellsAmbient(ctx, scene, cache, now, activity);
+    const cells = drawCellsAmbient(ctx, scene, cache, now, activity);
+    const overlays = drawAmbientOverlays(ctx, scene, cache, now);
+    return cells || overlays;
 }
 
-/** Faz 05–06 dolduracak: oyuncular, kutular, hareket/çarpma/ölüm efektleri, zafer. */
-export function drawActorsLayer(ctx: CanvasRenderingContext2D, scene: BoardScene, cache: SpriteCache, now: number): void {}
+/**
+ * Oyuncular, kutular, hareket/çarpma/ölüm efektleri ve zafer koreografisi.
+ *
+ * @returns Bir kare daha gerekiyorsa `true` (00-ilkeler §3.4).
+ */
+export function drawActorsLayer(
+    ctx: CanvasRenderingContext2D,
+    scene: BoardScene,
+    cache: SpriteCache,
+    now: number,
+    motion: EntityMotionTracker | null = null,
+    victory: VictoryTracker | null = null,
+): boolean {
+    return drawActors(ctx, scene, cache, now, motion, victory);
+}

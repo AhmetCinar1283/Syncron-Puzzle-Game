@@ -315,16 +315,44 @@ export function useHomePage() {
     [slidePhase, tiles, triggerPlay, playSound]
   );
 
+  // Izgara sütun sayısı: CSS @media (min-width: 560px) kuralıyla eşleşir.
+  const [columns, setColumns] = useState<number>(() => {
+    if (typeof window === 'undefined') return 4;
+    return window.matchMedia('(min-width: 560px)').matches ? 4 : 2;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 560px)');
+    const update = () => setColumns(mq.matches ? 4 : 2);
+    update();
+    if (mq.addEventListener) {
+      mq.addEventListener('change', update);
+      return () => mq.removeEventListener('change', update);
+    } else if ((mq as any).addListener) {
+      (mq as any).addListener(update);
+      return () => (mq as any).removeListener(update);
+    }
+  }, []);
+
+  const preferredColRef = useRef(0);
+
+  useEffect(() => {
+    if (activeIndex > 0) {
+      preferredColRef.current = (activeIndex - 1) % columns;
+    }
+  }, [activeIndex, columns]);
+
   const moveSelection = useCallback(
     (direction: 'up' | 'down' | 'left' | 'right') => {
       if (slidePhase !== 'idle') return;
       setActiveIndex((prev) => {
-        const next = moveMenuSelection(prev, direction, heroFlags);
+        const next = moveMenuSelection(prev, direction, heroFlags, columns, preferredColRef.current);
         if (next !== prev) playSound('move');
         return next;
       });
     },
-    [slidePhase, heroFlags, playSound]
+    [slidePhase, heroFlags, columns, playSound]
   );
 
   // Menü kısalırsa (ör. çıkış yapılınca) seçim listenin dışında kalmasın.
@@ -354,6 +382,7 @@ export function useHomePage() {
       if (isOverlayOpen) {
         if (e.key === 'Escape') {
           setIsSheetOpen(false);
+          setIsThemeModalOpen(false);
         }
         return;
       }

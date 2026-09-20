@@ -151,7 +151,23 @@ süslerin görünümü bugünküyle ayırt edilemez, maliyeti ise bir blit.
 
 Tuval **CSS pikselinde** çizer; DPR ölçeklemesi `surface.ts` içinde
 `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` ile bir kez kurulur. Hiçbir çizim kodu
-DPR bilmez. Hücre boyutu `NATIVE_CELL_SIZE` (64) sabittir; tahtanın ekrana sığması
+DPR bilmez.
+
+> **Güncelleme (Faz 04b).** Dönüşüm artık taşma payını da içeriyor:
+> `ctx.setTransform(dpr, 0, 0, dpr, BOARD_BLEED * dpr, BOARD_BLEED * dpr)`.
+> Tuval her yönde `BOARD_BLEED` (32 CSS piksel) daha büyük ve negatif kenar
+> boşluğuyla kaydırılıyor, böylece tahtanın dışına taşan parlamalar,
+> kenar etiketleri ve (Faz 06) zafer şok dalgaları kırpılmıyor.
+> **Çizim kodu bu sayıyı bilmez**; koordinatlar bugünkü gibi tahtanın
+> (0,0) noktasına göredir. `clearRect` payı kapsar.
+>
+> **İkinci güncelleme (Faz 04b §2.2).** `ctx.shadowBlur` ve `shadowOffsetX/Y`
+> dönüşüm matrisini **yok sayar**, cihaz pikseliyle çalışır. Bu yüzden
+> rasterizasyonda gölge doğrudan atanmaz; `paintTokens.setShadow(ctx, renk,
+> blurCssPx, ...)` kullanılır ve o, değeri DPR ile çarpar. Yeni kod
+> `ctx.shadowBlur = ...` **yazmaz**.
+
+Hücre boyutu `NATIVE_CELL_SIZE` (64) sabittir; tahtanın ekrana sığması
 bugünkü gibi `BoardArea`'nın CSS `scale`'i ile sürer — **canvas yeniden
 ölçeklenmez**, aksi halde her ölçekte atlas geçersizleşir.
 

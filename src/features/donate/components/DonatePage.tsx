@@ -47,7 +47,7 @@ export function DonatePage() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#030712] text-[#e2e8f0] py-12 px-4 relative overflow-hidden flex flex-col items-center">
+    <main className="min-h-[100dvh] bg-transparent text-[#e2e8f0] py-12 px-4 relative overflow-hidden flex flex-col items-center">
       {/* Glow ambient background effects */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#00ff88]/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#00c4ff]/10 rounded-full blur-[120px] pointer-events-none" />

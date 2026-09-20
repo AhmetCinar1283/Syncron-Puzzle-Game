@@ -9,6 +9,7 @@
  */
 
 import type { SpritePainter } from './types';
+import { registerRasterDpr } from './paintTokens';
 
 /**
  * Bu sayının aşılması bir HATA göstergesidir: bir `key()` fonksiyonu duruma bağlı
@@ -51,6 +52,7 @@ export function createSpriteCache(dpr: number): SpriteCache {
             // Rasterleyici tuvali de DPR ölçekli: `painter.draw` yine CSS
             // pikselinde çizer, DPR'yi hiçbir çizim kodu bilmez (00-ilkeler §3.3).
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            registerRasterDpr(ctx, dpr);
             const cacheable = painter.draw(ctx, input) !== false;
 
             // `false`: çizim için gereken bir kaynak (ör. henüz yüklenmemiş bir

@@ -1,0 +1,176 @@
+/**
+ * DOSYA AMACI: Kullanıcı ayarlarının tekil (singleton) servis yöneticisidir.
+ * React dışındaki modüller (soundEngine, worker istemcileri vb.) ile React Context katmanı
+ * bu servis üzerinden ayarları okur, günceller ve değişiklikleri dinler.
+ */
+
+import type { Lang } from '@/lib/i18n';
+import type { GameTheme } from '@/game-engine/themes/themeConfig';
+import { DEFAULT_SETTINGS, clampVolume, isValidLang, isValidTheme } from './defaults';
+import { loadSettingsFromStorage, saveSettingsToStorage } from './storageAdapter';
+import type { UserSettings, SettingsListener, SettingsUpdatePayload } from './types';
+
+export class SettingsService {
+  private currentSettings: UserSettings;
+  private listeners = new Set<SettingsListener>();
+
+  constructor() {
+    this.currentSettings = loadSettingsFromStorage();
+  }
+
+  /**
+   * Güncel kullanıcı ayarlarını döner (değiştirilemez kopya).
+   */
+  getSettings(): UserSettings {
+    return {
+      ...this.currentSettings,
+      sound: { ...this.currentSettings.sound },
+    };
+  }
+
+  /** Sesin kapalı (muted) olup olmadığını döner. */
+  isSoundMuted(): boolean {
+    return this.currentSettings.sound.muted;
+  }
+
+  /** Ana ses yüksekliğini (0 - 100) döner. */
+  getSoundVolume(): number {
+    return this.currentSettings.sound.volume;
+  }
+
+  /** Güncel dil kodunu döner. */
+  getLanguage(): Lang {
+    return this.currentSettings.language;
+  }
+
+  /** Güncel oyun temasını döner. */
+  getTheme(): GameTheme {
+    return this.currentSettings.theme;
+  }
+
+  /**
+   * Ayarları kısmi olarak günceller, depolamaya yazar ve tüm dinleyicileri bilgilendirir.
+   */
+  updateSettings(payload: SettingsUpdatePayload): UserSettings {
+    const next: UserSettings = {
+      ...this.currentSettings,
+      ...payload,
+      sound: {
+        ...this.currentSettings.sound,
+        ...(payload.sound ?? {}),
+      },
+    };
+
+    // Validasyon & Clamping
+    if (payload.language !== undefined && !isValidLang(payload.language)) {
+      next.language = this.currentSettings.language;
+    }
+    if (payload.theme !== undefined && !isValidTheme(payload.theme)) {
+      next.theme = this.currentSettings.theme;
+    }
+    if (payload.sound?.volume !== undefined) {
+      next.sound.volume = clampVolume(payload.sound.volume);
+    }
+    if (payload.sound?.sfxVolume !== undefined) {
+      next.sound.sfxVolume = clampVolume(payload.sound.sfxVolume);
+    }
+    if (payload.sound?.musicVolume !== undefined) {
+      next.sound.musicVolume = clampVolume(payload.sound.musicVolume);
+    }
+
+    this.currentSettings = next;
+    saveSettingsToStorage(next);
+    this.notifyListeners();
+    return this.getSettings();
+  }
+
+  /**
+   * Uygulama arayüz dilini ayarlar.
+   */
+  setLanguage(language: Lang): void {
+    if (isValidLang(language) && language !== this.currentSettings.language) {
+      this.updateSettings({ language });
+    }
+  }
+
+  /**
+   * Görsel temayı ayarlar.
+   */
+  setTheme(theme: GameTheme): void {
+    if (isValidTheme(theme) && theme !== this.currentSettings.theme) {
+      this.updateSettings({ theme });
+    }
+  }
+
+  /**
+   * Ses açık/kapalı durumunu ayarlar.
+   */
+  setSoundMuted(muted: boolean): void {
+    if (muted !== this.currentSettings.sound.muted) {
+      this.updateSettings({ sound: { muted } });
+    }
+  }
+
+  /**
+   * Ses açık/kapalı durumunu tersine çevirir (toggle).
+   */
+  toggleSoundMute(): void {
+    this.setSoundMuted(!this.currentSettings.sound.muted);
+  }
+
+  /**
+   * Ana ses seviyesini 0 ile 100 arasında ayarlar.
+   */
+  setSoundVolume(volume: number): void {
+    const clamped = clampVolume(volume);
+    if (clamped !== this.currentSettings.sound.volume) {
+      this.updateSettings({ sound: { volume: clamped } });
+    }
+  }
+
+  /**
+   * Ayarları fabrika varsayılanlarına sıfırlar.
+   */
+  resetToDefaults(): UserSettings {
+    this.currentSettings = {
+      ...DEFAULT_SETTINGS,
+      sound: { ...DEFAULT_SETTINGS.sound },
+    };
+    saveSettingsToStorage(this.currentSettings);
+    this.notifyListeners();
+    return this.getSettings();
+  }
+
+  /**
+   * Ayar değişikliklerini dinlemek için abone olur.
+   * Abonelikten çıkmak için dönen temizleme fonksiyonu çağrılır.
+   */
+  subscribe(listener: SettingsListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /**
+   * Depolamadan ayarları yeniden yükler (testlerde veya depolama senkronizasyonunda kullanılır).
+   */
+  reloadFromStorage(): void {
+    this.currentSettings = loadSettingsFromStorage();
+    this.notifyListeners();
+  }
+
+  private notifyListeners(): void {
+    const snapshot = this.getSettings();
+    this.listeners.forEach((listener) => {
+      try {
+        listener(snapshot);
+      } catch (err) {
+        console.error('[SettingsService] Listener hatası:', err);
+      }
+    });
+  }
+}
+
+/** Uygulama genelinde kullanılan tekil ayarlar servisi. */
+export const settingsService = new SettingsService();
