@@ -53,6 +53,15 @@ export const VICTORY_CELEBRATION_DURATION = 1750;
 /** Oyuncu başına sabit hayalet iz yuvası sayısı (kullanılmayan gizlenir). */
 const TRAIL_SLOTS = 3;
 
+/**
+ * Bir parçacık div'inin kenar uzunluğu. Şekiller orijin etrafında çiziliyor,
+ * bu yüzden kutu ortalanır (left/top = -PARTICLE_BOX/2) ve CSS'in varsayılan
+ * `transform-origin: 50% 50%` değeri SVG'deki `rotate()` ile aynı merkeze denk
+ * gelir. En geniş şekil (sparkle, 1.6x ölçekte ~±16px) artı 8px parıltı rahat
+ * sığsın diye 64.
+ */
+const PARTICLE_BOX = 64;
+
 export const VictoryCelebration: React.FC<VictoryCelebrationProps> = ({
     entities,
     roomPositions,
@@ -157,7 +166,7 @@ export const VictoryCelebration: React.FC<VictoryCelebrationProps> = ({
     // düğümü saniyede 60 kez yeniden karşılaştırılıyordu. Ağaç sabit olduğu
     // için artık bir kez render ediliyor, kare güncellemeleri aşağıdaki
     // ref'ler üzerinden doğrudan yazılıyor. React döngüye hiç girmiyor.
-    const particleRefs = useRef<(SVGGElement | null)[]>([]);
+    const particleRefs = useRef<(HTMLDivElement | null)[]>([]);
     const playerRefs = useRef<(HTMLDivElement | null)[]>([]);
     const trailRefs = useRef<(HTMLDivElement | null)[][]>([]);
     const burstRef = useRef<HTMLDivElement | null>(null);
@@ -206,8 +215,8 @@ export const VictoryCelebration: React.FC<VictoryCelebrationProps> = ({
                     continue;
                 }
                 el.style.display = '';
-                el.setAttribute('transform', `translate(${pt.x}, ${pt.y}) rotate(${pt.rotation})`);
-                el.setAttribute('opacity', String(pt.opacity));
+                el.style.transform = `translate3d(${pt.x}px, ${pt.y}px, 0) rotate(${pt.rotation}deg)`;
+                el.style.opacity = String(pt.opacity);
             }
 
             const states = entityStatesRef.current;
@@ -458,6 +467,11 @@ export const VictoryCelebration: React.FC<VictoryCelebrationProps> = ({
 
     return (
         <div
+            // Koreografi boyunca bu ağaçtaki TÜM CSS animasyonlarını dondurur
+            // (bkz. boardKeyframes.ts): oyuncu grafiğinin göz kırpması, altındaki
+            // blur+drop-shadow katmanının her karede yeniden rasterize edilmesine
+            // yol açıyordu.
+            data-victory-freeze=""
             style={{
                 position: 'absolute',
                 inset: 0,
@@ -479,24 +493,44 @@ export const VictoryCelebration: React.FC<VictoryCelebrationProps> = ({
                 }}
             />
 
-            {/* 2. Uçuşan Zafer Konfetileri ve Yıldız Parçacıkları */}
-            {/* Ağaç sabittir; konum/opaklık her karede `commit()` ile yazılır. */}
-            <svg
-                width={boardWidth}
-                height={boardHeight}
-                style={{
-                    position: 'absolute',
-                    inset: 0,
-                    overflow: 'visible',
-                }}
-            >
-                {particlesRef.current.map((p, i) => (
-                    <g
-                        key={p.id}
-                        ref={el => { particleRefs.current[i] = el; }}
-                        transform={`translate(${p.x}, ${p.y}) rotate(${p.rotation})`}
-                        opacity={0}
-                        style={{ display: 'none' }}
+            {/*
+             * 2. Uçuşan Zafer Konfetileri ve Yıldız Parçacıkları
+             *
+             * Bunlar eskiden tahta boyunda TEK bir <svg> içinde <g> düğümleriydi
+             * ve her karede `transform` NİTELİĞİ yeniden yazılıyordu. SVG'de
+             * nitelik değişimi compositor işi değildir: tüm SVG'nin boyama
+             * bölgesi geçersizleşir ve 36 parçacığın `drop-shadow` filtresi
+             * saniyede 60 kez yeniden hesaplanır.
+             *
+             * Artık her parçacık kendi mutlak konumlu div'i. İçindeki şekil ve
+             * onun parıltısı SABİT — yani filtre katman oluşurken bir kez
+             * rasterize edilip saklanıyor. Kare başına iş sadece CSS
+             * `transform` + `opacity`, yani saf compositor. Görüntü birebir
+             * aynı: aynı yollar, aynı ölçek, aynı drop-shadow.
+             */}
+            {/* `ambientParticles`, `particlesRef.current` ile aynı dizidir; ağacı
+                state üzerinden kurmak render sırasında ref okumaktan kaçınır. */}
+            {ambientParticles.map((p, i) => (
+                <div
+                    key={p.id}
+                    ref={el => { particleRefs.current[i] = el; }}
+                    style={{
+                        position: 'absolute',
+                        left: -PARTICLE_BOX / 2,
+                        top: -PARTICLE_BOX / 2,
+                        width: PARTICLE_BOX,
+                        height: PARTICLE_BOX,
+                        display: 'none',
+                        opacity: 0,
+                        willChange: 'transform, opacity',
+                        pointerEvents: 'none',
+                    }}
+                >
+                    <svg
+                        width={PARTICLE_BOX}
+                        height={PARTICLE_BOX}
+                        viewBox={`${-PARTICLE_BOX / 2} ${-PARTICLE_BOX / 2} ${PARTICLE_BOX} ${PARTICLE_BOX}`}
+                        style={{ overflow: 'visible', display: 'block' }}
                     >
                         {p.shape === 'star' ? (
                             <path
@@ -519,10 +553,20 @@ export const VictoryCelebration: React.FC<VictoryCelebrationProps> = ({
                                 style={{ filter: `drop-shadow(0 0 4px ${p.color})` }}
                             />
                         )}
-                    </g>
-                ))}
+                    </svg>
+                </div>
+            ))}
 
-                {/* Süpernova Şok Dalgası Halkaları */}
+            {/* Süpernova Şok Dalgası Halkaları */}
+            <svg
+                width={boardWidth}
+                height={boardHeight}
+                style={{
+                    position: 'absolute',
+                    inset: 0,
+                    overflow: 'visible',
+                }}
+            >
                 <circle
                     ref={shockOuterRef}
                     cx={cx}

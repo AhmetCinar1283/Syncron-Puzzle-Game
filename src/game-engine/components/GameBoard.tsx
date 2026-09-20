@@ -20,7 +20,8 @@ import { soundEngine } from '../audio/soundEngine';
 import { hapticImpact, hapticNotify } from '@/lib/haptics';
 import { BoardCell } from './board/BoardCell';
 import { RoomTrails, RoomCables } from './board/RoomOverlays';
-import { ensureBoardKeyframes } from './board/boardKeyframes';
+import { ensureBoardKeyframes, BoardAmbientMode } from './board/boardKeyframes';
+import { useMotionTier } from '@/lib/motionTier';
 import { BoardIndex, buildBoardIndex, cellKey, isCellVisible, playersIn, playersSignature } from './board/boardIndex';
 
 const CELL_SIZE = 64;
@@ -60,6 +61,15 @@ type EdgeBehavior = 'wall' | 'portal' | 'lava' | EdgeConfig;
 
 // Aşağıdaki iki yardımcı bileşenin state'le ilgisi yok; modül seviyesinde
 // durmaları her render'da yeniden oluşturulmalarını engeller.
+function edgePlacement(side: EdgeSide): React.CSSProperties {
+    switch (side) {
+        case 'top':    return { top: 0, left: 0, right: 0, height: 4 };
+        case 'bottom': return { bottom: 0, left: 0, right: 0, height: 4 };
+        case 'left':   return { top: 0, bottom: 0, left: 0, width: 4 };
+        case 'right':  return { top: 0, bottom: 0, right: 0, width: 4 };
+    }
+}
+
 function renderEdgeStrip(side: EdgeSide, behavior?: EdgeBehavior) {
     if (!behavior) return null;
 
@@ -68,36 +78,47 @@ function renderEdgeStrip(side: EdgeSide, behavior?: EdgeBehavior) {
     const isPortal = ruleType === 'portal';
     const isHorizontal = side === 'top' || side === 'bottom';
 
-    const style: React.CSSProperties = {
+    const outer: React.CSSProperties = {
         position: 'absolute',
         zIndex: 90,
         pointerEvents: 'none',
-        ...(side === 'top' && { top: 0, left: 0, right: 0, height: 4 }),
-        ...(side === 'bottom' && { bottom: 0, left: 0, right: 0, height: 4 }),
-        ...(side === 'left' && { top: 0, bottom: 0, left: 0, width: 4 }),
-        ...(side === 'right' && { top: 0, bottom: 0, right: 0, width: 4 }),
+        ...edgePlacement(side),
     };
 
-    if (isLava) {
-        style.background = isHorizontal
-            ? 'linear-gradient(90deg, #ef4444, #f97316, #ef4444, #ef4444)'
-            : 'linear-gradient(180deg, #ef4444, #f97316, #ef4444, #ef4444)';
-        style.backgroundSize = isHorizontal ? '300% 100%' : '100% 300%';
-        style.boxShadow = '0 0 10px #ef4444, 0 0 20px rgba(239, 68, 68, 0.5)';
-        style.animation = `${isHorizontal ? 'lava-flow-horiz' : 'lava-flow-vert'} 4s infinite linear, edge-glow-pulse 1.5s infinite ease-in-out`;
-    } else if (isPortal) {
-        style.background = isHorizontal
-            ? 'linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6, #8b5cf6)'
-            : 'linear-gradient(180deg, #8b5cf6, #ec4899, #8b5cf6, #8b5cf6)';
-        style.backgroundSize = isHorizontal ? '300% 100%' : '100% 300%';
-        style.boxShadow = '0 0 10px #a855f7, 0 0 20px rgba(168, 85, 247, 0.5)';
-        style.animation = `${isHorizontal ? 'portal-shift-horiz' : 'portal-shift-vert'} 3s infinite linear, edge-glow-pulse 1.2s infinite ease-in-out`;
-    } else {
-        style.background = 'rgba(30, 58, 138, 0.4)';
-        style.boxShadow = 'none';
+    if (!isLava && !isPortal) {
+        outer.background = 'rgba(30, 58, 138, 0.4)';
+        return <div style={outer} />;
     }
 
-    return <div style={style} />;
+    // Akan gradient: eskiden `background-position` animasyonlanıyordu; bu her
+    // karede gradient'i yeniden boyar. Aynı görüntüyü, 3 kat uzunluktaki bir iç
+    // katmanı `transform` ile kaydırarak alıyoruz — compositor işi, 0 boyama.
+    outer.overflow = 'hidden';
+    outer.boxShadow = isLava
+        ? '0 0 10px #ef4444, 0 0 20px rgba(239, 68, 68, 0.5)'
+        : '0 0 10px #a855f7, 0 0 20px rgba(168, 85, 247, 0.5)';
+    outer.animation = `edge-glow-pulse ${isLava ? '1.5s' : '1.2s'} infinite ease-in-out`;
+
+    const stops = isLava
+        ? '#ef4444, #f97316, #ef4444, #ef4444'
+        : '#8b5cf6, #ec4899, #8b5cf6, #8b5cf6';
+
+    const inner: React.CSSProperties = {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: isHorizontal ? '300%' : '100%',
+        height: isHorizontal ? '100%' : '300%',
+        background: `linear-gradient(${isHorizontal ? '90deg' : '180deg'}, ${stops})`,
+        willChange: 'transform',
+        animation: `${isHorizontal ? 'edge-slide-horiz' : 'edge-slide-vert'} ${isLava ? '4s' : '3s'} infinite linear`,
+    };
+
+    return (
+        <div className="board-edge-glow" style={outer}>
+            <div className="board-edge-flow" style={inner} />
+        </div>
+    );
 }
 
 function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
@@ -109,10 +130,20 @@ function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
     const isLava = ruleType === 'lava';
     const isPortal = ruleType === 'portal';
 
-    const style: React.CSSProperties = {
+    // Konumlandırma dış katmanda durur. Eskiden `label-breath` aynı elemanda
+    // çalışıyordu ve keyframe'in `transform: scale(1)` değeri buradaki
+    // `translateX(-50%)`'i eziyordu — etiketler yana kayıyordu.
+    const outerStyle: React.CSSProperties = {
         position: 'absolute',
         zIndex: 95,
         pointerEvents: 'none',
+        ...(side === 'top' && { top: -28, left: '50%', transform: 'translateX(-50%)' }),
+        ...(side === 'bottom' && { bottom: -28, left: '50%', transform: 'translateX(-50%)' }),
+        ...(side === 'left' && { left: -28, top: '50%', transform: 'translateY(-50%)' }),
+        ...(side === 'right' && { right: -28, top: '50%', transform: 'translateY(-50%)' }),
+    };
+
+    const breathStyle: React.CSSProperties = {
         fontSize: 14,
         fontWeight: 800,
         display: 'flex',
@@ -127,10 +158,6 @@ function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
         textShadow: `0 0 6px ${isLava ? '#ef4444' : '#a855f7'}`,
         boxShadow: `0 0 10px ${isLava ? 'rgba(239, 68, 68, 0.1)' : 'rgba(168, 85, 247, 0.1)'}`,
         animation: 'label-breath 2.5s infinite ease-in-out',
-        ...(side === 'top' && { top: -28, left: '50%', transform: 'translateX(-50%)' }),
-        ...(side === 'bottom' && { bottom: -28, left: '50%', transform: 'translateX(-50%)' }),
-        ...(side === 'left' && { left: -28, top: '50%', transform: 'translateY(-50%)' }),
-        ...(side === 'right' && { right: -28, top: '50%', transform: 'translateY(-50%)' }),
     };
 
     const iconStyle: React.CSSProperties = isPortal ? {
@@ -139,16 +166,19 @@ function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
     } : {};
 
     return (
-        <div style={style}>
-            <span style={iconStyle}>
-                {isLava ? <GameIcon name="skull" size={20} color="#ff2d55" /> : <GameIcon name="portal" size={20} color="#00f5d4" />}
-            </span>
+        <div style={outerStyle}>
+            <div className="board-edge-label" style={breathStyle}>
+                <span className={isPortal ? 'board-edge-label' : undefined} style={iconStyle}>
+                    {isLava ? <GameIcon name="skull" size={20} color="#ff2d55" /> : <GameIcon name="portal" size={20} color="#00f5d4" />}
+                </span>
+            </div>
         </div>
     );
 }
 
 const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted }: GameBoardProps) => {
     const { themeConfig } = useGameTheme();
+    const motionTier = useMotionTier();
     const [prevSnapshots, setPrevSnapshots] = useState<TickSnapshot[] | null>(snapshots);
     const [currentFrame, setCurrentFrame] = useState(0);
 
@@ -338,6 +368,7 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
                     strokeWidth={2.5}
                     strokeLinecap="round"
                     strokeDasharray="6, 6"
+                    className="board-portal-crawl"
                     style={{
                         animation: 'crawlPath 1.2s linear infinite',
                     }}
@@ -348,8 +379,21 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
 
     const roomList = Object.values(rooms) as RoomState[];
 
+    // Dekoratif animasyon bütçesi (bkz. boardKeyframes.ts):
+    //  - zayıf cihazda tamamen kapalı,
+    //  - zafer koreografisi oynarken tamamen kapalı: karenin en pahalı anı bu,
+    //    üstelik tahta zaten vignette'in altında kalıyor, kimse bakmıyor,
+    //  - hamle oynatılırken duraklatılmış (tüm kare bütçesi harekete kalsın),
+    //  - boşta tam hızında.
+    const isPlaying = snapshots.length > 1 && currentFrame < snapshots.length - 1;
+    const ambientMode: BoardAmbientMode =
+        motionTier === 'lite' || isVictoryActive ? 'off' : isPlaying ? 'paused' : 'on';
+
     return (
-        <div style={{ position: 'relative', width: totalWidth, height: totalHeight }}>
+        <div
+            data-board-ambient={ambientMode}
+            style={{ position: 'relative', width: totalWidth, height: totalHeight }}
+        >
             {/* Portal Bağlantı SVG Overlay */}
             {connectionPaths.length > 0 && (
                 <svg
@@ -434,6 +478,7 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
                                             key={cell.id}
                                             cell={cell}
                                             size={CELL_SIZE}
+                                            hasFog={!!room.fogOfWar}
                                             entityOnCell={index.entityAt.get(key) ?? null}
                                             prevEntityOnCell={prevIndex.entityAt.get(key) ?? null}
                                             isCurrentlyVisible={isCurrentlyVisible}

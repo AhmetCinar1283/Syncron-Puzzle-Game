@@ -2,6 +2,8 @@
 
 import type { ReactNode, RefObject, TouchEvent as ReactTouchEvent } from 'react';
 import GameBoard from '../GameBoard';
+import BoardCanvas from '../../render/BoardCanvas';
+import { useBoardRenderer } from '../../render/boardRenderer';
 import type { LevelEdges } from '../../logic/engine/getNextTopologyPosition';
 import type { useGameEngine } from '../../hooks/useGameEngine';
 import type { SoundName } from '../../hooks/useSoundManager';
@@ -49,6 +51,11 @@ export function BoardArea({
     onPlaySound,
     muted,
 }: BoardAreaProps) {
+    // Canvas yolu DOM yolunun yanında duruyor; seçim `boardRenderer` bayrağında
+    // (bkz. src/game-engine/render/boardRenderer.ts). Varsayılan 'dom'.
+    const renderer = useBoardRenderer();
+    const Board = renderer === 'canvas' ? BoardCanvas : GameBoard;
+
     return (
         <div
             ref={areaRef}
@@ -80,7 +87,7 @@ export function BoardArea({
                     position: 'relative',
                 }}
             >
-                <GameBoard
+                <Board
                     snapshots={snapshots.length > 0 ? snapshots : null}
                     controlledRoomIds={controlledRoomIds}
                     levelEdges={levelEdges}

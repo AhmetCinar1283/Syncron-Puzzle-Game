@@ -128,9 +128,15 @@ export const GAME_ANIMATION_KEYFRAMES = `
     }
 
     /* ── BUZ HÜCRESİ (ICE CELL) ── */
+    /* NOT: Bu üç animasyon eskiden \`filter: drop-shadow\` / \`box-shadow\`
+       animasyonluyordu. Bunlar her karede yeniden Gaussian blur rasterize
+       ettirir ve sonsuz döngüde çalıştıkları için giriş seviyesi cihazlarda
+       GPU'yu hiç boşa çıkarmazlar. Parıltı artık elemanın üzerinde STATİK
+       duruyor; "nefes alma" hissi ölçek + opaklıkla veriliyor — ikisi de
+       compositor işi, sıfır boyama. */
     @keyframes icePulse {
-        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(165,243,252,0.9)); }
-        50% { transform: scale(1.15); filter: drop-shadow(0 0 18px rgba(165,243,252,1)); }
+        0%, 100% { transform: scale(1); opacity: 0.82; }
+        50% { transform: scale(1.15); opacity: 1; }
     }
     .ice-icon-animated {
         animation: icePulse 1.2s infinite ease-in-out;
@@ -167,8 +173,8 @@ export const GAME_ANIMATION_KEYFRAMES = `
         100% { transform: scale(1.15); opacity: 0; }
     }
     @keyframes boltGlow {
-        0%, 100% { filter: drop-shadow(0 0 4px rgba(251,191,36,0.85)); transform: scale(1); }
-        50% { filter: drop-shadow(0 0 12px rgba(251,191,36,1)); transform: scale(1.18); }
+        0%, 100% { transform: scale(1); opacity: 0.82; }
+        50% { transform: scale(1.18); opacity: 1; }
     }
     .power-ring-active {
         animation: powerRing 0.7s infinite ease-out;
@@ -240,11 +246,13 @@ export const GAME_ANIMATION_KEYFRAMES = `
 
     /* ── KUTU GRAFİĞİ (BOX GRAPHIC) ── */
     @keyframes electricSpark {
-        0% { transform: scale(1); box-shadow: 0 0 12px rgba(249,115,22, 0.5), inset 0 0 6px rgba(249,115,22, 0.15); }
-        50% { transform: scale(1.04); box-shadow: 0 0 24px rgba(251,191,36, 0.95), inset 0 0 12px rgba(251,191,36, 0.4); border-color: #fbbf24; }
-        100% { transform: scale(1); box-shadow: 0 0 12px rgba(249,115,22, 0.5), inset 0 0 6px rgba(249,115,22, 0.15); }
+        0%, 100% { transform: scale(1); opacity: 0.88; }
+        50% { transform: scale(1.04); opacity: 1; }
     }
     .box-container-active {
+        /* Parıltı statik: animasyon yalnızca ölçek/opaklık oynatıyor. */
+        box-shadow: 0 0 18px rgba(251,191,36, 0.7), inset 0 0 9px rgba(251,191,36, 0.28);
+        border-color: #fbbf24;
         animation: electricSpark 1.2s infinite ease-in-out;
     }
 

@@ -22,13 +22,15 @@ import { CELL_RENDERERS } from '../cells/CELL_RENDERERS';
 export interface BoardCellProps {
     cell: Cell;
     size: number;
+    /** Oda sisli mi? Değilse karartma sarmalayıcısı hiç oluşturulmaz. */
+    hasFog: boolean;
     entityOnCell: Entity | null;
     prevEntityOnCell: Entity | null;
     isCurrentlyVisible: boolean;
     isExplored: boolean;
 }
 
-function BoardCellImpl({ cell, size, entityOnCell, prevEntityOnCell, isCurrentlyVisible, isExplored }: BoardCellProps) {
+function BoardCellImpl({ cell, size, hasFog, entityOnCell, prevEntityOnCell, isCurrentlyVisible, isExplored }: BoardCellProps) {
     if (!isExplored) {
         return (
             <div style={{ width: size, height: size, backgroundColor: '#020617', border: '1px solid rgba(30, 58, 138, 0.05)', boxSizing: 'border-box' }} />
@@ -41,15 +43,24 @@ function BoardCellImpl({ cell, size, entityOnCell, prevEntityOnCell, isCurrently
 
     const ActiveRenderer = CELL_RENDERERS[cell.type] || CELL_RENDERERS['normal'];
 
+    const renderer = (
+        <ActiveRenderer
+            cell={cell}
+            entityOnCell={visibleEntity}
+            prevEntityOnCell={visiblePrevEntity}
+        />
+    );
+
     return (
         <div style={{ position: 'relative', width: size, height: size, backgroundColor: '#020617' }}>
-            <div style={{ width: '100%', height: '100%', filter: isCurrentlyVisible ? 'none' : 'brightness(0.3) contrast(0.8)', transition: 'filter 0.3s ease' }}>
-                <ActiveRenderer
-                    cell={cell}
-                    entityOnCell={visibleEntity}
-                    prevEntityOnCell={visiblePrevEntity}
-                />
-            </div>
+            {/* Karartma sarmalayıcısı yalnızca sisli odalarda gerekli. Sissiz bir
+                seviyede `filter: none` + geçiş tanımı taşıyan 100 fazladan div
+                anlamına geliyordu. */}
+            {hasFog ? (
+                <div style={{ width: '100%', height: '100%', filter: isCurrentlyVisible ? 'none' : 'brightness(0.3) contrast(0.8)', transition: 'filter 0.3s ease' }}>
+                    {renderer}
+                </div>
+            ) : renderer}
         </div>
     );
 }
@@ -58,6 +69,7 @@ function sameCellProps(a: BoardCellProps, b: BoardCellProps): boolean {
     return (
         a.cell === b.cell &&
         a.size === b.size &&
+        a.hasFog === b.hasFog &&
         a.isCurrentlyVisible === b.isCurrentlyVisible &&
         a.isExplored === b.isExplored &&
         (a.entityOnCell?.id ?? null) === (b.entityOnCell?.id ?? null) &&
