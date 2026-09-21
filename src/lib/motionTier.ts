@@ -14,14 +14,14 @@
  */
 
 import { useEffect, useState } from 'react';
-import { userStorageGet, userStorageSet } from '@/lib/userStorage';
+import { settingsService } from '@/services/settings';
 
-/** Otomatik tespiti geçersiz kılan tercih anahtarı. */
-export const MOTION_TIER_KEY = 'motionTier';
-
-/** Kademeyi sabitler; `null` otomatik tespite döner. */
+/**
+ * Kademeyi sabitler; `null` otomatik tespite döner. Değer birleşik ayar
+ * sisteminde (`graphics.motion`) tutulur.
+ */
 export function setMotionTierOverride(tier: MotionTier | null): void {
-  userStorageSet(MOTION_TIER_KEY, tier ?? '');
+  settingsService.updateSettings({ graphics: { motion: tier ?? 'auto' } });
 }
 
 export type MotionTier = 'full' | 'lite';
@@ -42,10 +42,9 @@ interface DeviceNavigator extends Navigator {
 export function detectMotionTier(): MotionTier {
   if (typeof window === 'undefined') return 'full';
 
-  // Elle geçersiz kılma. Otomatik tespit yalnızca çekirdek ve RAM'e bakıyor;
-  // 8 çekirdekli ama zayıf GPU'lu telefonlar `full` çıkabiliyor. Bu anahtar
-  // hem cihazda test etmeyi hem de ileride bir ayar düğmesi eklemeyi sağlar.
-  const override = userStorageGet(MOTION_TIER_KEY);
+  // Kullanıcı tercihi (ayarlar). Otomatik tespit yalnızca çekirdek ve RAM'e bakıyor;
+  // 8 çekirdekli ama zayıf GPU'lu telefonlar `full` çıkabiliyor.
+  const override = settingsService.getSettings().graphics.motion;
   if (override === 'lite' || override === 'full') return override;
 
   try {
@@ -75,6 +74,8 @@ export function useMotionTier(): MotionTier {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTier(detectMotionTier());
+    // Ayarlardan yapılan değişiklik anında yansısın
+    return settingsService.subscribe(() => setTier(detectMotionTier()));
   }, []);
 
   return tier;

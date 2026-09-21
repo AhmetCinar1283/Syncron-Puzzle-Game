@@ -7,15 +7,15 @@ export { SettingsProvider, useSettingsContext } from './context/SettingsContext'
 export { useSettings, type SettingsContextValue } from './hooks/useSettings';
 export { SettingsModal } from './components/SettingsModal';
 export { SettingsButton } from './components/SettingsButton';
-export { SoundSection } from './components/SoundSection';
-export { LanguageSection } from './components/LanguageSection';
-export { ThemeSection } from './components/ThemeSection';
-export { RendererSection } from './components/RendererSection';
 export { SettingsPage } from './components/SettingsPage';
+export { SettingsView } from './components/SettingsView';
 
 // Servis katmanından kullanışlı tiplerin re-export'u
 export type {
   UserSettings,
   SoundSettings,
+  ControlSettings,
+  GraphicsSettings,
+  GeneralSettings,
   SettingsUpdatePayload,
 } from '@/services/settings';

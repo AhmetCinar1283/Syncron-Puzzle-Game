@@ -1,49 +1,34 @@
 # features/settings/
 
-Kullanıcı tercihleri ve ayarlarının (dil, tema, ses açma/kapama ve ses seviyesi) React bileşen ağacına sunulduğu, yönetildiği ve arayüzünün sağlandığı özellik (feature) katmanıdır.
+Kullanıcı tercihlerinin (ses, kontroller, performans ve görsellik, dil, tema) **tek bir ayar sistemi** olarak sunulduğu özellik (feature) katmanıdır. Sayfa (`/settings`) ve modal aynı görünümü (`SettingsView`) kullanır; ikisi de aynı grup kaydından beslenir. Değerler `services/settings` servisinde tutulur.
 
-## Sorumluluklar
-- **Global Context (`context/SettingsContext.tsx`):** `services/settings` servisindeki tekil durumu dinler ve React state'i olarak sunar.
-- **Ergonomik Hook (`hooks/useSettings.ts`):** Her sayfadan `const { settings, setLanguage, setTheme, setSoundMuted, setSoundVolume, openSettings } = useSettings();` şeklinde tek satırda erişim sağlar.
-- **Global Modal (`components/SettingsModal.tsx`):** RootLayout seviyesinde açılıp kapanabilen, neon temalı ayarlar penceresi.
-- **Kısayol Butonu (`components/SettingsButton.tsx`):** Herhangi bir başlık veya HUD çubuğuna yerleştirilmeye hazır ayarlar butonu.
-- **Tek Sorumluluklu Alt Bölümler:** `SoundSection`, `LanguageSection`, `ThemeSection` bileşenleri birbirinden bağımsız geliştirilmiştir.
+> Bu modül yalnızca **ayar mekanizmasından** sorumludur. Ayarların oyuna / diğer sayfalara uygulanması (ses motoru, girdi, d-pad, tap-to-move vb.) ilgili modüllerin işidir; onlar değeri `useSettings()` veya `settingsService.getSettings()` ile okur.
 
-## Kullanım Örnekleri
+## Mimari (tek sorumluluk)
+- **Model (`lib/settingsModel.ts`):** Bildirimsel satır tipleri (`toggle`, `slider`, `segment`) ve `SettingsGroup`.
+- **Gruplar (`hooks/groups/`):** Her grup kendi hook'unda satırlarını üretir: `useSoundGroup`, `useControlsGroup`, `useGraphicsGroup`, `useGeneralGroup`.
+- **Kayıt (`hooks/useSettingsGroups.ts`):** Grupların tek kayıt noktası. **Yeni ayar = ilgili gruba bir satır; yeni grup = kayda bir satır.**
+- **Gezinme (`hooks/useSettingsNavigation.ts`):** Odak, klavye ve gamepad; satır türünü bilmez. Satır eylemleri `lib/rowActions.ts` (saf, testli).
+- **Görünüm (`components/`):** `SettingsView` (kabuk) → `SettingsHeader`, `SettingsGroupCard`, `SettingsFooter`; satırlar `components/rows/` altında (`ToggleRowView`, `SliderRowView`, `SegmentRowView`, ortak `SettingRowShell`).
+- **Kabuklar:** `SettingsPage` (tam sayfa) ve `SettingsModal` (her sayfadan erişim; RootLayout'ta) yalnızca `SettingsView`'ı sarar.
+- **Erişim:** `context/SettingsContext.tsx` + `hooks/useSettings.ts`; dokunmatik cihaz tespiti `hooks/useTouchCapable.ts`.
 
-### 1. Herhangi bir sayfadan ayarlara erişmek veya güncellemek:
+## Ayar grupları
+| Grup | Ayarlar |
+|------|---------|
+| Ses | Oyun sesi aç/kapa + seviye, menü sesi aç/kapa + seviye |
+| Kontroller | Klavye, d-pad*, dokunarak hareket*, swipe hassasiyeti*, titreşim* (*yalnızca dokunmatik cihaz) |
+| Performans ve Görsellik | Tahta çizicisi (Otomatik/DOM/Canvas — mevcut otomatik karar sistemi), animasyon kademesi, performans göstergesi |
+| Genel | Dil, tema, ekran açık kalsın |
+
+## Kullanım
 ```tsx
 import { useSettings } from '@/features/settings';
 
-export function ExamplePage() {
-  const { settings, setSoundVolume, openSettings } = useSettings();
-
-  return (
-    <div>
-      <p>Aktif Dil: {settings.language}</p>
-      <p>Ses Seviyesi: %{settings.sound.volume}</p>
-      <button onClick={openSettings}>Ayarları Aç</button>
-    </div>
-  );
-}
-```
-
-### 2. Sayfaya ayarlar butonu eklemek:
-```tsx
-import { SettingsButton } from '@/features/settings';
-
-export function Header() {
-  return (
-    <header>
-      <SettingsButton isCompact={false} />
-    </header>
-  );
-}
+const { settings, openSettings } = useSettings();
+settings.controls.tapToMove; // boolean
+settings.sound.menuVolume;   // 0-100
 ```
 
 ## Dışa Açılan API (`index.ts`)
-- `SettingsProvider`: Uygulama kök sağlayıcısı.
-- `useSettings()`: Ayar okuma ve güncelleme kancası.
-- `SettingsModal`: Ayarlar modalı.
-- `SettingsButton`: Ayarlar açma butonu.
-- `SoundSection`, `LanguageSection`, `ThemeSection`: Ayar alt bileşenleri.
+`SettingsProvider`, `useSettings()`, `SettingsModal`, `SettingsButton`, `SettingsPage`, `SettingsView` ve ayar tipleri.

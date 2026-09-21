@@ -19,10 +19,9 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { userStorageGet, userStorageRemove, userStorageSet } from '@/lib/userStorage';
+import { settingsService } from '@/services/settings';
 import { detectMotionTier } from '@/lib/motionTier';
 
-/** Kullanıcının seçimi (ayarlar ekranı). Yoksa "Otomatik". */
-export const BOARD_RENDERER_KEY = 'boardRenderer';
 /** Kasma dedektörünün kararı; yalnızca `'canvas'` yazılır. */
 export const BOARD_RENDERER_AUTO_KEY = 'boardRendererAuto';
 /** Ayar veya otomatik karar değişince `window`a yayılır (açık ekranlar anında uyar). */
@@ -86,24 +85,42 @@ function readDeviceSignals(): DeviceSignals {
     };
 }
 
+/** Kullanıcının seçimi: birleşik ayar sisteminden (`graphics.renderer`) okunur. */
 export function readBoardRendererSetting(): BoardRendererSetting {
-    const stored = userStorageGet(BOARD_RENDERER_KEY);
-    return stored === 'dom' || stored === 'canvas' ? stored : 'auto';
+    return settingsService.getSettings().graphics.renderer;
 }
 
 function notifyChange(): void {
     if (typeof window !== 'undefined') window.dispatchEvent(new Event(BOARD_RENDERER_EVENT));
 }
 
-/** Kullanıcı seçimi. `'auto'` her iki anahtarı da siler: dedektör yeniden dener. */
+/**
+ * Kullanıcı seçimi. Ayara yazar; `'auto'` seçilince dedektör kararı da silinir
+ * (dedektör yeniden dener). Olay yayını aşağıdaki ayar aboneliğinden gelir, böylece
+ * ayar hangi yoldan değişirse değişsin (sıfırlama dahil) açık ekranlar uyarılır.
+ */
 export function setBoardRendererSetting(setting: BoardRendererSetting): void {
-    if (setting === 'auto') {
-        userStorageRemove(BOARD_RENDERER_KEY);
-        userStorageRemove(BOARD_RENDERER_AUTO_KEY);
-    } else {
-        userStorageSet(BOARD_RENDERER_KEY, setting);
+    settingsService.updateSettings({ graphics: { renderer: setting } });
+}
+
+let lastSyncedSetting: BoardRendererSetting | null = null;
+
+/** Ayarlardaki çizici tercihi değişince dedektör kararını temizler ve olayı yayar. */
+function onSettingsChanged(): void {
+    const next = readBoardRendererSetting();
+    if (lastSyncedSetting === null) {
+        lastSyncedSetting = next;
+        return;
     }
+    if (next === lastSyncedSetting) return;
+    lastSyncedSetting = next;
+    if (next === 'auto') userStorageRemove(BOARD_RENDERER_AUTO_KEY);
     notifyChange();
+}
+
+if (typeof window !== 'undefined') {
+    onSettingsChanged();
+    settingsService.subscribe(onSettingsChanged);
 }
 
 /** Kasma dedektörünün kararı: o cihazda bir daha çalışmaz. Kullanıcı seçimine dokunmaz. */

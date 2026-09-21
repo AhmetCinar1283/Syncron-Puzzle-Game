@@ -39,7 +39,7 @@ describe('SettingsService', () => {
     const service = new SettingsService();
     const settings = service.getSettings();
 
-    expect(settings.version).toBe(1);
+    expect(settings.version).toBe(2);
     expect(settings.language).toBe('en');
     expect(settings.theme).toBe('arcade');
     expect(settings.sound.muted).toBe(false);
@@ -133,5 +133,60 @@ describe('SettingsService', () => {
     expect(settings.language).toBe(DEFAULT_SETTINGS.language);
     expect(settings.sound.volume).toBe(DEFAULT_SETTINGS.sound.volume);
     expect(settings.sound.muted).toBe(DEFAULT_SETTINGS.sound.muted);
+  });
+
+  it('v1 şemalı kaydı v2 şemasına yükseltir ve eski renderer, haptik, hareket anahtarlarını taşır', () => {
+    mockLocalStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ version: 1, language: 'tr', theme: 'neon', sound: { muted: true, volume: 30 } }),
+    );
+    mockLocalStorage.setItem('anon:boardRenderer', 'canvas');
+    mockLocalStorage.setItem('anon:hapticsEnabled', 'false');
+    mockLocalStorage.setItem('anon:motionTier', 'lite');
+
+    const settings = new SettingsService().getSettings();
+
+    expect(settings.version).toBe(2);
+    expect(settings.language).toBe('tr');
+    expect(settings.sound.muted).toBe(true);
+    expect(settings.sound.volume).toBe(30);
+    expect(settings.graphics.renderer).toBe('canvas');
+    expect(settings.graphics.motion).toBe('lite');
+    expect(settings.controls.haptics).toBe(false);
+    expect(JSON.parse(mockStorage[SETTINGS_STORAGE_KEY]).version).toBe(2);
+  });
+
+  it('v2 kayıttaki değerler eski anahtarlardan üstündür', () => {
+    mockLocalStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ version: 2, graphics: { renderer: 'dom' } }),
+    );
+    mockLocalStorage.setItem('anon:boardRenderer', 'canvas');
+
+    expect(new SettingsService().getSettings().graphics.renderer).toBe('dom');
+  });
+
+  it('updateSettings iç içe grupları birleştirir ve geçersiz değerleri düzeltir', () => {
+    const service = new SettingsService();
+
+    service.updateSettings({ controls: { tapToMove: true, swipeSensitivity: 999 } });
+    const { controls } = service.getSettings();
+    expect(controls.tapToMove).toBe(true);
+    expect(controls.swipeSensitivity).toBe(100);
+    expect(controls.dpad).toBe(DEFAULT_SETTINGS.controls.dpad); // dokunulmayan alan korunur
+
+    service.updateSettings({ graphics: { renderer: 'bozuk' as never } });
+    expect(service.getSettings().graphics.renderer).toBe('auto');
+
+    service.updateSettings({ sound: { menuVolume: -5 } });
+    expect(service.getSettings().sound.menuVolume).toBe(0);
+    expect(service.getSettings().sound.volume).toBe(DEFAULT_SETTINGS.sound.volume);
+  });
+
+  it('geçersiz dil güncellemesi mevcut dili korur', () => {
+    const service = new SettingsService();
+    service.setLanguage('tr');
+    service.updateSettings({ language: 'xx' as never });
+    expect(service.getSettings().language).toBe('tr');
   });
 });

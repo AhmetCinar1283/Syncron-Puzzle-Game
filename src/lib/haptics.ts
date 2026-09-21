@@ -14,11 +14,9 @@
  * bloklamamalıdırlar.
  */
 
-import { userStorageGet, userStorageSet } from '@/lib/userStorage';
+import { settingsService } from '@/services/settings';
 
 export type HapticStrength = 'light' | 'medium' | 'heavy';
-
-const HAPTICS_KEY = 'hapticsEnabled';
 
 /** Web yedeğinde kullanılan titreşim süreleri (ms). */
 const VIBRATE_MS: Record<HapticStrength, number> = {
@@ -35,7 +33,6 @@ const VIBRATE_MS: Record<HapticStrength, number> = {
 const THROTTLE_MS = 40;
 
 let lastFiredAt = 0;
-let enabled: boolean | null = null;
 
 /** Capacitor Haptics eklentisi — ilk kullanımda dinamik olarak yüklenir. */
 type HapticsPlugin = {
@@ -75,15 +72,12 @@ function loadHaptics(): void {
 
 /** Kullanıcı haptiği kapatmadıysa true (varsayılan: açık). */
 export function hapticsEnabled(): boolean {
-  if (enabled !== null) return enabled;
   if (typeof window === 'undefined') return false;
-  enabled = userStorageGet(HAPTICS_KEY) !== 'false';
-  return enabled;
+  return settingsService.getSettings().controls.haptics;
 }
 
 export function setHapticsEnabled(next: boolean): void {
-  enabled = next;
-  userStorageSet(HAPTICS_KEY, String(next));
+  settingsService.updateSettings({ controls: { haptics: next } });
 }
 
 function webVibrate(ms: number): void {

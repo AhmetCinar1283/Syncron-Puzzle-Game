@@ -1,58 +1,40 @@
 /**
- * DOSYA AMACI: Kullanıcının tüm tercihlerini (dil, tema, ses açma/kapama ve ses seviyesi)
- * tek bir şık pencerede değiştirmesini sağlayan global ayarlar modal bileşenidir.
+ * DOSYA AMACI: Kullanıcı tercihlerini ekran üstünde bir pencere (modal) olarak
+ * açıp kapatmayı sağlayan kabuk bileşendir. İçeriğinde ortak `SettingsView` bileşenini
+ * modal varyantında (`variant="modal"`) render eder.
  */
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { Settings as SettingsIcon, X, RotateCcw } from 'lucide-react';
+import { Settings as SettingsIcon, X } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
 import { useSettings } from '../hooks/useSettings';
-import { SoundSection } from './SoundSection';
-import { LanguageSection } from './LanguageSection';
-import { ThemeSection } from './ThemeSection';
-import { RendererSection } from './RendererSection';
+import { SettingsView } from './SettingsView';
 
 interface SettingsModalProps {
   isOpen?: boolean;
   onClose?: () => void;
 }
 
+const emptySubscribe = () => () => {};
+
 export function SettingsModal({ isOpen: propIsOpen, onClose: propOnClose }: SettingsModalProps = {}) {
   const t = useT();
-  const { isSettingsOpen: contextIsOpen, closeSettings: contextCloseSettings, resetToDefaults } = useSettings();
-  const [mounted, setMounted] = useState(false);
+  const { isSettingsOpen: contextIsOpen, closeSettings: contextCloseSettings } = useSettings();
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const isOpen = propIsOpen !== undefined ? propIsOpen : contextIsOpen;
   const handleClose = propOnClose !== undefined ? propOnClose : contextCloseSettings;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // ESC tuşu ile modalı kapatma
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleClose]);
-
-  if (!mounted || !isOpen || typeof document === 'undefined') {
+  if (!isClient || !isOpen || typeof document === 'undefined') {
     return null;
   }
-
-  const handleReset = () => {
-    if (window.confirm(t('settings.reset_confirm'))) {
-      resetToDefaults();
-    }
-  };
 
   return createPortal(
     <div
@@ -97,6 +79,7 @@ export function SettingsModal({ isOpen: propIsOpen, onClose: propOnClose }: Sett
             justifyContent: 'space-between',
             padding: '16px 20px',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -138,65 +121,20 @@ export function SettingsModal({ isOpen: propIsOpen, onClose: propOnClose }: Sett
           </button>
         </div>
 
-        {/* Content Body */}
+        {/* Content Body: Ortak Responsive SettingsView */}
         <div
           style={{
             padding: '18px 20px',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: 16,
           }}
         >
-          {/* 1. Ses Ayarları */}
-          <SoundSection />
-
-          {/* 2. Dil Ayarları */}
-          <LanguageSection />
-
-          {/* 3. Tema Ayarları */}
-          <ThemeSection />
-
-          {/* 4. Tahta Çizimi */}
-          <RendererSection />
-        </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            padding: '12px 20px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'rgba(0, 0, 0, 0.2)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleReset}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#ef4444',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 8px',
-              borderRadius: 6,
-              transition: 'opacity 0.15s ease',
-            }}
-          >
-            <RotateCcw size={13} />
-            <span>{t('settings.reset_defaults')}</span>
-          </button>
-
-          <span style={{ fontSize: 11, color: '#475569' }}>
-            Syncron v0.3
-          </span>
+          <SettingsView
+            variant="modal"
+            onClose={handleClose}
+            enableNavigation={isOpen}
+          />
         </div>
       </div>
     </div>,

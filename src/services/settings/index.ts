@@ -4,11 +4,17 @@
  */
 
 export { settingsService, SettingsService } from './settingsService';
-export { DEFAULT_SETTINGS, clampVolume, isValidLang, isValidTheme } from './defaults';
+export { DEFAULT_SETTINGS, SETTINGS_VERSION, clampVolume, clampPercent, isValidLang, isValidTheme } from './defaults';
+export { sanitizeSettings } from './sanitize';
 export { SETTINGS_STORAGE_KEY, loadSettingsFromStorage, saveSettingsToStorage } from './storageAdapter';
 export type {
   UserSettings,
   SoundSettings,
+  ControlSettings,
+  GraphicsSettings,
+  GeneralSettings,
+  RendererPreference,
+  MotionPreference,
   SettingsListener,
   SettingsUpdatePayload,
   DeepPartial,

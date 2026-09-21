@@ -7,6 +7,7 @@
 import type { Lang } from '@/lib/i18n';
 import type { GameTheme } from '@/game-engine/themes/themeConfig';
 import { DEFAULT_SETTINGS, clampVolume, isValidLang, isValidTheme } from './defaults';
+import { deepMerge, sanitizeSettings } from './sanitize';
 import { loadSettingsFromStorage, saveSettingsToStorage } from './storageAdapter';
 import type { UserSettings, SettingsListener, SettingsUpdatePayload } from './types';
 
@@ -49,31 +50,16 @@ export class SettingsService {
    * Ayarları kısmi olarak günceller, depolamaya yazar ve tüm dinleyicileri bilgilendirir.
    */
   updateSettings(payload: SettingsUpdatePayload): UserSettings {
-    const next: UserSettings = {
-      ...this.currentSettings,
-      ...payload,
-      sound: {
-        ...this.currentSettings.sound,
-        ...(payload.sound ?? {}),
-      },
-    };
-
-    // Validasyon & Clamping
-    if (payload.language !== undefined && !isValidLang(payload.language)) {
-      next.language = this.currentSettings.language;
-    }
-    if (payload.theme !== undefined && !isValidTheme(payload.theme)) {
-      next.theme = this.currentSettings.theme;
-    }
-    if (payload.sound?.volume !== undefined) {
-      next.sound.volume = clampVolume(payload.sound.volume);
-    }
-    if (payload.sound?.sfxVolume !== undefined) {
-      next.sound.sfxVolume = clampVolume(payload.sound.sfxVolume);
-    }
-    if (payload.sound?.musicVolume !== undefined) {
-      next.sound.musicVolume = clampVolume(payload.sound.musicVolume);
-    }
+    // Birleştirme + doğrulama tek noktadan: geçersiz alanlar mevcut değere değil
+    // varsayılana düşmesin diye önce mevcut ayarların üzerine bindirilir.
+    const merged = deepMerge(
+      this.currentSettings as unknown as Record<string, unknown>,
+      payload as Record<string, unknown>,
+    );
+    const next = sanitizeSettings(merged);
+    // Geçersiz dil/tema güncellemesi mevcut değeri korur (sanitize varsayılana düşürür)
+    if (payload.language !== undefined && !isValidLang(payload.language)) next.language = this.currentSettings.language;
+    if (payload.theme !== undefined && !isValidTheme(payload.theme)) next.theme = this.currentSettings.theme;
 
     this.currentSettings = next;
     saveSettingsToStorage(next);
@@ -129,10 +115,7 @@ export class SettingsService {
    * Ayarları fabrika varsayılanlarına sıfırlar.
    */
   resetToDefaults(): UserSettings {
-    this.currentSettings = {
-      ...DEFAULT_SETTINGS,
-      sound: { ...DEFAULT_SETTINGS.sound },
-    };
+    this.currentSettings = sanitizeSettings(DEFAULT_SETTINGS);
     saveSettingsToStorage(this.currentSettings);
     this.notifyListeners();
     return this.getSettings();
