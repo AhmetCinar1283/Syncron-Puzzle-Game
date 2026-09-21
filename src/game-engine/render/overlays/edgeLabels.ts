@@ -15,10 +15,11 @@
 
 import type { BoardScene, SpritePainter } from '../types';
 import type { SpriteCache } from '../spriteCache';
+import type { FadeFrame } from '../fades';
 import { getIcon } from '../icons';
 import { paintBox } from '../paintTokens';
 import { outerPad } from '../cells/common';
-import { EDGE_SIDES, UNCONTROLLED_ALPHA, edgeLabelCenter, forEachRoom, roomPaddingBox } from './geometry';
+import { EDGE_SIDES, edgeLabelCenter, forEachRoom, roomPaddingBox } from './geometry';
 import { labelBreath, portalSpinAngle } from './timing';
 
 export type LabelKind = 'lava' | 'portal';
@@ -79,11 +80,12 @@ export function drawEdgeLabels(
     scene: BoardScene,
     cache: SpriteCache,
     now: number | null,
+    fades: FadeFrame | null = null,
 ): boolean {
     let drawn = false;
     const breath = now === null ? { scale: 1, opacity: 1 } : labelBreath(now);
 
-    forEachRoom(scene, (room, offset, isControlled) => {
+    forEachRoom(scene, (room, offset, _isControlled, alpha) => {
         const pb = roomPaddingBox(scene, offset);
         for (const side of EDGE_SIDES) {
             const kind = room.edges[side]?.type;
@@ -92,14 +94,14 @@ export function drawEdgeLabels(
 
             const { x, y } = edgeLabelCenter(side, pb);
             ctx.save();
-            ctx.globalAlpha = (isControlled ? 1 : UNCONTROLLED_ALPHA) * breath.opacity;
+            ctx.globalAlpha = alpha * breath.opacity;
             ctx.translate(x, y);
             ctx.scale(breath.scale, breath.scale);
             if (kind === 'portal' && now !== null) ctx.rotate(portalSpinAngle(now));
             ctx.drawImage(cache.get(edgeLabelSprite, { kind }), -BOX / 2, -BOX / 2, BOX, BOX);
             ctx.restore();
         }
-    });
+    }, fades);
 
     return drawn;
 }

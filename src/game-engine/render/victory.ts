@@ -23,6 +23,7 @@ import {
     victoryParticleSprite,
     victoryPlayerSprite,
     victorySupernovaSprite,
+    victoryVignetteBox,
     victoryVignetteSprite,
 } from './victorySprites';
 import type { VictoryPlayerInput } from './victorySprites';
@@ -36,6 +37,31 @@ export {
 export type { VictoryState, VictoryTracker } from './victoryState';
 
 const DEG_TO_RAD = Math.PI / 180;
+
+/** Her önbelleğin ŞU AN tuttuğu vignette anahtarı. */
+const vignetteSlots = new WeakMap<SpriteCache, string>();
+
+/**
+ * Vignette sprite'ı — önbellekteki TEK YUVALI girdi.
+ *
+ * 00-ilkeler §3.1'in "ayıklama yok" kararının bilinçli tek istisnası (Faz 07,
+ * 06-rapor §4.1). Gerekçe o kararın kendisi: ayıklama yasağı "animasyon
+ * sürerken yeniden rasterizasyon tetiklenmesin" diye konmuştu. Vignette ise
+ * koreografinin İLK karesinde üretilir ve tahta boyutu koreografi sırasında
+ * değişmez; boyut ancak koreografiler ARASINDA değişir, yani eski vignette'i
+ * silmek animasyon sürerken hiçbir şeyi yeniden rasterize ettirmez.
+ * Vignette önbelleğin en pahalı girdisi (640x640, DPR 2: 1,98 MB); her boyut
+ * için bir tane biriktirmek bunu boşa büyütürdü.
+ *
+ * Genel bir ayıklama mekanizması DEĞİL: yalnızca bu girdi, yalnızca burada.
+ */
+function vignetteSprite(cache: SpriteCache, input: { w: number; h: number }): HTMLCanvasElement {
+    const key = victoryVignetteSprite.key(input);
+    const held = vignetteSlots.get(cache);
+    if (held !== undefined && held !== key) cache.delete(held);
+    vignetteSlots.set(cache, key);
+    return cache.get(victoryVignetteSprite, input);
+}
 
 /**
  * `drop-shadow(0 0 Npx c)` taşıyan bir halka. Parlama, halkanın iki yanına
@@ -141,9 +167,11 @@ export function drawVictory(
 
     ctx.save();
     const vignetteInput = { w: state.boardW, h: state.boardH };
-    const vignette = victoryVignetteSprite.size(vignetteInput);
+    const vignette = victoryVignetteBox(vignetteInput);
+    // Sprite yarı çözünürlükte; iki katına ölçeklenirken yumuşatma açık kalmalı.
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(
-        cache.get(victoryVignetteSprite, vignetteInput),
+        vignetteSprite(cache, vignetteInput),
         -VIGNETTE_INSET, -VIGNETTE_INSET, vignette.w, vignette.h,
     );
 

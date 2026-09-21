@@ -12,20 +12,27 @@
 import type { CellTypes } from '../../logic/cellTypes';
 import { getThemeConfig } from '../../themes/themeConfig';
 import { cellKey } from '../../components/board/boardIndex';
-import type { BoardScene, CellPaintInput, SpritePainter } from '../types';
+import type { BoardScene, CellPaintInput, LayerName, SpritePainter } from '../types';
 import { NATIVE_CELL_SIZE, PHASES } from '../types';
 import type { SpriteCache } from '../spriteCache';
 import { parseBorder } from '../paintTokens';
+import type { FogFrame } from '../fog';
+import type { Fades, FadeFrame } from '../fades';
+import { roomAlphaOf } from '../fades';
 import type { ActivityTracker } from './activity';
+import { TRAMPOLINE_ACTIVE_MS } from './activity';
+import { blitFogged, drawHiddenBorder } from './fogBlit';
 import { normalCellSprite } from './normal';
 import { obstacleCellSprite } from './obstacle';
 import { forbiddenCellSprite } from './forbidden';
-import { BASE_PHASE, ICE_PULSE_MS, iceAmbientSprite, iceCellSprite, iceIsAnimated } from './ice';
+import { BASE_PHASE, ICE_FADE_MS, ICE_PULSE_MS, iceAmbientSprite, iceCellSprite, iceIsAnimated } from './ice';
 import { powerCellSprite } from './power';
 import { toggleCellSprite } from './toggle';
 import { CONVEYOR_CHASE_MS, conveyorAmbientSprite, conveyorCellSprite, conveyorIsAnimated } from './conveyor';
-import { trampolineCellSprite } from './trampoline';
-import { TELEPORT_VORTEX_MS, teleportAmbientSprite, teleportCellSprite, teleportIsAnimated } from './teleport';
+import { drawTrampolineSquash, trampolineCellSprite } from './trampoline';
+import {
+    TELEPORT_FADE_MS, TELEPORT_VORTEX_MS, teleportAmbientSprite, teleportCellSprite, teleportIsAnimated,
+} from './teleport';
 import { TARGET_PULSE_MS, targetAmbientSprite, targetCellSprite, targetIsAnimated } from './target';
 import { controlSwitchCellSprite } from './controlSwitch';
 import { directionDeflectorCellSprite } from './directionDeflector';
@@ -64,6 +71,19 @@ export const CELL_AMBIENT_SPRITES: Partial<Record<CellTypes, AmbientSprite>> = {
 /** `BoardCell`'in her hücrenin ARDINA koyduğu düz renk. */
 const CELL_BACKDROP = '#020617';
 
+/**
+ * DOM'da görünümü `transition` ile değişen hücre tipleri ve süreleri
+ * (`iceCellRenderer.tsx:78` 200ms, `teleportCellRenderer.tsx:116` 600ms; ikisi de
+ * `ease`). Eski ve yeni hâlin sprite'ı `globalAlpha` ile çapraz geçirilir.
+ */
+const FADE_MS: Partial<Record<CellTypes, number>> = {
+    ice: ICE_FADE_MS,
+    teleport: TELEPORT_FADE_MS,
+};
+
+/** Trambolin ezilmesi yalnızca `static`teki yayı ilgilendirir. */
+const SQUASH_LAYERS: readonly LayerName[] = ['static'];
+
 /** `isOccupied`: bu karede VEYA bir önceki karede üzerinde varlık olan hücreler. */
 function occupiedKeys(scene: BoardScene): Set<string> {
     const keys = new Set<string>();
@@ -90,21 +110,20 @@ export function roomBorderWidth(scene: BoardScene): number {
     return parseBorder(getThemeConfig(scene.theme).board.border(true))?.width ?? 0;
 }
 
-/** Sprite hücreye ORTALI blit edilir; taşan parlama için büyütülmüş kutuyu telafi eder. */
-function blit(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, x: number, y: number, w: number, h: number): void {
-    ctx.drawImage(sprite, x - (w - NATIVE_CELL_SIZE) / 2, y - (h - NATIVE_CELL_SIZE) / 2, w, h);
-}
-
 /**
  * Bir odanın hücrelerini gezer; `visit` her hücre için ekran konumunu alır.
  *
  * `activity` verilmezse (ör. testler) hiçbir hücre etkin sayılmaz — üç geçici
  * durumlu tip (`conveyor`, `teleport`, `trampoline`) dinlenme hâlinde çizilir.
+ *
+ * `alpha` odanın `opacity`sidir (kontrol edilmeyen oda 0.4); oda geçişi sürüyorsa
+ * `fades`ten ara değer gelir.
  */
 function forEachCell(
     scene: BoardScene,
     activity: ActivityTracker | null,
-    visit: (input: CellPaintInput, x: number, y: number, isControlled: boolean) => void,
+    fades: FadeFrame | null,
+    visit: (input: CellPaintInput, x: number, y: number, alpha: number, key: string) => void,
 ): void {
     const inset = roomBorderWidth(scene);
     const occupied = occupiedKeys(scene);
@@ -115,6 +134,7 @@ function forEachCell(
         const isControlled = !scene.controlledRoomIds
             || scene.controlledRoomIds.length === 0
             || scene.controlledRoomIds.includes(room.id);
+        const alpha = roomAlphaOf(fades, room.id, isControlled);
 
         room.grid.forEach((row, r) => {
             row.forEach((cell, c) => {
@@ -129,7 +149,8 @@ function forEachCell(
                     },
                     offset.left + inset + c * NATIVE_CELL_SIZE,
                     offset.top + inset + r * NATIVE_CELL_SIZE,
-                    isControlled,
+                    alpha,
+                    key,
                 );
             });
         });
@@ -137,37 +158,76 @@ function forEachCell(
 }
 
 /**
+ * Bir hücre hâlinin gövdesi ve — ambient kapalıysa — süsünün taban hâli.
+ * Çapraz geçişte iki hâl (eski, yeni) için ayrı ayrı çağrılır.
+ */
+function drawCellState(
+    ctx: CanvasRenderingContext2D,
+    cache: SpriteCache,
+    input: CellPaintInput,
+    x: number,
+    y: number,
+    lit: number,
+    drawBase: boolean,
+): void {
+    blitFogged(ctx, cache, CELL_SPRITES[input.cell.type], input, x, y, lit);
+
+    const ambient = CELL_AMBIENT_SPRITES[input.cell.type];
+    if (drawBase && ambient?.isAnimated(input)) {
+        blitFogged(ctx, cache, ambient.painter, { ...input, phase: BASE_PHASE }, x, y, lit);
+    }
+}
+
+/**
  * Hücrelerin durağan gövdesi. Kontrol edilmeyen oda `globalAlpha = 0.4` ile
- * çizilir (bugünkü `opacity: isControlled ? 1 : 0.4` karşılığı).
+ * çizilir (bugünkü `opacity: isControlled ? 1 : 0.4` karşılığı); oda geçişi
+ * sürerken ara değer.
  *
  * `ambientMode === 'off'` iken ambient katmanı hiç çizilmediği için (00-ilkeler
  * §2.3) animasyonlu süsler DE buraya, taban fazlarıyla düşer — DOM'da
  * `animation: none` öğeyi gizlemez, taban stilinde bırakır.
+ *
+ * `fog` verilmişse sis uygulanır: keşfedilmemiş hücre düz kare, karartılmış
+ * hücre `dim` varyantı (bkz. dim.ts). `null` = sis yok.
+ *
+ * `fades` verilmişse: buz ve teleport eski/yeni hâli çapraz geçer, trambolinin
+ * yayı ezilir (bkz. `fades.ts`). `null` = geçiş yok, yeni hâl anında.
  */
 export function drawCellsStatic(
     ctx: CanvasRenderingContext2D,
     scene: BoardScene,
     cache: SpriteCache,
     activity: ActivityTracker | null = null,
+    fog: FogFrame | null = null,
+    fades: FadeFrame | null = null,
 ): void {
     const drawBase = scene.ambientMode === 'off';
 
-    forEachCell(scene, activity, (input, x, y, isControlled) => {
+    forEachCell(scene, activity, fades, (input, x, y, alpha, key) => {
         ctx.save();
-        ctx.globalAlpha = isControlled ? 1 : 0.4;
+        ctx.globalAlpha = alpha;
 
         ctx.fillStyle = CELL_BACKDROP;
         ctx.fillRect(x, y, NATIVE_CELL_SIZE, NATIVE_CELL_SIZE);
 
-        const painter = CELL_SPRITES[input.cell.type];
-        const { w, h } = painter.size(input);
-        blit(ctx, cache.get(painter, input), x, y, w, h);
+        if (fog && !fog.explored(key)) {
+            drawHiddenBorder(ctx, x, y);
+            ctx.restore();
+            return;
+        }
+        const lit = fog ? fog.lit(key) : 1;
+        const type = input.cell.type;
+        const fade = fades?.cell(key) ?? null;
 
-        const ambient = CELL_AMBIENT_SPRITES[input.cell.type];
-        if (drawBase && ambient?.isAnimated(input)) {
-            const base = { ...input, phase: BASE_PHASE };
-            const size = ambient.painter.size(base);
-            blit(ctx, cache.get(ambient.painter, base), x, y, size.w, size.h);
+        if (fade && type === 'trampoline') {
+            drawTrampolineSquash(ctx, cache, input, x, y, lit, fade.elapsedMs);
+        } else if (fade && FADE_MS[type]) {
+            ctx.globalAlpha = alpha * (1 - fade.e);
+            drawCellState(ctx, cache, fade.from, x, y, lit, drawBase);
+            ctx.globalAlpha = alpha * fade.e;
+            drawCellState(ctx, cache, input, x, y, lit, drawBase);
+        } else {
+            drawCellState(ctx, cache, input, x, y, lit, drawBase);
         }
         ctx.restore();
     });
@@ -177,7 +237,12 @@ export function drawCellsStatic(
  * Hücrelerin animasyonlu süsleri. Canlı hesaplanmaz: zamandan faz seçilip
  * önbellekteki sprite blit edilir (00-ilkeler §3.2).
  *
- * @returns Çizilen canlı bir süs varsa `true` — çağıran döngüyü uyanık tutmalı.
+ * Çapraz geçişte (buz/teleport) süs animasyona GİRİYORSA yeni süs `e` ile
+ * belirir, ÇIKIYORSA eski süs `1 − e` ile söner; DOM'da aynı öğe olduğu için
+ * bu, süsün ölçek/opaklık geçişinin yaklaşığıdır.
+ *
+ * @returns Yeni hâlde canlı bir süs varsa `true` — çağıran döngüyü uyanık tutmalı.
+ *          (Sönen eski süs döngüyü tutmaz; geçişi `KeepAlive` sürer.)
  */
 export function drawCellsAmbient(
     ctx: CanvasRenderingContext2D,
@@ -185,23 +250,68 @@ export function drawCellsAmbient(
     cache: SpriteCache,
     now: number,
     activity: ActivityTracker | null = null,
+    fog: FogFrame | null = null,
+    fades: FadeFrame | null = null,
 ): boolean {
     let alive = false;
 
-    forEachCell(scene, activity, (input, x, y, isControlled) => {
+    forEachCell(scene, activity, fades, (input, x, y, alpha, key) => {
         const ambient = CELL_AMBIENT_SPRITES[input.cell.type];
-        if (!ambient || !ambient.isAnimated(input)) return;
-        alive = true;
+        if (!ambient) return;
+        // Keşfedilmemiş hücrede süs yok (DOM'da hücre düz kare).
+        if (fog && !fog.explored(key)) return;
+
+        const fade = FADE_MS[input.cell.type] ? fades?.cell(key) ?? null : null;
+        const animated = ambient.isAnimated(input);
+        const wasAnimated = fade !== null && ambient.isAnimated(fade.from);
+        if (!animated && !wasAnimated) return;
+        if (animated) alive = true;
 
         const phase = Math.floor(((now % ambient.periodMs) / ambient.periodMs) * PHASES) % PHASES;
-        const withPhase = { ...input, phase };
-        const { w, h } = ambient.painter.size(withPhase);
+        const lit = fog ? fog.lit(key) : 1;
 
         ctx.save();
-        ctx.globalAlpha = isControlled ? 1 : 0.4;
-        blit(ctx, cache.get(ambient.painter, withPhase), x, y, w, h);
+        if (wasAnimated && fade) {
+            ctx.globalAlpha = alpha * (1 - fade.e);
+            blitFogged(ctx, cache, ambient.painter, { ...fade.from, phase }, x, y, lit);
+        }
+        if (animated) {
+            ctx.globalAlpha = fade ? alpha * fade.e : alpha;
+            blitFogged(ctx, cache, ambient.painter, { ...input, phase }, x, y, lit);
+        }
         ctx.restore();
     });
 
     return alive;
+}
+
+/**
+ * Buz/teleport görünümü değişti mi, trambolin yayı ezilmeye başladı mı: sahne
+ * veya etkinlik durumu her değiştiğinde çağrılır (ve etkinlik zamanlayıcısı
+ * söndüğünde). Eski hâli `fades`e yazar, geçiş süresince katmanları `KeepAlive`
+ * ile uyanık tutturur.
+ *
+ * @param snap Yeni tur veya tema değişimi: hâli yazar, geçiş BAŞLATMAZ.
+ * @returns Yeni bir geçiş başladıysa `true` — çağıran katmanları kirletmeli.
+ */
+export function observeCellFades(
+    scene: BoardScene,
+    activity: ActivityTracker | null,
+    fades: Fades,
+    now: number,
+    snap: boolean,
+): boolean {
+    let started = false;
+
+    forEachCell(scene, activity, null, (input, _x, _y, _alpha, key) => {
+        const type = input.cell.type;
+        // Trambolin: yalnızca ETKİNLEŞİRKEN ezilir; sönerken geçiş yok.
+        const ms = type === 'trampoline' ? (input.isActive ? TRAMPOLINE_ACTIVE_MS : 0) : (FADE_MS[type] ?? -1);
+        if (ms < 0) return;
+
+        const layers = type === 'trampoline' ? SQUASH_LAYERS : undefined;
+        if (fades.observeCell(key, CELL_SPRITES[type].key(input), input, now, ms, snap, layers)) started = true;
+    });
+
+    return started;
 }

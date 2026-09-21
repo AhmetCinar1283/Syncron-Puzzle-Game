@@ -13,13 +13,15 @@ import type { RoomState } from '../../logic/types';
 import type { BoardScene, RoomOffset, SpritePainter } from '../types';
 import { NATIVE_CELL_SIZE } from '../types';
 import type { SpriteCache } from '../spriteCache';
+import type { FadeFrame } from '../fades';
+import { roomAlphaOf } from '../fades';
 import { roomBorderWidth } from '../cells';
 
 export type EdgeSide = 'top' | 'bottom' | 'left' | 'right';
 export const EDGE_SIDES: readonly EdgeSide[] = ['top', 'bottom', 'left', 'right'];
 
-/** Kontrol edilmeyen odanın `opacity: 0.4` değeri (GameBoard'daki oda `<div>`'i). */
-export const UNCONTROLLED_ALPHA = 0.4;
+/** Kontrol edilmeyen odanın `opacity: 0.4` değeri — asıl tanım `fades.ts`'te (oda geçişi de orada). */
+export { UNCONTROLLED_ALPHA } from '../fades';
 
 /** `edgePlacement`: şerit kalınlığı. */
 export const EDGE_STRIP_THICKNESS = 4;
@@ -37,14 +39,20 @@ export function isRoomControlled(scene: BoardScene, roomId: string): boolean {
         || scene.controlledRoomIds.includes(roomId);
 }
 
+/**
+ * Odaları gezer. `alpha` odanın `opacity`sidir: kontrol edilmeyen oda 0.4,
+ * oda geçişi sürüyorsa `fades`ten ara değer (`GameBoard`'daki `transition: opacity 0.25s`).
+ */
 export function forEachRoom(
     scene: BoardScene,
-    visit: (room: RoomState, offset: RoomOffset, isControlled: boolean) => void,
+    visit: (room: RoomState, offset: RoomOffset, isControlled: boolean, alpha: number) => void,
+    fades: FadeFrame | null = null,
 ): void {
     for (const room of Object.values(scene.rooms)) {
         const offset = scene.roomPositions[room.id];
         if (!offset) continue;
-        visit(room, offset, isRoomControlled(scene, room.id));
+        const isControlled = isRoomControlled(scene, room.id);
+        visit(room, offset, isControlled, roomAlphaOf(fades, room.id, isControlled));
     }
 }
 

@@ -60,6 +60,9 @@ Sıra "sözleşmeyi önce dondur, sonra doldur" mantığıyla kuruldu. **Sıray�
 | 06 | `06-zafer-koreografisi.md` | `VictoryCelebration`'ın canvas portu | **opus** |
 | 07 | `07-girdi-sis-dom-koprusu.md` | Swipe, sis geçişleri, ipucu işareti köprüsü, erişilebilirlik | **sonnet** |
 | 08 | `08-olcum-ve-varsayilan.md` | Gerçek cihazda ölçüm, varsayılanın çevrilmesi, temizlik | **opus** |
+| 09 | `09-kapanis.md` | Katman başına pay, varsayılanın çevrilmesi, temizlik — **izi kapatır** | **sonnet** |
+| 10 | `10-davranis-farklari.md` | Boşta göz kırpma, ölüm/çarpışma parlaması, trambolin, yumuşak geçişler — **isteğe bağlı** | **opus** |
+| 11 | `11-otomatik-gecis.md` | Oyun sırasında kasma tespiti → DOM'dan canvas'a tek yönlü geçiş; ayarlarda Otomatik/DOM/Canvas | **opus** |
 
 Her faz bitince `raporlar/<numara>-rapor.md` yazılır. Sonraki faz o raporu okuyarak başlar.
 

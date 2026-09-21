@@ -16,7 +16,7 @@ import type { Entity } from '../logic/entityTypes';
 import type { BoardScene } from './types';
 import { NATIVE_CELL_SIZE } from './types';
 import { TRACKS, sampleTrack } from './motion';
-import type { Transform } from './motion';
+import type { EffectLayer, Transform } from './motion';
 
 /** `landingSquashEffect` süresi — `physicsWrapper`'daki `setTimeout(…, 220)`. */
 export const LANDING_MS = 220;
@@ -106,6 +106,11 @@ export function trackTransformOf(state: EntityMotionState | undefined, now: numb
     const elapsed = now - state.track.startedAt;
     if (track.repeat === 'once' && elapsed >= state.track.durationMs) return null;
     return sampleTrack(track, elapsed, state.track.durationMs);
+}
+
+/** Süren efektin `filter` bileşenleri (renk kayması, parlama); yoksa `undefined`. */
+export function effectLayersOf(state: EntityMotionState | undefined): EffectLayer[] | undefined {
+    return state?.track ? TRACKS[state.track.name]?.layers : undefined;
 }
 
 /** `physicsWrapper`'ın `customAnimation` zinciri — SIRA BAĞLAYICI. */

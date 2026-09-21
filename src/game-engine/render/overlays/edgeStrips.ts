@@ -17,10 +17,11 @@
 
 import type { BoardScene, SpritePainter } from '../types';
 import type { SpriteCache } from '../spriteCache';
+import type { FadeFrame } from '../fades';
 import { applyBackground, paintBox } from '../paintTokens';
 import { outerPad } from '../cells/common';
 import {
-    EDGE_SIDES, EDGE_STRIP_THICKNESS, UNCONTROLLED_ALPHA, drawAt, edgeStripRect, forEachRoom, roomPaddingBox,
+    EDGE_SIDES, EDGE_STRIP_THICKNESS, drawAt, edgeStripRect, forEachRoom, roomPaddingBox,
 } from './geometry';
 import { EDGE_TIMING, edgeFlowFraction, edgePulseOpacity } from './timing';
 
@@ -75,11 +76,11 @@ export const edgeGlowSprite: SpritePainter<EdgeStripInput> = {
 };
 
 /** `wall` kenarları — `static` katmanı. Oda `opacity`sine tabidir. */
-export function drawWallStrips(ctx: CanvasRenderingContext2D, scene: BoardScene): void {
-    forEachRoom(scene, (room, offset, isControlled) => {
+export function drawWallStrips(ctx: CanvasRenderingContext2D, scene: BoardScene, fades: FadeFrame | null = null): void {
+    forEachRoom(scene, (room, offset, _isControlled, alpha) => {
         const pb = roomPaddingBox(scene, offset);
         ctx.save();
-        ctx.globalAlpha = isControlled ? 1 : UNCONTROLLED_ALPHA;
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = WALL_COLOR;
         for (const side of EDGE_SIDES) {
             const type = room.edges[side]?.type;
@@ -88,7 +89,7 @@ export function drawWallStrips(ctx: CanvasRenderingContext2D, scene: BoardScene)
             ctx.fillRect(r.x, r.y, r.horizontal ? r.length : EDGE_STRIP_THICKNESS, r.horizontal ? EDGE_STRIP_THICKNESS : r.length);
         }
         ctx.restore();
-    });
+    }, fades);
 }
 
 /**
@@ -102,10 +103,11 @@ export function drawFlowStrips(
     scene: BoardScene,
     cache: SpriteCache,
     now: number | null,
+    fades: FadeFrame | null = null,
 ): boolean {
     let drawn = false;
 
-    forEachRoom(scene, (room, offset, isControlled) => {
+    forEachRoom(scene, (room, offset, _isControlled, alpha) => {
         const pb = roomPaddingBox(scene, offset);
         for (const side of EDGE_SIDES) {
             const kind = room.edges[side]?.type;
@@ -119,7 +121,7 @@ export function drawFlowStrips(
             const fraction = now === null ? 0 : edgeFlowFraction(now, timing.flowMs);
 
             ctx.save();
-            ctx.globalAlpha = (isControlled ? 1 : UNCONTROLLED_ALPHA) * pulse;
+            ctx.globalAlpha = alpha * pulse;
             drawAt(ctx, cache, edgeGlowSprite, input, rect.x - GLOW_PAD, rect.y - GLOW_PAD);
 
             // Kaynak dikdörtgeni kaydırılır: sprite tuvali DPR ölçekli olduğu için
@@ -136,7 +138,7 @@ export function drawFlowStrips(
             }
             ctx.restore();
         }
-    });
+    }, fades);
 
     return drawn;
 }

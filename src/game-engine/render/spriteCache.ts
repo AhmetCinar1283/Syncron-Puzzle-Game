@@ -25,11 +25,24 @@ export interface SpriteCache {
     clear(): void;
     /** Teşhis için — rapora sayı yaz. */
     size(): number;
+    /**
+     * Önbellekteki tuvallerin yaklaşık toplam belleği (bayt): Σ genişlik × yükseklik × 4.
+     * Tuval boyutu zaten DPR ile çarpılı olduğundan `w × h × dpr² × 4` ile aynıdır.
+     */
+    bytes(): number;
+    /**
+     * Tek bir girdiyi siler. Genel bir ayıklama mekanizması DEĞİL (00-ilkeler
+     * §3.1): yalnızca tek yuvalı vignette için (bkz. `victory.ts`).
+     */
+    delete(key: string): void;
 }
 
 export function createSpriteCache(dpr: number): SpriteCache {
     const map = new Map<string, HTMLCanvasElement>();
     let warned = false;
+    let totalBytes = 0;
+
+    const bytesOf = (canvas: HTMLCanvasElement) => canvas.width * canvas.height * 4;
 
     return {
         get<T>(painter: SpritePainter<T>, input: T): HTMLCanvasElement {
@@ -61,6 +74,7 @@ export function createSpriteCache(dpr: number): SpriteCache {
             if (!cacheable) return canvas;
 
             map.set(key, canvas);
+            totalBytes += bytesOf(canvas);
             if (!warned && map.size > WARN_AT_SIZE) {
                 warned = true;
                 console.warn(
@@ -73,11 +87,23 @@ export function createSpriteCache(dpr: number): SpriteCache {
 
         clear(): void {
             map.clear();
+            totalBytes = 0;
             warned = false;
         },
 
         size(): number {
             return map.size;
+        },
+
+        bytes(): number {
+            return totalBytes;
+        },
+
+        delete(key: string): void {
+            const hit = map.get(key);
+            if (!hit) return;
+            totalBytes -= bytesOf(hit);
+            map.delete(key);
         },
     };
 }

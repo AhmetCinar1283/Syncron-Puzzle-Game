@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     // Native/desktop build artifacts
     "android/**",
     "dist-electron/**",
+    // Portal build çıktıları (npm run build:crazygames / build:gamedistribution)
+    "out-crazygames/**",
+    "out-gamedistribution/**",
   ]),
 ]);
 

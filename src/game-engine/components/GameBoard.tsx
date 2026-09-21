@@ -3,8 +3,8 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useMemo, ReactNode } from 'react';
-import { TickSnapshot, VFXEvent, RoomState, EdgeConfig } from '../logic/types';
+import { useEffect, useMemo, ReactNode } from 'react';
+import { TickSnapshot, RoomState, EdgeConfig } from '../logic/types';
 import { Cell } from '../logic/cellTypes';
 import { Entity } from '../logic/entityTypes';
 import { ENTITY_RENDERERS } from './entities/ENTITY_RENDERERS';
@@ -15,33 +15,15 @@ import { useGameTheme } from '../contexts/GameThemeContext';
 import { GameIcon } from '@/components/icons';
 import { VictoryCelebration, VICTORY_CELEBRATION_DURATION } from './effects/VictoryCelebration';
 import type { SoundName } from '../hooks/useSoundManager';
-import { soundEngine } from '../audio/soundEngine';
-import { hapticImpact, hapticNotify } from '@/lib/haptics';
+import { useFilmPlayback } from '../hooks/useFilmPlayback';
 import { BoardCell } from './board/BoardCell';
 import { RoomTrails, RoomCables } from './board/RoomOverlays';
 import { ensureBoardKeyframes, BoardAmbientMode } from './board/boardKeyframes';
 import { useMotionTier } from '@/lib/motionTier';
+import type { JankPhase } from '../render/jankMonitor';
 import { BoardIndex, buildBoardIndex, cellKey, isCellVisible, playersIn, playersSignature } from './board/boardIndex';
 
 const CELL_SIZE = 64;
-
-/** Bir tick'in ekranda kalma süresi (ms) — bkz. `frameMs` yorumu. */
-const MIN_FRAME_MS = 55;
-const MAX_FRAME_MS = 90;
-
-const VFX_TO_SOUND: Partial<Record<string, SoundName>> = {
-    sound_move:         'move',
-    sound_push:         'box_push',
-    sound_ice_slide:    'ice',
-    sound_ice_break:    'ice',
-    sound_portal_enter: 'portal',
-    sound_portal_exit:  'teleport',
-    sound_boing:        'boing',
-    sound_conveyor:     'conveyor',
-    sound_toggle:       'toggle',
-    sound_win:          'win',
-    sound_lose:         'lose',
-};
 
 const EMPTY_INDEX: BoardIndex = buildBoardIndex([]);
 const NO_ENTITIES: Entity[] = [];
@@ -53,6 +35,8 @@ interface GameBoardProps {
     onAnimationEnd?: () => void;
     onPlaySound?: (sound: SoundName) => void;
     muted?: boolean;
+    /** Kasma dedektörü için oynatma evresi (yalnızca DOM + Otomatik iken verilir). */
+    onPlaybackPhase?: (phase: JankPhase) => void;
 }
 
 type EdgeSide = 'top' | 'bottom' | 'left' | 'right';
@@ -175,45 +159,20 @@ function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
     );
 }
 
-const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted }: GameBoardProps) => {
+const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted, onPlaybackPhase }: GameBoardProps) => {
     const { themeConfig } = useGameTheme();
     const motionTier = useMotionTier();
-    const [prevSnapshots, setPrevSnapshots] = useState<TickSnapshot[] | null>(snapshots);
-    const [currentFrame, setCurrentFrame] = useState(0);
+    // Film oynatma (kare ilerletme, ses, titreşim, bitiş) ortak hook'ta:
+    // canvas yolu da aynısını kullanır (bkz. hooks/useFilmPlayback.ts).
+    const { frameMs, snapshot, prevSnapshot, finalSnapshot, isPlaying, isVictoryActive } =
+        useFilmPlayback({ snapshots, onAnimationEnd, onPlaySound, muted });
 
-    if (snapshots !== prevSnapshots) {
-        setPrevSnapshots(snapshots);
-        const isExtension = prevSnapshots &&
-                            prevSnapshots.length > 0 &&
-                            snapshots &&
-                            snapshots.length > prevSnapshots.length &&
-                            prevSnapshots[0] === snapshots[0];
-        if (!isExtension) {
-            setCurrentFrame(0);
-        }
-    }
-
-    const onAnimationEndRef = useRef(onAnimationEnd);
-    onAnimationEndRef.current = onAnimationEnd;
-
-    const remainingFrames = snapshots ? snapshots.length - 1 - currentFrame : 0;
-    // Kare süresi aynı anda CSS geçiş süresidir. Eski alt sınır 20ms idi:
-    // 60Hz'de bir ekran karesinden az, yani geçiş hiç tamamlanmadan bir
-    // sonraki tick geliyordu — hareket akmak yerine "zıplıyor" gibi
-    // görünüyordu. MIN_FRAME_MS ~3.5 ekran karesine denk gelir; ara kareler
-    // gerçekten çizilir ve uzun kaymalar bile akıcı okunur.
-    const frameMs = snapshots
-        ? remainingFrames > 3
-            ? Math.max(MIN_FRAME_MS, Math.min(MAX_FRAME_MS, 420 / remainingFrames))
-            : Math.max(60, Math.min(110, 300 / snapshots.length))
-        : 80;
-
-    // Kare verisi — tüm hook'lar erken çıkıştan ÖNCE çalışmalı.
-    const frameIndex = snapshots && snapshots.length > 0 ? Math.min(currentFrame, snapshots.length - 1) : 0;
-    const snapshot: TickSnapshot | null = snapshots?.[frameIndex] ?? null;
-    const prevSnapshot: TickSnapshot | null = (snapshots && frameIndex > 0 ? snapshots[frameIndex - 1] : null) ?? null;
     const rooms = snapshot?.rooms ?? null;
     const entities = snapshot?.entities ?? NO_ENTITIES;
+
+    useEffect(() => {
+        onPlaybackPhase?.(isVictoryActive ? 'victory' : isPlaying ? 'move' : 'idle');
+    }, [onPlaybackPhase, isVictoryActive, isPlaying]);
 
     // @keyframes tanımları statik — belgeye tek sefer enjekte edilir.
     useEffect(() => { ensureBoardKeyframes(); }, []);
@@ -231,91 +190,7 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
     const prevIndex = useMemo(() => (prevSnapshot ? buildBoardIndex(prevSnapshot.entities) : EMPTY_INDEX), [prevSnapshot]);
     const playersSig = useMemo(() => playersSignature(entities), [entities]);
 
-    useEffect(() => {
-        if (!snapshots || snapshots.length === 0) return;
-        if (snapshots.length === 1) return;
-
-        if (currentFrame >= snapshots.length - 1) {
-            const finalSnapshot = snapshots[snapshots.length - 1];
-            const hasDeath = finalSnapshot?.entities.some(e => e.customData.deathReason) ?? false;
-            const hasVictory = finalSnapshot?.entities.some(e => e.customData.isVictory) ?? false;
-
-            if (hasDeath) {
-                const timer = setTimeout(() => {
-                    onAnimationEndRef.current?.();
-                }, 800);
-                return () => clearTimeout(timer);
-            } else if (hasVictory) {
-                const timer = setTimeout(() => {
-                    onAnimationEndRef.current?.();
-                }, VICTORY_CELEBRATION_DURATION);
-                return () => clearTimeout(timer);
-            } else {
-                onAnimationEndRef.current?.();
-            }
-            return;
-        }
-
-        let start: number | null = null;
-        let animationFrameId: number;
-
-        const step = (timestamp: number) => {
-            if (!start) start = timestamp;
-            const progress = timestamp - start;
-
-            if (progress >= frameMs) {
-                setCurrentFrame(c => c + 1);
-            } else {
-                animationFrameId = requestAnimationFrame(step);
-            }
-        };
-
-        animationFrameId = requestAnimationFrame(step);
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [currentFrame, snapshots, frameMs]);
-
-    useEffect(() => {
-        if (muted) return;
-        if (!snapshots) return;
-        const frame = snapshots[currentFrame];
-        if (!frame) return;
-        frame.vfxEvents.forEach((vfx: VFXEvent) => {
-            const soundName = VFX_TO_SOUND[vfx];
-            if (!soundName) return;
-            if (onPlaySound) {
-                onPlaySound(soundName);
-            } else {
-                // PlayScreen dışındaki kullanımlar (ör. editör önizleme) için
-                // aynı Web Audio motoru — HTMLAudioElement gecikmesi yok.
-                soundEngine.play(soundName);
-            }
-        });
-    }, [currentFrame, snapshots, muted, onPlaySound]);
-
-    // Dokunsal geri bildirim: çarpma / ölüm / zafer. Sesle aynı karede verilir
-    // ki görüntü-ses-titreşim üçlüsü senkron kalsın.
-    useEffect(() => {
-        if (!snapshots) return;
-        const frame = snapshots[currentFrame];
-        if (!frame) return;
-
-        let strongest: 'none' | 'bump' | 'death' | 'victory' = 'none';
-        for (const entity of frame.entities) {
-            if (entity.customData.deathReason) { strongest = 'death'; break; }
-            if (entity.customData.isVictory) { strongest = 'victory'; break; }
-            if (entity.customData.bumpDirection) strongest = 'bump';
-        }
-
-        if (strongest === 'death') hapticNotify('error');
-        else if (strongest === 'victory') hapticNotify('success');
-        else if (strongest === 'bump') hapticImpact('medium');
-    }, [currentFrame, snapshots]);
-
     if (!snapshots || snapshots.length === 0 || !snapshot || !rooms) return null;
-
-    const finalSnapshot = snapshots[snapshots.length - 1];
-    const hasVictory = finalSnapshot?.entities.some(e => e.customData.isVictory) ?? false;
-    const isVictoryActive = currentFrame >= snapshots.length - 1 && hasVictory;
 
     // Bağlantılı portal çizgilerini oluştur
     const connections: { fromRoomId: string; fromSide: EdgeSide; toRoomId: string; toSide: EdgeSide }[] = [];
@@ -384,7 +259,6 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
     //    üstelik tahta zaten vignette'in altında kalıyor, kimse bakmıyor,
     //  - hamle oynatılırken duraklatılmış (tüm kare bütçesi harekete kalsın),
     //  - boşta tam hızında.
-    const isPlaying = snapshots.length > 1 && currentFrame < snapshots.length - 1;
     const ambientMode: BoardAmbientMode =
         motionTier === 'lite' || isVictoryActive ? 'off' : isPlaying ? 'paused' : 'on';
 

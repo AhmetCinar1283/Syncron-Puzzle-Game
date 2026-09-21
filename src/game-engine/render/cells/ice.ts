@@ -32,6 +32,12 @@ const ICON_GLOW = 8;
 /** `icePulse 1.2s infinite ease-in-out` — bir tam döngünün süresi. */
 export const ICE_PULSE_MS = 1200;
 
+/**
+ * Dolu ↔ boş geçişi: `iceCellRenderer.tsx`'teki `transition: background 200ms ease,
+ * border-color 200ms ease, box-shadow 200ms ease`. Çapraz geçiş `cells/index.ts`'te.
+ */
+export const ICE_FADE_MS = 200;
+
 /** `phase` yerine geçen taban değer: animasyon durdurulduğundaki görünüm. */
 export const BASE_PHASE = -1;
 

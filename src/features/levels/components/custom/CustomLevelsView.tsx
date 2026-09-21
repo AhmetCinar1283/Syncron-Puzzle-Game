@@ -39,7 +39,7 @@ export function CustomLevelsView({
   t,
 }: CustomLevelsViewProps) {
   return (
-    <div className="flex-1 w-full max-w-4xl mx-auto px-4 py-6 overflow-y-auto">
+    <div className="flex-1 w-full max-w-4xl mx-auto px-4 py-6 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-black text-white uppercase tracking-wide">

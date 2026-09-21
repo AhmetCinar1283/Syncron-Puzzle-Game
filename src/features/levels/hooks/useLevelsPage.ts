@@ -320,9 +320,14 @@ export function useLevelsPage() {
   );
 
   const handleSelectLevel = useCallback(
-    (idx: number) => {
-      setSelectedIndex(idx);
-      audio.playTick();
+    (action: React.SetStateAction<number | null>) => {
+      setSelectedIndex((prev) => {
+        const next = typeof action === 'function' ? action(prev) : action;
+        if (next !== prev) {
+          audio.playTick();
+        }
+        return next;
+      });
     },
     [audio],
   );

@@ -68,14 +68,14 @@ export default function LevelAnalyticsPage() {
 
   if (authLoading || role !== 'admin') {
     return (
-      <main style={{ minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ color: '#00ff88', fontSize: 12, letterSpacing: '0.15em' }}>VERIFYING AUTHORIZATION...</span>
       </main>
     );
   }
 
   return (
-    <main style={{ minHeight: '100dvh', background: '#030712', color: '#f3f4f6', padding: '32px 24px', boxSizing: 'border-box' }}>
+    <main style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', background: '#030712', color: '#f3f4f6', padding: '32px 24px', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
 
         {/* Header Block */}

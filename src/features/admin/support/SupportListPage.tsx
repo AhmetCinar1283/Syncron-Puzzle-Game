@@ -27,7 +27,7 @@ export default function SupportListPage() {
 
   if (loading || (role !== 'admin' && role !== 'moderator')) {
     return (
-      <main style={{ minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ color: '#fbbf24', fontSize: 12, letterSpacing: '0.1em' }}>LOADING PANEL...</span>
       </main>
     );
@@ -36,6 +36,8 @@ export default function SupportListPage() {
   return (
     <div
       style={{
+        position: 'relative',
+        zIndex: 1,
         minHeight: '100dvh',
         background: '#030712',
         color: '#e2e8f0',

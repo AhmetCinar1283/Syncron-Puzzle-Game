@@ -22,10 +22,7 @@ export class SettingsService {
    * Güncel kullanıcı ayarlarını döner (değiştirilemez kopya).
    */
   getSettings(): UserSettings {
-    return {
-      ...this.currentSettings,
-      sound: { ...this.currentSettings.sound },
-    };
+    return this.currentSettings;
   }
 
   /** Sesin kapalı (muted) olup olmadığını döner. */

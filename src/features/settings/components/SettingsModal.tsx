@@ -13,6 +13,7 @@ import { useSettings } from '../hooks/useSettings';
 import { SoundSection } from './SoundSection';
 import { LanguageSection } from './LanguageSection';
 import { ThemeSection } from './ThemeSection';
+import { RendererSection } from './RendererSection';
 
 interface SettingsModalProps {
   isOpen?: boolean;
@@ -155,6 +156,9 @@ export function SettingsModal({ isOpen: propIsOpen, onClose: propOnClose }: Sett
 
           {/* 3. Tema Ayarları */}
           <ThemeSection />
+
+          {/* 4. Tahta Çizimi */}
+          <RendererSection />
         </div>
 
         {/* Footer */}

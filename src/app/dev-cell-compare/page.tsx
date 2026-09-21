@@ -13,6 +13,11 @@
  *
  * Sağ üstteki `cache.size()` okuması, sayfadaki BÜTÜN hücrelerin PAYLAŞTIĞI tek
  * sprite önbelleğinin doluluğudur (faz planı §4 ölçütü).
+ *
+ * YALNIZCA `NEXT_PUBLIC_PLATFORM=web` BUILD'İNDE AÇILIR (Faz 08 §2.5c). Android
+ * ve portal build'lerinde route dosyası yine üretilir ama sayfa hiçbir şey
+ * render etmez — geliştirme yüzeyi oyuncunun eline geçmez. Bu, her `dev-*`
+ * route'u için geçerli kuraldır (bkz. src/game-engine/render/README.md).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +34,7 @@ import { currentDpr } from '@/game-engine/render/surface';
 import { PHASES } from '@/game-engine/render/types';
 import type { Cell, CellTypes } from '@/game-engine/logic/cellTypes';
 import type { Entity } from '@/game-engine/logic/entityTypes';
+import { CURRENT_PLATFORM } from '@/services/monetization/platform';
 
 const PAD = 12;
 const CELL = 64;
@@ -157,6 +163,12 @@ const btn = (active: boolean): CSSProperties => ({
 });
 
 export default function Page() {
+    // Build-time sabit: web dışı platformlarda ağaç hiç kurulmaz.
+    if (CURRENT_PLATFORM !== 'web') return null;
+    return <CellCompare />;
+}
+
+function CellCompare() {
     const { theme, setTheme } = useGameTheme();
     const [zoom, setZoom] = useState(1);
     const [animate, setAnimate] = useState(true);

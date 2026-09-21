@@ -47,6 +47,8 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     return (
       <main
         style={{
+          position: 'relative',
+          zIndex: 1,
           minHeight: '100dvh',
           background: '#030712',
           display: 'flex',

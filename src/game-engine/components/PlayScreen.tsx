@@ -297,6 +297,7 @@ export function PlayScreen({
                 snapshots={snapshots}
                 controlledRoomIds={controlledRoomIds}
                 levelEdges={levelEdges}
+                levelName={levelName}
                 isAnimating={isAnimating}
                 onAnimationEnd={handleAnimationEnd}
                 onTouchStart={handleTouchStart}

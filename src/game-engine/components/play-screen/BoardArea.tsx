@@ -1,9 +1,13 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import type { ReactNode, RefObject, TouchEvent as ReactTouchEvent } from 'react';
 import GameBoard from '../GameBoard';
 import BoardCanvas from '../../render/BoardCanvas';
-import { useBoardRenderer } from '../../render/boardRenderer';
+import { setBoardRendererSetting, useBoardRenderer } from '../../render/boardRenderer';
+import { useJankGuard } from '../../render/useJankGuard';
+import type { TickSnapshot } from '../../logic/types';
+import { BoardRendererToggle } from './BoardRendererToggle';
 import type { LevelEdges } from '../../logic/engine/getNextTopologyPosition';
 import type { useGameEngine } from '../../hooks/useGameEngine';
 import type { SoundName } from '../../hooks/useSoundManager';
@@ -19,6 +23,8 @@ interface BoardAreaProps {
     snapshots: Snapshots;
     controlledRoomIds: string[];
     levelEdges?: LevelEdges;
+    /** Canvas tuvallerinin `aria-label`i için (yalnızca canvas yolu kullanır). */
+    levelName?: string;
     isAnimating: boolean;
     onAnimationEnd: () => void;
     onTouchStart: (e: ReactTouchEvent) => void;
@@ -32,6 +38,12 @@ interface BoardAreaProps {
     muted?: boolean;
 }
 
+/** Son karede ölüm veya zafer var mı: bu durumda tahta yeniden kurulursa efekt baştan oynar. */
+function hasGameEnded(snapshots: TickSnapshot[]): boolean {
+    const last = snapshots[snapshots.length - 1];
+    return !!last && last.entities.some(e => e.customData.deathReason || e.customData.isVictory);
+}
+
 /** Ölçeklenmiş board alanı: swipe girdisini yakalar, GameBoard'u native boyutta çizip scale eder. */
 export function BoardArea({
     areaRef,
@@ -41,6 +53,7 @@ export function BoardArea({
     snapshots,
     controlledRoomIds,
     levelEdges,
+    levelName,
     isAnimating,
     onAnimationEnd,
     onTouchStart,
@@ -51,10 +64,40 @@ export function BoardArea({
     onPlaySound,
     muted,
 }: BoardAreaProps) {
-    // Canvas yolu DOM yolunun yanında duruyor; seçim `boardRenderer` bayrağında
-    // (bkz. src/game-engine/render/boardRenderer.ts). Varsayılan 'dom'.
-    const renderer = useBoardRenderer();
-    const Board = renderer === 'canvas' ? BoardCanvas : GameBoard;
+    // Canvas yolu DOM yolunun yanında duruyor; seçim `boardRenderer` ayarı, kasma
+    // dedektörü ve cihaz kuralıyla belirlenir (bkz. render/boardRenderer.ts).
+    // Çizici değişimi yalnızca güvenli anda uygulanır: hareket sürerken değil ve
+    // ölüm/zafer karesinde değil (tahta yeniden kurulursa efekt baştan oynardı;
+    // bir sonraki seviye/yeniden başlatmada zaten yeni tahta kurulur).
+    const isSafe = !isAnimating && !hasGameEnded(snapshots);
+    const { renderer, jankGuard } = useBoardRenderer(isSafe);
+    const reportPhase = useJankGuard(jankGuard);
+
+    // Çizici geçişinde yeni tahta tek kareli (dinlenen) diziyle kurulur ve
+    // useFilmPlayback o karenin sesini yeniden çalardı: geçiş sessiz olmalı.
+    const [prevRenderer, setPrevRenderer] = useState(renderer);
+    const [swapped, setSwapped] = useState<TickSnapshot | null>(null);
+    if (renderer !== prevRenderer) {
+        setPrevRenderer(renderer);
+        if (prevRenderer !== null && renderer !== null) {
+            setSwapped(snapshots.length === 1 ? snapshots[0] : null);
+        }
+    }
+    const boardSnapshots = useMemo(
+        () => (swapped && snapshots.length === 1 && snapshots[0] === swapped
+            ? [{ ...swapped, vfxEvents: [] }]
+            : snapshots),
+        [snapshots, swapped],
+    );
+
+    const boardProps = {
+        snapshots: boardSnapshots.length > 0 ? boardSnapshots : null,
+        controlledRoomIds,
+        levelEdges,
+        onAnimationEnd,
+        onPlaySound,
+        muted,
+    };
 
     return (
         <div
@@ -87,14 +130,9 @@ export function BoardArea({
                     position: 'relative',
                 }}
             >
-                <Board
-                    snapshots={snapshots.length > 0 ? snapshots : null}
-                    controlledRoomIds={controlledRoomIds}
-                    levelEdges={levelEdges}
-                    onAnimationEnd={onAnimationEnd}
-                    onPlaySound={onPlaySound}
-                    muted={muted}
-                />
+                {/* `null` iken tahta çizilmez: cihaz kararı boyamadan önce verilir. */}
+                {renderer === 'canvas' && <BoardCanvas {...boardProps} levelName={levelName} />}
+                {renderer === 'dom' && <GameBoard {...boardProps} onPlaybackPhase={reportPhase} />}
 
                 {boardOverlay}
 
@@ -111,6 +149,11 @@ export function BoardArea({
             </div>
 
             {areaOverlay}
+
+            {/* Yalnızca geliştirme build'inde: iki yolu karşılaştırma aracı (09-kapanis §2.5). */}
+            {process.env.NODE_ENV !== 'production' && renderer && (
+                <BoardRendererToggle renderer={renderer} onChange={setBoardRendererSetting} />
+            )}
         </div>
     );
 }

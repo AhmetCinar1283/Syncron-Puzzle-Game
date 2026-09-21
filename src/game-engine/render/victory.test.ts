@@ -24,7 +24,9 @@ import {
     PARTICLE_SHAPES,
     victoryParticleSprite,
     victoryPlayerSprite,
+    victoryVignetteBox,
     victoryVignetteSprite,
+    VIGNETTE_RASTER,
 } from './victorySprites';
 import { blurPad } from './blur';
 import { BOARD_BLEED_FULL, BOARD_BLEED_LITE, boardBleedFor } from './surface';
@@ -302,9 +304,17 @@ describe('sprite anahtarları (00-ilkeler §3.1)', () => {
             .not.toBe(victoryParticleSprite.key({ shape: 'circle', color: '#ffd700' }));
     });
 
-    it('vignette anahtarı tahta ölçüsüyle değişir, kutusu her yönde 40 büyüktür', () => {
+    it('vignette anahtarı tahta ölçüsüyle değişir, görünen kutusu her yönde 40 büyüktür', () => {
         expect(victoryVignetteSprite.key({ w: 640, h: 640 })).not.toBe(victoryVignetteSprite.key({ w: 640, h: 320 }));
-        expect(victoryVignetteSprite.size({ w: 640, h: 320 })).toEqual({ w: 720, h: 400 });
+        expect(victoryVignetteBox({ w: 640, h: 320 })).toEqual({ w: 720, h: 400 });
+    });
+
+    it('vignette yarı çözünürlükte rasterize edilir: sprite kutusu görünen kutunun yarısıdır (07-rapor §5)', () => {
+        expect(VIGNETTE_RASTER).toBe(0.5);
+        expect(victoryVignetteSprite.size({ w: 640, h: 640 })).toEqual({ w: 360, h: 360 });
+        // 640x640, DPR 2: 360 * 2 = 720 px kenar → 720 * 720 * 4 = 2 073 600 bayt (~1,98 MiB).
+        const side = victoryVignetteSprite.size({ w: 640, h: 640 }).w * 2;
+        expect(side * side * 4).toBe(2_073_600);
     });
 });
 

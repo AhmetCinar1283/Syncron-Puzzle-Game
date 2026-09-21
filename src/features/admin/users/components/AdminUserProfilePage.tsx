@@ -79,6 +79,8 @@ export function AdminUserProfilePage() {
     return (
       <div
         style={{
+          position: 'relative',
+          zIndex: 1,
           minHeight: '100dvh',
           background: '#030712',
           display: 'flex',
@@ -95,6 +97,8 @@ export function AdminUserProfilePage() {
     <AdminGuard>
       <div
         style={{
+          position: 'relative',
+          zIndex: 1,
           minHeight: '100dvh',
           background: '#030712',
           color: '#e2e8f0',

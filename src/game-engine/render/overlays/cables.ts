@@ -6,21 +6,24 @@
  * `cell.id`, konum veya `cableConnections` İÇERMEZ; hangi şeridin çizileceği
  * blit anında seçilir.
  *
- * Katman opaklığı DOM'da `isCurrentlyVisible ? 0.65 : 0.15`; sis Faz 07'nin,
- * şimdilik `0.65` sabit. Kablolar izlerin ÜSTÜNDE (kaynakta `zIndex` 6'ya karşı 5)
+ * Katman opaklığı DOM'da `isCurrentlyVisible ? 0.65 : 0.15`; sis Faz 07'de
+ * `FogFrame` ile bağlandı (keşfedilmemiş hücre ve komşusu çizilmez). Kablolar izlerin ÜSTÜNDE (kaynakta `zIndex` 6'ya karşı 5)
  * ve oda `opacity`sinden ETKİLENMEZ (DOM'da oda `<div>`'inin dışında). Şerit
  * konumu iz gibi kenarlık kadar içeri ÖTELENMEZ (bkz. trails.ts başlığı).
  */
 
+import { cellKey } from '../../components/board/boardIndex';
 import type { BoardScene, SpritePainter } from '../types';
 import type { SpriteCache } from '../spriteCache';
+import type { FogFrame } from '../fog';
 import { paintBox } from '../paintTokens';
 import type { Box } from '../paintTokens';
 import { outerPad } from '../cells/common';
 import { NATIVE_CELL_SIZE, drawAt, forEachRoom } from './geometry';
 
-/** `isCurrentlyVisible` iken katman opaklığı. */
+/** `isCurrentlyVisible ? 0.65 : 0.15` — `RoomCablesImpl`'deki sis opaklığı. */
 const CABLE_ALPHA = 0.65;
+const CABLE_ALPHA_DIM = 0.15;
 
 const STRIP_COLOR = 'rgba(251, 191, 36, 0.85)';
 const STRIP_SHADOW = '0 0 4px rgba(234, 179, 8, 0.6)';
@@ -67,21 +70,39 @@ export const cableNodeSprite: SpritePainter<Record<string, never>> = {
 };
 
 /** Elektrikli (veya güç) hücrelerin kablolarını `static` katmanına çizer. */
-export function drawCables(ctx: CanvasRenderingContext2D, scene: BoardScene, cache: SpriteCache): void {
+export function drawCables(
+    ctx: CanvasRenderingContext2D,
+    scene: BoardScene,
+    cache: SpriteCache,
+    fog: FogFrame | null = null,
+): void {
     ctx.save();
-    ctx.globalAlpha = CABLE_ALPHA;
 
     forEachRoom(scene, (room, offset) => {
         for (const row of room.grid) {
             for (const cell of row) {
                 if (!cell.isElectrified && cell.type !== 'power') continue;
 
-                const x = offset.left + cell.position.col * NATIVE_CELL_SIZE;
-                const y = offset.top + cell.position.row * NATIVE_CELL_SIZE;
+                const r = cell.position.row;
+                const c = cell.position.col;
+                const key = cellKey(room.id, r, c);
+                if (fog && !fog.explored(key)) continue;
+
+                ctx.globalAlpha = fog
+                    ? CABLE_ALPHA_DIM + (CABLE_ALPHA - CABLE_ALPHA_DIM) * fog.lit(key)
+                    : CABLE_ALPHA;
+
+                const x = offset.left + c * NATIVE_CELL_SIZE;
+                const y = offset.top + r * NATIVE_CELL_SIZE;
                 const connections = (cell.customData.cableConnections as string[]) ?? [];
 
-                for (const [dir, axis] of [['right', 'h'], ['down', 'v']] as const) {
+                for (const [dir, axis, dr, dc] of [['right', 'h', 0, 1], ['down', 'v', 1, 0]] as const) {
                     if (!connections.includes(dir)) continue;
+                    // Şerit komşu hücrenin merkezine uzanır; komşu keşfedilmemişse çizilmez.
+                    if (fog) {
+                        const neighbor = room.grid[r + dr]?.[c + dc];
+                        if (!neighbor || !fog.explored(cellKey(room.id, neighbor.position.row, neighbor.position.col))) continue;
+                    }
                     drawAt(ctx, cache, cableStripSprite, { axis }, x + STRIPS[axis].x - STRIP_PAD, y + STRIPS[axis].y - STRIP_PAD);
                 }
                 drawAt(ctx, cache, cableNodeSprite, {}, x + NODE.x - NODE_PAD, y + NODE.y - NODE_PAD);

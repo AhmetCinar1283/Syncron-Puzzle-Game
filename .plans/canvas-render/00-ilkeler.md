@@ -75,6 +75,10 @@ Tüm yeni kod `src/game-engine/render/` altında. Dışarıya tek giriş noktas�
       entities.ts           Faz 05  — oyuncu, kutu
       motion.ts             Faz 05  — easing ve zaman tabanlı hareket/efekt durumu
       victory.ts            Faz 06  — zafer koreografisi
+      keepAlive.ts          Faz 10  — "şu katman şu ana kadar kirli kalsın" (sis dahil tüm geçişler)
+      fades.ts              Faz 10  — buz/teleport/oda çapraz geçişi ve trambolin ezilmesinin durumu
+      idle.ts               Faz 10  — boşta oyuncu animasyonunu ambient bütçesine bağlar
+      variants.ts           Faz 10  — filtreli ve parlamalı sprite varyantları (`ctx.filter` yalnızca burada)
 
 ### 3.1 Sprite sözleşmesi — izin merkezi kararı
 
@@ -161,6 +165,10 @@ DPR bilmez.
 > **Çizim kodu bu sayıyı bilmez**; koordinatlar bugünkü gibi tahtanın
 > (0,0) noktasına göredir. `clearRect` payı kapsar.
 >
+> **Güncelleme (Faz 09 §2.1).** Pay artık **katman özelliği**: `static` ve
+> `ambient` 32, `actors` kademenin payı (`full` 160, `lite` 64). Her tuval kendi
+> payıyla büyür, kaydırılır ve dönüşümüne gömer (`surface.ts` `layerBleed`).
+>
 > **İkinci güncelleme (Faz 04b §2.2).** `ctx.shadowBlur` ve `shadowOffsetX/Y`
 > dönüşüm matrisini **yok sayar**, cihaz pikseliyle çalışır. Bu yüzden
 > rasterizasyonda gölge doğrudan atanmaz; `paintTokens.setShadow(ctx, renk,
@@ -186,8 +194,22 @@ değeriyle** vermek zorunda. Karar doğru; üçü birden buna göre standartlaş
 type LayerDraw = (...) => boolean;
 ```
 
-- `drawStaticLayer` → daima `false` (kendini yeniden kirletmez).
+- `drawStaticLayer` → kendi dönüş değeri yok (`void`) ve kendini kendiliğinden
+  yeniden kirletmez; **ama Faz 10'dan beri geçiş sürdüğü sürece kirli kalır**
+  (sis 300 ms, buz 200 ms, teleport 600 ms, oda 250 ms, trambolin ezilmesi
+  500 ms). Bunu çizici söylemez: geçişi başlatan taraf bitiş damgasını
+  `KeepAlive`a yazar (`render/keepAlive.ts`, "şu katman şu ana kadar kirli
+  kalsın" diyen TEK yer); `BoardCanvas` her çizimden sonra
+  `keepAlive.active(katman, now)`a bakıp `invalidate` eder. Aynı yol `ambient` ve
+  `actors` için de geçerli (sis geçişi üçünü de tutar). Sis (Faz 07) ve
+  çapraz geçişler (Faz 10) bu yolu paylaşır; yeni bir "kirli tut" mekanizması
+  icat edilmez.
 - `drawAmbientLayer` → canlı bir süs çizildiyse **ve** `ambientMode === 'on'` ise `true`.
+  Faz 10'dan beri ek olarak ekranda **boşta animasyonlu bir oyuncu** (kilitsiz →
+  göz kırpar; neon ters mod → halka nabız atar) varsa ambient döngüsü sürer ve
+  kırpma/nabız durumu değiştiğinde `actors` da kirletilir (`render/idle.ts`).
+  `ambientMode !== 'on'` iken (`lite`, zafer, hamle sürerken) bu yol **hiçbir şey
+  uyandırmaz** — "boşta sıfır çizim" vaadi; `idle.test.ts` kilitliyor.
 - `drawActorsLayer` → tick interpolasyonu sürüyorsa, aktif bir efekt varsa veya
   zafer koreografisi devam ediyorsa `true` (Faz 05–06).
 
@@ -238,8 +260,8 @@ Göreve başlamadan önceki taban çizgisi (`refactor/architecture`, 2026-09-20)
 |---|---|---|
 | Tip denetimi | `npx tsc --noEmit` | hatasız |
 | Testler | `npm test` | 28 dosya / 198 test geçer |
-| Lint (tüm repo) | `npm run lint` | **431 hata / 13240 uyarı** (taban; artmayacak) |
-| Lint (yalnız `src`) | `npx eslint src` | **154 hata / 52 uyarı** (taban; artmayacak) |
+| Lint (tüm repo) | `npm run lint` | **275 hata / 79 uyarı** (Faz 09 tabanı; `out-*` yoksayıldı; artmayacak) |
+| Lint (yalnız `src`) | `npx eslint src` | **160 hata / 53 uyarı** (Faz 09 ölçümü; artmayacak) |
 | Lint (yeni kod) | `npx eslint src/game-engine/render` | **0 sorun** |
 | Android build | `npm run build:mobile` | `cap sync` biter |
 
@@ -300,7 +322,7 @@ Canvas, DOM yolunun **yanına** kurulur, yerine değil. Seçim `userStorage` üz
 
 `src/lib/motionTier.ts`'teki `MOTION_TIER_KEY` deseninin birebir aynısı: anahtar
 sabiti + `setBoardRendererOverride()` + okuma fonksiyonu. Faz 01 bunu kurar,
-varsayılan `'dom'`. **Faz 08** ölçümden sonra varsayılanı `'canvas'`'a çevirir.
+varsayılan `'dom'` (Faz 09 §2.4 bekliyor). **Faz 08** ölçümden sonra varsayılanı `'canvas'`'a çevirir.
 
 Bu bayrak sayesinde her faz sonunda oyun oynanabilir durumda kalır; yarım kalmış
 bir canvas yolu kimseyi engellemez.

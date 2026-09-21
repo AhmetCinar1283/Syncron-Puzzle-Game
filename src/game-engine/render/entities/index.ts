@@ -7,25 +7,29 @@
  * ÇİZİM SIRASI: `zIndex: 10 + z` karşılığı — varlıklar `z`'ye göre ARTAN sırada
  * çizilir, böylece zıplayan varlık üstte kalır (faz planı §3.7).
  *
- * GÖZ KIRPMA VE NABIZ döngüyü UYANIK TUTMAZ. 00-ilkeler §2.2 ve faz planı §3.8
- * `actors` katmanını yalnızca dört durumda kirli tutuyor (tick geçişi, aktif
- * efekt, zıplama, buzda kayma); süs animasyonları listede yok. Bu yüzden boşta
- * duran bir oyuncu göz kırpmaz — bilinen ve kasıtlı fark (bkz. 05-rapor §5).
+ * GÖZ KIRPMA VE NABIZ bu katmanın döngüsünü KENDİSİ uyanık tutmaz: `actors`
+ * yalnızca tick geçişi, aktif efekt, zıplama ve buzda kayma sürerken `true`
+ * döner. Boşta duran oyuncunun animasyonunu `ambient` katmanının bütçesi
+ * sürer (`idle.ts`, Faz 10 §2.1): ambient bir kare çizince, kırpma/nabız
+ * durumu değiştiyse `BoardCanvas` bu katmanı da kirletir.
  */
 
 import type { Entity } from '../../logic/entityTypes';
 import type { Direction } from '../../logic/types';
+import { cellKey } from '../../components/board/boardIndex';
+import type { FogFrame } from '../fog';
 import type { BoardScene } from '../types';
 import { NATIVE_CELL_SIZE } from '../types';
 import type { SpriteCache } from '../spriteCache';
 import { EASE_MOVE } from '../motion';
 import type { EntityMotionTracker } from '../entityMotion';
-import { entityXY, isTeleporting, isTrackActive, trackTransformOf } from '../entityMotion';
+import { effectLayersOf, entityXY, isTeleporting, isTrackActive, trackTransformOf } from '../entityMotion';
 import { drawVictory } from '../victory';
 import type { VictoryTracker } from '../victory';
 import { boxInputOf, boxSprite } from './box';
 import { playerInputOf, playerSprite } from './player';
 import { dustParticlesAt, iceDustSprite } from './dust';
+import { blitWithEffects } from './effects';
 
 export { boxSprite, playerSprite, iceDustSprite };
 export { boxInputOf } from './box';
@@ -64,7 +68,8 @@ function blitCentered(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, 
  *
  * @returns Bir kare daha gerekiyorsa `true` (00-ilkeler §3.4). Ölçüt faz planı
  * §3.8: tick geçişi sürüyor, aktif bir efekt var, bir varlık havada veya
- * buzda kayıyor — ya da (Faz 06) zafer koreografisi sürüyor.
+ * buzda kayıyor ya da (Faz 06) zafer koreografisi sürüyor. Sis geçişi
+ * (Faz 07) `KeepAlive` üzerinden katmanı kirli tutar (`keepAlive.ts`).
  */
 export function drawActorsLayer(
     ctx: CanvasRenderingContext2D,
@@ -73,6 +78,7 @@ export function drawActorsLayer(
     now: number,
     motion: EntityMotionTracker | null = null,
     victory: VictoryTracker | null = null,
+    fog: FogFrame | null = null,
 ): boolean {
     const prevById = new Map<number, Entity>();
     for (const entity of scene.prevEntities ?? []) prevById.set(entity.id, entity);
@@ -89,6 +95,14 @@ export function drawActorsLayer(
         // Zafer koreografisi oynarken oyuncuları Faz 06 çiziyor; burada
         // görünmezler (`opacity: 0.0` karşılığı).
         if (entity.type === 'player' && scene.isVictoryActive) continue;
+
+        // Sis (Faz 07): oyuncu keşfedilmiş hücrede hep görünür, diğer varlıklar
+        // yalnızca görünür hücrede (`GameBoard`'daki `opacity` kuralı). Geçiş
+        // `transition: opacity 0.3s` karşılığı, `FogFrame` ilerlemesiyle.
+        const fogAlpha = fog
+            ? fog.entityAlpha(cellKey(entity.position.roomId ?? 'main', entity.position.row, entity.position.col), entity.type === 'player')
+            : 1;
+        if (fogAlpha <= 0) continue;
 
         const z = entity.physics.z;
         const prev = prevById.get(entity.id) ?? null;
@@ -113,6 +127,7 @@ export function drawActorsLayer(
         if (sliding) alive = true;
 
         ctx.save();
+        ctx.globalAlpha *= fogAlpha;
         ctx.translate(x + HALF, y + HALF);
 
         if (transform) {
@@ -135,14 +150,13 @@ export function drawActorsLayer(
 
         if (sliding) drawDust(ctx, cache, entity.physics.direction, now);
 
+        // Ölüm/çarpışma keyframe'lerinin `filter` kısmı (renk kayması, parlama):
+        // sprite varyantları, ağırlıkları `sampleTrack` verir (bkz. effects.ts).
+        const layers = effectLayersOf(state);
         if (entity.type === 'player') {
-            const input = playerInputOf(scene.theme, entity.customData, now);
-            const { w, h } = playerSprite.size(input);
-            blitCentered(ctx, cache.get(playerSprite, input), w, h);
+            blitWithEffects(ctx, cache, playerSprite, playerInputOf(scene.theme, entity.customData, now), layers, transform?.fx);
         } else {
-            const input = boxInputOf(scene.theme, entity);
-            const { w, h } = boxSprite.size(input);
-            blitCentered(ctx, cache.get(boxSprite, input), w, h);
+            blitWithEffects(ctx, cache, boxSprite, boxInputOf(scene.theme, entity), layers, transform?.fx);
         }
 
         ctx.restore();

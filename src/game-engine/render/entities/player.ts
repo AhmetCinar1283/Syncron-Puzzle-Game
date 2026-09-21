@@ -148,6 +148,15 @@ export function pulsePhaseAt(theme: GameTheme, mode: 'normal' | 'reversed', now:
     return Math.floor(((now % PLAYER_PULSE_MS) / PLAYER_PULSE_MS) * PHASES) % PHASES;
 }
 
+/**
+ * Bu oyuncu BOŞTAYKEN animasyonlu mu: kilitsizse göz kırpar, neon ters modda
+ * ayrıca dış halkası nabız atar. Kilitli oyuncu kırpmaz (kilit ikonu var).
+ */
+export function isIdleAnimated(theme: GameTheme, customData: Record<string, unknown>): boolean {
+    if (!customData.isLocked) return true;
+    return theme === 'neon' && customData.mode === 'reversed';
+}
+
 /** Sahnedeki bir varlıktan sprite girdisi. */
 export function playerInputOf(
     theme: GameTheme,

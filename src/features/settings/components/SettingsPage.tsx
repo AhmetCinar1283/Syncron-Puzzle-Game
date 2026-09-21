@@ -15,14 +15,17 @@ import { ALL_THEMES, type GameTheme } from '@/game-engine/themes/themeConfig';
 import { LANGS, type Lang } from '@/lib/i18n';
 import { Volume2, VolumeX, RotateCcw, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
 import { GameIcon } from '@/components/icons';
+import { useBoardRendererSetting } from '@/game-engine/render/boardRenderer';
+import { RENDERER_OPTIONS } from './RendererSection';
 
-const TOTAL_FOCUS_ITEMS = 6;
+const TOTAL_FOCUS_ITEMS = 7;
 // 0: Geri Butonu
 // 1: Ses Aç/Kapa
 // 2: Ses Seviyesi Slider
 // 3: Dil Seçimi
 // 4: Tema Seçimi
-// 5: Varsayılanlara Sıfırla
+// 5: Tahta Çizimi (Otomatik / DOM / Canvas)
+// 6: Varsayılanlara Sıfırla
 
 export function SettingsPage() {
   const t = useT();
@@ -36,6 +39,8 @@ export function SettingsPage() {
     setSoundVolume,
     resetToDefaults,
   } = useSettings();
+
+  const [rendererSetting, setRendererSetting] = useBoardRendererSetting();
 
   const [focusIndex, setFocusIndex] = useState<number>(1);
   const [isGamepadActive, setIsGamepadActive] = useState<boolean>(false);
@@ -66,8 +71,12 @@ export function SettingsPage() {
       const curIdx = ALL_THEMES.findIndex((th) => th.id === activeTheme);
       const prevIdx = curIdx > 0 ? curIdx - 1 : ALL_THEMES.length - 1;
       setTheme(ALL_THEMES[prevIdx].id as GameTheme);
+    } else if (focusIndex === 5) {
+      const curIdx = RENDERER_OPTIONS.findIndex((o) => o.value === rendererSetting);
+      const prevIdx = curIdx > 0 ? curIdx - 1 : RENDERER_OPTIONS.length - 1;
+      setRendererSetting(RENDERER_OPTIONS[prevIdx].value);
     }
-  }, [focusIndex, volume, setSoundVolume, activeLang, setLanguage, activeTheme, setTheme]);
+  }, [focusIndex, volume, setSoundVolume, activeLang, setLanguage, activeTheme, setTheme, rendererSetting, setRendererSetting]);
 
   const handleStepRight = useCallback(() => {
     if (focusIndex === 2) {
@@ -81,8 +90,11 @@ export function SettingsPage() {
       const curIdx = ALL_THEMES.findIndex((th) => th.id === activeTheme);
       const nextIdx = (curIdx + 1) % ALL_THEMES.length;
       setTheme(ALL_THEMES[nextIdx].id as GameTheme);
+    } else if (focusIndex === 5) {
+      const curIdx = RENDERER_OPTIONS.findIndex((o) => o.value === rendererSetting);
+      setRendererSetting(RENDERER_OPTIONS[(curIdx + 1) % RENDERER_OPTIONS.length].value);
     }
-  }, [focusIndex, volume, muted, setSoundVolume, setSoundMuted, activeLang, setLanguage, activeTheme, setTheme]);
+  }, [focusIndex, volume, muted, setSoundVolume, setSoundMuted, activeLang, setLanguage, activeTheme, setTheme, rendererSetting, setRendererSetting]);
 
   const handleConfirm = useCallback(() => {
     if (focusIndex === 0) {
@@ -96,6 +108,8 @@ export function SettingsPage() {
     } else if (focusIndex === 4) {
       handleStepRight();
     } else if (focusIndex === 5) {
+      handleStepRight();
+    } else if (focusIndex === 6) {
       handleReset();
     }
   }, [focusIndex, handleBack, toggleSoundMute, handleStepRight, handleReset]);
@@ -154,14 +168,6 @@ export function SettingsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleStepLeft, handleStepRight, handleConfirm, handleBack]);
 
-  const getFocusStyle = (idx: number): React.CSSProperties => {
-    const active = focusIndex === idx;
-    if (!active) return {};
-    return {
-      borderColor: '#00ff88',
-      boxShadow: '0 0 18px rgba(0, 255, 136, 0.35)',
-    };
-  };
 
   return (
     <>
@@ -270,13 +276,15 @@ export function SettingsPage() {
                   fontSize: 12,
                   fontWeight: 700,
                   borderRadius: 8,
-                  border: muted ? '1px solid #374151' : '1px solid rgba(0, 255, 136, 0.4)',
+                  border: focusIndex === 1
+                    ? '1px solid #00ff88'
+                    : (muted ? '1px solid #374151' : '1px solid rgba(0, 255, 136, 0.4)'),
                   background: muted ? 'rgba(55, 65, 81, 0.25)' : 'rgba(0, 255, 136, 0.12)',
                   color: muted ? '#9ca3af' : '#00ff88',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                   outline: 'none',
-                  ...getFocusStyle(1),
+                  boxShadow: focusIndex === 1 ? '0 0 18px rgba(0, 255, 136, 0.35)' : 'none',
                 }}
               >
                 {muted ? t('settings.sound_muted') : t('settings.sound_active')}
@@ -483,15 +491,74 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* 4. SIFIRLAMA BÖLÜMÜ (Focus 5) */}
+          {/* 4. TAHTA ÇİZİMİ BÖLÜMÜ (Focus 5) */}
+          <div
+            onMouseEnter={() => setFocusIndex(5)}
+            style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: focusIndex === 5 ? '1px solid #00ff88' : '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: focusIndex === 5 ? '0 0 16px rgba(0, 255, 136, 0.2)' : 'none',
+              borderRadius: 14,
+              padding: '20px 22px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, color: '#f1f5f9', letterSpacing: '0.03em' }}>
+                {t('settings.renderer_title')}
+              </h2>
+              <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>{t('settings.renderer_desc')}</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {RENDERER_OPTIONS.map(({ value, labelKey }) => {
+                const isSelected = rendererSetting === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setRendererSetting(value);
+                      setFocusIndex(5);
+                    }}
+                    style={{
+                      flex: '1 1 130px',
+                      padding: '12px 18px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      border: isSelected
+                        ? '1.5px solid #00ff88'
+                        : '1px solid rgba(255, 255, 255, 0.1)',
+                      background: isSelected
+                        ? 'rgba(0, 255, 136, 0.14)'
+                        : 'rgba(15, 23, 42, 0.5)',
+                      color: isSelected ? '#00ff88' : '#94a3b8',
+                      boxShadow: isSelected ? '0 0 14px rgba(0, 255, 136, 0.25)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      outline: 'none',
+                    }}
+                  >
+                    {t(labelKey)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. SIFIRLAMA BÖLÜMÜ (Focus 6) */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 }}>
             <button
               type="button"
               onClick={handleReset}
-              onMouseEnter={() => setFocusIndex(5)}
+              onMouseEnter={() => setFocusIndex(6)}
               style={{
-                background: focusIndex === 5 ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.08)',
-                border: focusIndex === 5 ? '1px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
+                background: focusIndex === 6 ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.08)',
+                border: focusIndex === 6 ? '1px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
                 color: '#ef4444',
                 fontSize: 12,
                 fontWeight: 700,
@@ -503,7 +570,7 @@ export function SettingsPage() {
                 borderRadius: 8,
                 transition: 'all 0.15s ease',
                 outline: 'none',
-                boxShadow: focusIndex === 5 ? '0 0 14px rgba(239, 68, 68, 0.3)' : 'none',
+                boxShadow: focusIndex === 6 ? '0 0 14px rgba(239, 68, 68, 0.3)' : 'none',
               }}
             >
               <RotateCcw size={14} />

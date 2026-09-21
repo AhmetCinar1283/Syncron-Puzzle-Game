@@ -12,14 +12,16 @@
  *     kenarlık kalınlığı (2–3px) kadar sol-üste kayık duruyor.
  *   - Oyuncunun yanındaki hücre kontrolü (`isPlayerLeft` vb.) `roomId`'ye
  *     BAKMIYOR; başka odadaki aynı koordinat da sayılır.
- * Sis (`explored`/`isCurrentlyVisible`) Faz 07'nin: şimdilik her iz görünür.
+ * SİS (Faz 07): keşfedilmemiş hücrenin izi çizilmez; görünmeyen hücrede iz
+ * `opacity: 0.2`, görünürde `1.0` (geçiş `FogFrame.lit` ile, bkz. fog.ts).
  * İz katmanı oda `opacity`sinden ETKİLENMEZ (DOM'da oda `<div>`'inin dışında).
  */
 
 import { getPlayerColor } from '../../components/playerColors';
-import { buildBoardIndex } from '../../components/board/boardIndex';
+import { buildBoardIndex, cellKey } from '../../components/board/boardIndex';
 import type { BoardScene, SpritePainter } from '../types';
 import type { SpriteCache } from '../spriteCache';
+import type { FogFrame } from '../fog';
 import { paintBox } from '../paintTokens';
 import type { Box } from '../paintTokens';
 import { outerPad } from '../cells/common';
@@ -78,8 +80,16 @@ export const trailNodeSprite: SpritePainter<TrailNodeInput> = {
     },
 };
 
+/** `isCurrentlyVisible ? 1.0 : 0.2` — `RoomTrailsImpl`'deki sis opaklığı. */
+const TRAIL_ALPHA_DIM = 0.2;
+
 /** İz kollarını ve düğümlerini `static` katmanına çizer. */
-export function drawTrails(ctx: CanvasRenderingContext2D, scene: BoardScene, cache: SpriteCache): void {
+export function drawTrails(
+    ctx: CanvasRenderingContext2D,
+    scene: BoardScene,
+    cache: SpriteCache,
+    fog: FogFrame | null = null,
+): void {
     const { playerByIndex } = buildBoardIndex(scene.entities);
 
     forEachRoom(scene, (room, offset) => {
@@ -90,6 +100,8 @@ export function drawTrails(ctx: CanvasRenderingContext2D, scene: BoardScene, cac
 
                 const r = cell.position.row;
                 const c = cell.position.col;
+                const key = cellKey(room.id, r, c);
+                if (fog && !fog.explored(key)) continue;
                 const x = offset.left + c * NATIVE_CELL_SIZE;
                 const y = offset.top + r * NATIVE_CELL_SIZE;
 
@@ -106,11 +118,14 @@ export function drawTrails(ctx: CanvasRenderingContext2D, scene: BoardScene, cac
                     down:  hasTrail(1, 0)  || hasPlayer(1, 0),
                 };
 
+                ctx.save();
+                if (fog) ctx.globalAlpha = TRAIL_ALPHA_DIM + (1 - TRAIL_ALPHA_DIM) * fog.lit(key);
                 for (const dir of DIRS) {
                     if (!open[dir]) continue;
                     drawAt(ctx, cache, trailArmSprite, { playerIndex, dir }, x + ARMS[dir].x - ARM_PAD, y + ARMS[dir].y - ARM_PAD);
                 }
                 drawAt(ctx, cache, trailNodeSprite, { playerIndex }, x + NODE.x - NODE_PAD, y + NODE.y - NODE_PAD);
+                ctx.restore();
             }
         }
     });

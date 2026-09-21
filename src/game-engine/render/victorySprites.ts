@@ -9,11 +9,11 @@
  * ile aynı bölme.
  *
  * Gölge/parlama burada serbesttir — kare döngüsünde değil (00-ilkeler §2.1).
- * Bulanıklık `blur.ts` üzerinden; `ctx.filter` bu izde hiç kullanılmıyor.
+ * Bulanıklık `blur.ts` üzerinden; bu dosyada `ctx.filter` yok (tek kullanıcısı
+ * `cells/dim.ts`, sis karartması).
  */
 
 import type { SpritePainter } from './types';
-import { NATIVE_CELL_SIZE } from './types';
 import { getPlayerColor } from '../components/playerColors';
 import { getThemeConfig } from '../themes/themeConfig';
 import { outerGlow, registerRasterDpr, rasterDprOf, roundRectPath } from './paintTokens';
@@ -114,8 +114,26 @@ export const victoryParticleSprite: SpritePainter<VictoryParticleInput> = {
 // ─── Vignette ───────────────────────────────────────────────────────────────
 
 /**
+ * Vignette'in rasterizasyon çözünürlüğü (Faz 07, 06-rapor §4.1 kararı).
+ * Vignette düz bir radial gradient, yüksek frekanslı detayı yok; yarı
+ * çözünürlükte rasterize edilip blit'te iki katına ölçeklenmesi gözle
+ * ayırt edilemez ve 640x640 tahtada belleği 7,91 MB'tan 1,98 MB'a indirir.
+ */
+export const VIGNETTE_RASTER = 0.5;
+
+/** Vignette'in CSS piksel cinsinden GÖRÜNEN kutusu (blit bu ölçüyle yapılır). */
+export function victoryVignetteBox(input: { w: number; h: number }): { w: number; h: number } {
+    return { w: input.w + VIGNETTE_INSET * 2, h: input.h + VIGNETTE_INSET * 2 };
+}
+
+/**
  * Tahtayı karartan sinematik vignette (faz planı §4.5). Tahta boyutu
- * değişmediği sürece tek sprite.
+ * değişmediği sürece tek sprite; boyut değişince eskisi önbellekten silinir
+ * (bkz. `victory.ts`, tek yuvalı istisna).
+ *
+ * `size()` sprite'ın GERÇEK (yarı çözünürlüklü) kutusunu verir, blit ölçüsünü
+ * değil — blit için `victoryVignetteBox` kullanılır. `SUPERNOVA_RASTER` ile
+ * aynı sözleşme, ters yönde.
  *
  * `radial-gradient(circle at center, ...)`in CSS varsayılan yayılımı
  * `farthest-corner`; yarıçap bu yüzden kutunun köşesine olan uzaklıktır.
@@ -124,15 +142,19 @@ export const victoryParticleSprite: SpritePainter<VictoryParticleInput> = {
 export const victoryVignetteSprite: SpritePainter<{ w: number; h: number }> = {
     key: input => `vignette|${input.w}x${input.h}`,
 
-    size: input => ({ w: input.w + VIGNETTE_INSET * 2, h: input.h + VIGNETTE_INSET * 2 }),
+    size(input) {
+        const box = victoryVignetteBox(input);
+        return { w: box.w * VIGNETTE_RASTER, h: box.h * VIGNETTE_RASTER };
+    },
 
     draw(ctx, input) {
-        const w = input.w + VIGNETTE_INSET * 2;
-        const h = input.h + VIGNETTE_INSET * 2;
+        const { w, h } = victoryVignetteBox(input);
         const cx = w / 2;
         const cy = h / 2;
 
         ctx.save();
+        // Çizim tam boyutta kalır; yarım ölçek tuvale sığdırır.
+        ctx.scale(VIGNETTE_RASTER, VIGNETTE_RASTER);
         roundRectPath(ctx, { x: 0, y: 0, w, h }, 24);
         ctx.clip();
         const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(cx, cy));
@@ -273,11 +295,3 @@ export const victoryPlayerSprite: SpritePainter<VictoryPlayerInput> = {
         return true;
     },
 };
-
-/** Oyuncu sprite'ının ortalanmış blit ölçüsü (`victory.ts` kullanır). */
-export function victoryPlayerBox(input: VictoryPlayerInput): { w: number; h: number } {
-    return victoryPlayerSprite.size(input);
-}
-
-/** 64'lük hücre kutusunun yarısı — koordinatlar merkeze göre verilir. */
-export const VICTORY_HALF = NATIVE_CELL_SIZE / 2;

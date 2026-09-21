@@ -48,6 +48,7 @@ export function PlayContent() {
             top: 0,
             left: 0,
             right: 0,
+            zIndex: 10,
             background: '#030712',
             display: 'flex',
             flexDirection: 'column',

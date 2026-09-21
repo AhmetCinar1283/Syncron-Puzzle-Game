@@ -1,14 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 import { 
   GameTheme, 
   ThemeDefinition, 
   getThemeConfig, 
-  isValidTheme, 
   ALL_THEMES 
 } from '../themes/themeConfig';
 import { settingsService } from '@/services/settings';
+import { DEFAULT_SETTINGS } from '@/services/settings/defaults';
 
 export type { GameTheme, ThemeDefinition };
 export { getThemeConfig };
@@ -23,15 +23,19 @@ interface GameThemeContextType {
 
 const GameThemeContext = createContext<GameThemeContextType | undefined>(undefined);
 
-export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<GameTheme>(() => settingsService.getTheme());
+const subscribeToTheme = (callback: () => void) => {
+  return settingsService.subscribe(callback);
+};
 
-  useEffect(() => {
-    const unsubscribe = settingsService.subscribe((s) => {
-      setThemeState(s.theme);
-    });
-    return unsubscribe;
-  }, []);
+const getThemeSnapshot = (): GameTheme => settingsService.getTheme();
+const getServerThemeSnapshot = (): GameTheme => DEFAULT_SETTINGS.theme;
+
+export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
+    getThemeSnapshot,
+    getServerThemeSnapshot,
+  );
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -40,7 +44,6 @@ export const GameThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [theme]);
 
   const setTheme = (newTheme: GameTheme) => {
-    setThemeState(newTheme);
     settingsService.setTheme(newTheme);
   };
 

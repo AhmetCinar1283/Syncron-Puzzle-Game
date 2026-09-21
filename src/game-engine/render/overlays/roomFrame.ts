@@ -12,7 +12,13 @@
  * ÇÖZÜMSÜZ: DOM'da `opacity` odanın TÜM içeriğine grup olarak uygulanıyor;
  * burada arka plan, kenarlık ve gölge ayrı ayrı 0.4 alfa ile çiziliyor. Üst üste
  * binen bölgelerde (kenarlığın arka planla örtüştüğü 2–3px) renk hafif farklı
- * çıkabilir. `transition: opacity 0.25s` de yok — geçiş anlık.
+ * çıkabilir.
+ *
+ * GEÇİŞ (Faz 10 §2.4): `transition: opacity 0.25s, box-shadow 0.25s` iki parçadır.
+ * `opacity` odanın her çizimine `alpha` olarak gelir (`fades.roomAlpha`); çerçeve
+ * `box-shadow`u ise eski/yeni çerçeve sprite'ının çapraz geçişidir. DOM'da
+ * `border-color` geçişe girmez (anında değişir); sprite kenarı da gölgeyle
+ * birlikte solduğundan kenar rengi bu 250ms'de yumuşar — bilinen küçük fark.
  */
 
 import { getThemeConfig } from '../../themes/themeConfig';
@@ -23,7 +29,8 @@ import type { GameTheme } from '../../themes/themeConfig';
 import type { SpritePainter } from '../types';
 import { drawText, measureText } from '../cells/common';
 import type { TextStyle } from '../cells/common';
-import { UNCONTROLLED_ALPHA, drawAt, forEachRoom, roomPaddingBox } from './geometry';
+import type { FadeFrame, Fades } from '../fades';
+import { drawAt, forEachRoom, isRoomControlled, roomPaddingBox } from './geometry';
 
 /** `renderRoom` başlığı: `top: -20, left: 2, 10px/700, letter-spacing .08em`. */
 const TITLE_SIZE = 10;
@@ -64,9 +71,18 @@ export const roomFrameSprite: SpritePainter<RoomFrameInput> = {
     },
 };
 
-/** Bir odanın kutusu: arka plan, kenarlık ve gölgeler. Hücrelerden ÖNCE çizilir. */
-export function drawRoomFrames(ctx: CanvasRenderingContext2D, scene: BoardScene, cache: SpriteCache): void {
-    forEachRoom(scene, (room, offset, isControlled) => {
+/**
+ * Bir odanın kutusu: arka plan, kenarlık ve gölgeler. Hücrelerden ÖNCE çizilir.
+ * Kontrol durumu değişmişse eski ve yeni çerçeve `alpha × (1 − e)` / `alpha × e`
+ * ile çapraz geçer.
+ */
+export function drawRoomFrames(
+    ctx: CanvasRenderingContext2D,
+    scene: BoardScene,
+    cache: SpriteCache,
+    fades: FadeFrame | null = null,
+): void {
+    forEachRoom(scene, (room, offset, isControlled, alpha) => {
         const input: RoomFrameInput = {
             cellsW: room.width,
             cellsH: room.height,
@@ -75,11 +91,35 @@ export function drawRoomFrames(ctx: CanvasRenderingContext2D, scene: BoardScene,
             width: offset.width,
             height: offset.height,
         };
+        const x = offset.left - FRAME_PAD;
+        const y = offset.top - FRAME_PAD;
+        const fade = fades?.roomFade(room.id) ?? null;
+
         ctx.save();
-        ctx.globalAlpha = isControlled ? 1 : UNCONTROLLED_ALPHA;
-        drawAt(ctx, cache, roomFrameSprite, input, offset.left - FRAME_PAD, offset.top - FRAME_PAD);
+        if (fade) {
+            ctx.globalAlpha = alpha * (1 - fade.e);
+            drawAt(ctx, cache, roomFrameSprite, { ...input, isControlled: fade.fromControlled }, x, y);
+            ctx.globalAlpha = alpha * fade.e;
+        } else {
+            ctx.globalAlpha = alpha;
+        }
+        drawAt(ctx, cache, roomFrameSprite, input, x, y);
         ctx.restore();
-    });
+    }, fades);
+}
+
+/**
+ * Odaların kontrol durumunu bildirir; değiştiyse 250ms'lik geçiş başlar.
+ *
+ * @param snap Yeni tur veya tema değişimi: durumu yazar, geçiş BAŞLATMAZ.
+ * @returns Yeni bir geçiş başladıysa `true` — çağıran katmanları kirletmeli.
+ */
+export function observeRoomFades(scene: BoardScene, fades: Fades, now: number, snap: boolean): boolean {
+    let started = false;
+    for (const room of Object.values(scene.rooms)) {
+        if (fades.observeRoom(room.id, isRoomControlled(scene, room.id), now, snap)) started = true;
+    }
+    return started;
 }
 
 /**
@@ -99,11 +139,11 @@ function drawSpacedText(ctx: CanvasRenderingContext2D, text: string, x: number, 
 }
 
 /** Oda adı; kenarlığın DIŞINDA, üst-sol köşede. `static` katmanı. */
-export function drawRoomTitles(ctx: CanvasRenderingContext2D, scene: BoardScene): void {
-    forEachRoom(scene, (room, offset, isControlled) => {
+export function drawRoomTitles(ctx: CanvasRenderingContext2D, scene: BoardScene, fades: FadeFrame | null = null): void {
+    forEachRoom(scene, (room, offset, isControlled, alpha) => {
         const pb = roomPaddingBox(scene, offset);
         ctx.save();
-        ctx.globalAlpha = isControlled ? 1 : UNCONTROLLED_ALPHA;
+        ctx.globalAlpha = alpha;
         drawSpacedText(ctx, room.name.toUpperCase(), pb.left + TITLE_LEFT, pb.top + TITLE_TOP + TITLE_CENTER, {
             size: TITLE_SIZE,
             weight: 'bold',
@@ -112,5 +152,5 @@ export function drawRoomTitles(ctx: CanvasRenderingContext2D, scene: BoardScene)
             align: 'left',
         });
         ctx.restore();
-    });
+    }, fades);
 }

@@ -102,9 +102,9 @@ export const ConstellationNode = forwardRef<HTMLButtonElement, ConstellationNode
           disabled={isLocked}
           aria-label={`${t('levels.level')} ${index + 1}: ${level.name}${isLocked ? ` (${t('levels.locked')})` : ''}`}
           aria-current={isSelected}
-          className={`group relative flex items-center justify-center rounded-full outline-none transition-transform duration-300 ${
+          className={`group relative flex items-center justify-center rounded-full outline-none transition-all duration-300 ${
             isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer active:scale-90 hover:scale-105'
-          }`}
+          } ${isSelected ? 'scale-110' : ''}`}
           style={{
             width: size,
             height: size,
@@ -130,13 +130,13 @@ export const ConstellationNode = forwardRef<HTMLButtonElement, ConstellationNode
             />
           )}
 
-          {/* Klavye / Gamepad Odak Halkası */}
+          {/* Klavye / Gamepad / Scroll Odak Halkası */}
           {isSelected && (
             <span
-              className="pointer-events-none absolute -inset-2 rounded-full border-2"
+              className="pointer-events-none absolute -inset-2.5 rounded-full border-2 animate-pulse"
               style={{
                 borderColor: '#ffffff',
-                boxShadow: `0 0 16px #ffffff`,
+                boxShadow: `0 0 18px #ffffff, inset 0 0 10px rgba(255,255,255,0.4)`,
               }}
             />
           )}

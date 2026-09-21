@@ -6,12 +6,13 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   settingsService,
   type UserSettings,
   type SettingsUpdatePayload,
 } from '@/services/settings';
+import { DEFAULT_SETTINGS } from '@/services/settings/defaults';
 import type { Lang } from '@/lib/i18n';
 import type { GameTheme } from '@/game-engine/themes/themeConfig';
 
@@ -42,17 +43,20 @@ export interface SettingsContextValue {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
-export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<UserSettings>(() => settingsService.getSettings());
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+const subscribeToSettings = (callback: () => void) => {
+  return settingsService.subscribe(callback);
+};
 
-  // settingsService değişikliklerine abone ol
-  useEffect(() => {
-    const unsubscribe = settingsService.subscribe((next) => {
-      setSettings(next);
-    });
-    return unsubscribe;
-  }, []);
+const getSettingsSnapshot = (): UserSettings => settingsService.getSettings();
+const getServerSettingsSnapshot = (): UserSettings => DEFAULT_SETTINGS;
+
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const settings = useSyncExternalStore(
+    subscribeToSettings,
+    getSettingsSnapshot,
+    getServerSettingsSnapshot,
+  );
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const openSettings = () => setIsSettingsOpen(true);
   const closeSettings = () => setIsSettingsOpen(false);

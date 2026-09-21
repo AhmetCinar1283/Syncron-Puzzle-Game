@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-    EASE_IN, EASE_IN_OUT, EASE_MOVE, EASE_OUT, LINEAR, TRACKS, cssBezier, cubicBezier, sampleTrack,
+    EASE_CSS, EASE_IN, EASE_IN_OUT, EASE_MOVE, EASE_OUT, LINEAR, TRACKS, cssBezier, cubicBezier, sampleTrack,
 } from './motion';
 import type { Track } from './motion';
 
@@ -57,9 +57,10 @@ describe('TRACKS tablosu', () => {
         'collision-shake',
         'death-forbidden', 'death-crushed', 'death-lava', 'death-trail',
         'victory-spin', 'teleportInEffect', 'landingSquashEffect',
+        'trampolineLaunch',
     ];
 
-    it('animationStyles.ts’teki yirmi keyframe’in hepsini içerir', () => {
+    it('animationStyles.ts’teki yirmi keyframe’in ve trampolineLaunch’un hepsini içerir', () => {
         for (const name of expected) expect(TRACKS[name], name).toBeDefined();
         expect(Object.keys(TRACKS).sort()).toEqual([...expected].sort());
     });
@@ -93,6 +94,49 @@ describe('TRACKS tablosu', () => {
             expect(TRACKS[name].durationMs, name).toBe(800);
         }
         expect(TRACKS['victory-spin'].repeat).toBe('loop');
+    });
+});
+
+describe('trampolineLaunch', () => {
+    // `@keyframes trampolineLaunch`: 0% scale(1.3, .35), 40% scale(.7, 1.4),
+    // 70% scale(1.15, .85), 100% scale(1, 1); `500ms cubic-bezier(.25,1,.5,1) forwards`.
+    const launch = TRACKS.trampolineLaunch;
+
+    it('süre, tekrar ve easing kaynak CSS ile aynı', () => {
+        expect(launch.durationMs).toBe(500);
+        expect(launch.repeat).toBe('hold-last');
+        expect(launch.easing(0.5)).toBeCloseTo(cubicBezier(0.25, 1, 0.5, 1)(0.5), 10);
+    });
+
+    it('durak değerleri kaynak keyframe ile aynı', () => {
+        const linear = { ...launch, easing: LINEAR };
+        expect(sampleTrack(linear, 0)).toMatchObject({ sx: 1.3, sy: 0.35 });
+        expect(sampleTrack(linear, 200)).toMatchObject({ sx: 0.7, sy: 1.4 });
+        expect(sampleTrack(linear, 350)).toMatchObject({ sx: 1.15, sy: 0.85 });
+        expect(sampleTrack(linear, 500)).toMatchObject({ sx: 1, sy: 1 });
+    });
+
+    it('süre dolunca ölçek 1 değerinde kalır (forwards)', () => {
+        expect(sampleTrack(launch, 60_000)).toMatchObject({ sx: 1, sy: 1, alpha: 1 });
+    });
+
+    it('filter taşımaz (kare döngüsünde filtre yasak)', () => {
+        expect(launch.layers).toBeUndefined();
+        expect(sampleTrack(launch, 100).fx).toBeUndefined();
+    });
+});
+
+describe('EASE_CSS', () => {
+    it('CSS ease: 0 için 0, 1 için 1, monoton ve doğrusaldan hızlı başlar', () => {
+        expect(EASE_CSS(0)).toBeCloseTo(0, 5);
+        expect(EASE_CSS(1)).toBeCloseTo(1, 5);
+        expect(EASE_CSS(0.25)).toBeGreaterThan(0.25);
+        let prev = -Infinity;
+        for (let i = 0; i <= 50; i++) {
+            const value = EASE_CSS(i / 50);
+            expect(value).toBeGreaterThanOrEqual(prev - 1e-9);
+            prev = value;
+        }
     });
 });
 

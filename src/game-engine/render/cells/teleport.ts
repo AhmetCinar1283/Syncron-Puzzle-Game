@@ -22,9 +22,12 @@
  * olmadığı için halka ve iç girdap 12 fazlık örneklemede kendi hızlarında değil,
  * 4.2 s'de kapanan bir çevrimde görünür (aliasing). Bkz. raporlar/03-rapor.md §3.
  *
- * ÇÖZÜMSÜZ: DOM'daki 600 ms'lik `transition`lar (arka plan/kenar/gölge ve
- * girdapların `scale`i) canvas'ta yok; etkin duruma ANINDA geçilir. Aktiflik
- * durumunun kendisi `cells/activity.ts`'te tutulur.
+ * GEÇİŞ (Faz 10 §2.4): DOM'daki 600 ms'lik `transition`lar (arka plan/kenar/gölge
+ * ve girdapların `scale`i/opaklığı) `TELEPORT_FADE_MS` boyunca iki sprite hâlinin
+ * `globalAlpha` ile çapraz geçişidir (`cells/index.ts`). Girdapların `scale`i
+ * (1 → 1.4, `cubic-bezier(0.16, 1, 0.3, 1)`) AYRI bir eğriyle akmaz; yaklaşık
+ * olarak süsün solup belirmesiyle karşılanır. Aktiflik durumunun kendisi
+ * `cells/activity.ts`'te tutulur.
  */
 
 import type { GameTheme } from '../../themes/themeConfig';
@@ -36,6 +39,9 @@ import { BASE_PHASE } from './ice';
 
 /** `rotatePortal 4.2s` — üç süsün ortak örnekleme periyodu (yukarıdaki gerekçe). */
 export const TELEPORT_VORTEX_MS = 4200;
+
+/** `teleportCellRenderer.tsx`: `transition: background-color 600ms ease, border-color 600ms ease, box-shadow 600ms ease`. */
+export const TELEPORT_FADE_MS = 600;
 const RING_MS = 800;
 const INNER_MS = 2200;
 

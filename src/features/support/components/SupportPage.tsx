@@ -31,7 +31,7 @@ export function SupportPage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ color: '#00c4ff', fontSize: 12, letterSpacing: '0.1em' }}>{t('common.loading')}</span>
       </main>
     );
@@ -40,14 +40,15 @@ export function SupportPage() {
   return (
     <div
       style={{
+        position: 'relative',
+        zIndex: 1,
         minHeight: '100dvh',
-        background: '#030712',
+        background: 'transparent',
         color: '#f3f4f6',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         padding: '40px 20px',
-        position: 'relative',
         overflowX: 'hidden',
         boxSizing: 'border-box',
       }}

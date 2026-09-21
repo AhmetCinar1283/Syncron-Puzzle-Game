@@ -10,6 +10,7 @@ export { SettingsButton } from './components/SettingsButton';
 export { SoundSection } from './components/SoundSection';
 export { LanguageSection } from './components/LanguageSection';
 export { ThemeSection } from './components/ThemeSection';
+export { RendererSection } from './components/RendererSection';
 export { SettingsPage } from './components/SettingsPage';
 
 // Servis katmanından kullanışlı tiplerin re-export'u

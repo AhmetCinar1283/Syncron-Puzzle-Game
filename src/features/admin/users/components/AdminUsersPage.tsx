@@ -28,6 +28,8 @@ export function AdminUsersPage() {
     <AdminGuard>
       <div
         style={{
+          position: 'relative',
+          zIndex: 1,
           minHeight: '100dvh',
           background: '#030712',
           color: '#e2e8f0',

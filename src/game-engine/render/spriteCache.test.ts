@@ -153,4 +153,39 @@ describe('createSpriteCache', () => {
         expect(draw).not.toHaveBeenCalled();
         expect(cache.size()).toBe(0);
     });
+
+    it('bytes() Σ genişlik × yükseklik × 4 toplar (tuval boyutu DPR ile çarpılı)', () => {
+        installFakeDocument(true);
+        const cache = createSpriteCache(2);
+        const { painter } = makePainter();
+
+        cache.get(painter, { color: 'red', phase: 0 });
+        cache.get(painter, { color: 'red', phase: 1 });
+
+        // 64 CSS px × DPR 2 = 128 px kenar → 128 * 128 * 4 = 65 536 bayt / sprite.
+        expect(cache.bytes()).toBe(2 * 128 * 128 * 4);
+        cache.clear();
+        expect(cache.bytes()).toBe(0);
+    });
+
+    it('delete() yalnızca verilen anahtarı ve onun belleğini siler', () => {
+        installFakeDocument(true);
+        const cache = createSpriteCache(1);
+        const { painter, draw } = makePainter();
+
+        cache.get(painter, { color: 'red', phase: 0 });
+        cache.get(painter, { color: 'red', phase: 1 });
+        cache.delete('red|0');
+
+        expect(cache.size()).toBe(1);
+        expect(cache.bytes()).toBe(64 * 64 * 4);
+
+        cache.get(painter, { color: 'red', phase: 1 });   // hâlâ önbellekte
+        expect(draw).toHaveBeenCalledTimes(2);
+        cache.get(painter, { color: 'red', phase: 0 });   // silindi → yeniden rasterize
+        expect(draw).toHaveBeenCalledTimes(3);
+
+        cache.delete('yok');                              // olmayan anahtar sessizce geçilir
+        expect(cache.size()).toBe(2);
+    });
 });

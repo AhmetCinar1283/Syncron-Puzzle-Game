@@ -42,14 +42,14 @@ export default function LevelPartsPage() {
 
   if (loading || role !== 'admin') {
     return (
-      <main style={{ minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ color: '#1e3a5f', fontSize: 12, letterSpacing: '0.1em' }}>Loading...</span>
       </main>
     );
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#030712', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', background: '#030712', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
       {/* Top bar (Sticky) */}
       <div
         style={{

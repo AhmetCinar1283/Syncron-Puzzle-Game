@@ -45,9 +45,11 @@ export const EASE_MOVE = cubicBezier(0.25, 1.1, 0.5, 1.1);
 export const EASE_IN_OUT = cubicBezier(0.42, 0, 0.58, 1);
 export const EASE_OUT = cubicBezier(0, 0, 0.58, 1);
 export const EASE_IN = cubicBezier(0.42, 0, 1, 1);
+/** CSS `ease` anahtar kelimesi — `transition`larda süre yanında eğri verilmediğinde bu geçerli. */
+export const EASE_CSS = cubicBezier(0.25, 0.1, 0.25, 1);
 export const LINEAR = (t: number): number => t;
 
-/** `blocked-push-*` ve `death-crushed`'ın kendi eğrileri. */
+/** `blocked-push-*`, `trampolineLaunch` ve `death-crushed`'ın kendi eğrileri. */
 const EASE_PUSH = cubicBezier(0.25, 1, 0.5, 1);
 const EASE_CRUSH = cubicBezier(0.25, 1, 0.2, 1);
 
@@ -63,7 +65,23 @@ export interface Transform {
     /** Radyan; canvas'ta tanjantı `ctx.transform`'a verilir. */
     skewX: number;
     skewY: number;
+    /**
+     * `Track.layers`'ın her katmanının bu andaki ağırlığı (0..1). Yalnızca
+     * `filter` taşıyan keyframe'lerde vardır; diğerlerinde `undefined`.
+     */
+    fx?: number[];
 }
+
+/**
+ * Bir keyframe'in `filter` özelliğinin bir bileşeni. Kare döngüsünde
+ * `ctx.filter`/`shadowBlur` yasak olduğu için (00-ilkeler §2.1) her bileşen bir
+ * SPRITE VARYANTIdır (bkz. `variants.ts`); zamanla değişen tek şey ağırlığıdır.
+ */
+export type EffectLayer =
+    /** `filter` zincirinin renk kısmı (`drop-shadow` HARİÇ). Varlığın kendisi bu renkle çizilir. */
+    | { kind: 'tint'; filter: string }
+    /** `drop-shadow(0 0 blur color)`. Varlığın ARKASINA parlama olarak çizilir. */
+    | { kind: 'halo'; color: string; blur: number };
 
 export interface TrackStop {
     /** 0..1 arası ilerleme noktası (`@keyframes`'teki yüzde). */
@@ -77,10 +95,14 @@ export interface TrackStop {
     alpha?: number;
     skewX?: number;
     skewY?: number;
+    /** `Track.layers` ile aynı sırada ağırlıklar; eksik = 0. */
+    fx?: number[];
 }
 
 export interface Track {
     stops: TrackStop[];
+    /** Keyframe'in `filter` bileşenleri; `TrackStop.fx` bunlara ağırlık verir. */
+    layers?: EffectLayer[];
     /**
      * Varsayılan süre. `bump-*`, `blocked-push-*`, `conveyor-reject-*`,
      * `collision-shake` ve `teleportInEffect` DOM'da `frameMs` ile oynatılıyor;
@@ -166,14 +188,18 @@ export const TRACKS: Record<string, Track> = {
         { at: 1 },
     ], EASE_IN_OUT),
 
+    // `filter: brightness(1.2)` yalnızca 15% ve 30%'da yazılı; 45–75% durakları
+    // `filter` içermediği için özellik 30%'dan örtük 100% (`none`) değerine
+    // doğrusal iner: 1 − (at − 0.30) / 0.70.
     'collision-shake': {
+        layers: [{ kind: 'tint', filter: 'brightness(1.2)' }],
         stops: [
             { at: 0 },
-            { at: 0.15, tx: -8, ty: -3, sx: 0.93, sy: 0.93 },
-            { at: 0.30, tx: 7, ty: 3, sx: 1.07, sy: 1.07 },
-            { at: 0.45, tx: -6, ty: 1, sx: 0.96, sy: 0.96 },
-            { at: 0.60, tx: 4, ty: -1, sx: 1.03, sy: 1.03 },
-            { at: 0.75, tx: -2, ty: 0 },
+            { at: 0.15, tx: -8, ty: -3, sx: 0.93, sy: 0.93, fx: [1] },
+            { at: 0.30, tx: 7, ty: 3, sx: 1.07, sy: 1.07, fx: [1] },
+            { at: 0.45, tx: -6, ty: 1, sx: 0.96, sy: 0.96, fx: [0.7857] },
+            { at: 0.60, tx: 4, ty: -1, sx: 1.03, sy: 1.03, fx: [0.5714] },
+            { at: 0.75, tx: -2, ty: 0, fx: [0.3571] },
             { at: 1 },
         ],
         durationMs: FRAME_MS_DEFAULT,
@@ -181,45 +207,73 @@ export const TRACKS: Record<string, Track> = {
         repeat: 'once',
     },
 
+    // `saturate(1)→(2)→(3)`, `brightness(1)→(1.5)→(0.2)`.
     'death-forbidden': {
+        layers: [
+            { kind: 'tint', filter: 'saturate(2) brightness(1.5)' },
+            { kind: 'tint', filter: 'saturate(3) brightness(0.2)' },
+        ],
         stops: [
             { at: 0, sx: 1, sy: 1, rot: 0, alpha: 1 },
-            { at: 0.35, sx: 1.25, sy: 1.25, rot: 90, alpha: 0.9 },
-            { at: 1, sx: 0, sy: 0, rot: 540, alpha: 0 },
+            { at: 0.35, sx: 1.25, sy: 1.25, rot: 90, alpha: 0.9, fx: [1, 0] },
+            { at: 1, sx: 0, sy: 0, rot: 540, alpha: 0, fx: [0, 1] },
         ],
         durationMs: 800,
         easing: EASE_IN_OUT,
         repeat: 'hold-last',
     },
 
+    // `grayscale(0)→(0.6)→(1)`, `brightness(1)→(0.6)→(0.1)`.
     'death-crushed': {
+        layers: [
+            { kind: 'tint', filter: 'grayscale(0.6) brightness(0.6)' },
+            { kind: 'tint', filter: 'grayscale(1) brightness(0.1)' },
+        ],
         stops: [
             { at: 0, sx: 1, sy: 1, alpha: 1 },
-            { at: 0.25, sx: 1.7, sy: 0.18, alpha: 1 },
-            { at: 1, sx: 1.9, sy: 0.02, alpha: 0 },
+            { at: 0.25, sx: 1.7, sy: 0.18, alpha: 1, fx: [1, 0] },
+            { at: 1, sx: 1.9, sy: 0.02, alpha: 0, fx: [0, 1] },
         ],
         durationMs: 800,
         easing: EASE_CRUSH,
         repeat: 'hold-last',
     },
 
+    // 40%: `brightness(1.6) sepia(1) hue-rotate(-50deg) drop-shadow(0 0 12px #ef4444)`,
+    // 100%: `brightness(2) sepia(1) hue-rotate(-50deg)`. `drop-shadow` zincirin
+    // SONUNDA olduğu için parlama, renk kaymasından etkilenmez.
     'death-lava': {
+        layers: [
+            { kind: 'tint', filter: 'brightness(1.6) sepia(1) hue-rotate(-50deg)' },
+            { kind: 'tint', filter: 'brightness(2) sepia(1) hue-rotate(-50deg)' },
+            { kind: 'halo', color: '#ef4444', blur: 12 },
+        ],
         stops: [
             { at: 0, ty: 0, sx: 1, sy: 1, alpha: 1 },
-            { at: 0.4, ty: 16, sx: 0.9, sy: 1.15, alpha: 0.8 },
-            { at: 1, ty: 32, sx: 0, sy: 0, alpha: 0 },
+            { at: 0.4, ty: 16, sx: 0.9, sy: 1.15, alpha: 0.8, fx: [1, 0, 1] },
+            { at: 1, ty: 32, sx: 0, sy: 0, alpha: 0, fx: [0, 1, 0] },
         ],
         durationMs: 800,
         easing: EASE_IN,
         repeat: 'hold-last',
     },
 
+    // 15%: `hue-rotate(180deg) brightness(2.5) drop-shadow(0 0 12px #00ff88)`,
+    // 45%: `hue-rotate(90deg) brightness(1.8) drop-shadow(0 0 6px #00c4ff)`,
+    // 100%: `hue-rotate(0deg) brightness(0.2)`.
     'death-trail': {
+        layers: [
+            { kind: 'tint', filter: 'hue-rotate(180deg) brightness(2.5)' },
+            { kind: 'tint', filter: 'hue-rotate(90deg) brightness(1.8)' },
+            { kind: 'tint', filter: 'brightness(0.2)' },
+            { kind: 'halo', color: '#00ff88', blur: 12 },
+            { kind: 'halo', color: '#00c4ff', blur: 6 },
+        ],
         stops: [
             { at: 0, sx: 1, sy: 1, alpha: 1 },
-            { at: 0.15, sx: 1.15, sy: 1.15, alpha: 1 },
-            { at: 0.45, sx: 0.75, sy: 0.75, alpha: 0.75 },
-            { at: 1, sx: 0, sy: 0, alpha: 0 },
+            { at: 0.15, sx: 1.15, sy: 1.15, alpha: 1, fx: [1, 0, 0, 1, 0] },
+            { at: 0.45, sx: 0.75, sy: 0.75, alpha: 0.75, fx: [0, 1, 0, 0, 1] },
+            { at: 1, sx: 0, sy: 0, alpha: 0, fx: [0, 0, 1, 0, 0] },
         ],
         durationMs: 800,
         easing: EASE_IN_OUT,
@@ -264,6 +318,21 @@ export const TRACKS: Record<string, Track> = {
         easing: EASE_IN_OUT,
         repeat: 'once',
     },
+
+    // Yalnızca trambolinin YAY'ı ezilir (hücre kutusu değil): `transform-origin:
+    // bottom center`, `trampolineCellRenderer.tsx`. `filter: brightness(1.6→2)`
+    // bu izde YOK — kare döngüsünde filtre yasak ve hücre sprite'ına da giremiyor.
+    trampolineLaunch: {
+        stops: [
+            { at: 0, sx: 1.3, sy: 0.35 },
+            { at: 0.4, sx: 0.7, sy: 1.4 },
+            { at: 0.7, sx: 1.15, sy: 0.85 },
+            { at: 1 },
+        ],
+        durationMs: 500,
+        easing: EASE_PUSH,
+        repeat: 'hold-last',
+    },
 };
 
 const DEG_TO_RAD = Math.PI / 180;
@@ -278,12 +347,25 @@ function resolve(stop: TrackStop): Transform {
         alpha: stop.alpha ?? 1,
         skewX: (stop.skewX ?? 0) * DEG_TO_RAD,
         skewY: (stop.skewY ?? 0) * DEG_TO_RAD,
+        fx: stop.fx,
     };
+}
+
+/** Katman ağırlıklarının ara değeri; eksik eleman 0 sayılır, ikisi de yoksa `undefined`. */
+function mixFx(a: number[] | undefined, b: number[] | undefined, u: number): number[] | undefined {
+    if (!a && !b) return undefined;
+    const length = Math.max(a?.length ?? 0, b?.length ?? 0);
+    return Array.from({ length }, (_, i) => {
+        const p = a?.[i] ?? 0;
+        const q = b?.[i] ?? 0;
+        return p + (q - p) * u;
+    });
 }
 
 function mix(a: Transform, b: Transform, u: number): Transform {
     const lerp = (p: number, q: number) => p + (q - p) * u;
     return {
+        fx: mixFx(a.fx, b.fx, u),
         tx: lerp(a.tx, b.tx),
         ty: lerp(a.ty, b.ty),
         sx: lerp(a.sx, b.sx),

@@ -63,7 +63,7 @@ function LevelsPageContent() {
 
   return (
     <div
-      className="relative flex h-[100dvh] w-screen flex-col overflow-hidden text-slate-200 bg-transparent"
+      className="relative z-1 flex h-[100dvh] w-screen flex-col overflow-hidden text-slate-200 bg-transparent"
     >
       {/* 1. Üst HUD */}
       <div className="relative z-30" style={{ height: isMobile ? 52 : 60 }}>
@@ -117,7 +117,7 @@ function LevelsPageContent() {
 
             {/* Sektör Kilitliyse Kalkanı Göster, Değilse Izgarayı Göster */}
             {isCurrentChapterLocked ? (
-              <div className="flex flex-1 items-center justify-center p-4 overflow-y-auto">
+              <div className="flex flex-1 items-center justify-center p-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <ChapterLockShield
                   chapterName={activePart?.name ?? ''}
                   requiredStars={activePart?.unlockRequirement ?? 0}
@@ -248,6 +248,7 @@ function LevelsPageContent() {
           levelId={previewLevel.id}
           levelData={
             previewLevel.grid && Array.isArray(previewLevel.grid) && previewLevel.grid.length > 0
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ? (previewLevel as any)
               : undefined
           }
