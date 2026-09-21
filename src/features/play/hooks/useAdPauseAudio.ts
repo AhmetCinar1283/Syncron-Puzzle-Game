@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAds } from '@/contexts/MonetizationContext';
-import { soundEngine } from '@/game-engine/audio/soundEngine';
+import { soundEngine } from '@/services/audio';
 
 /**
  * Reklam gösterimi sırasında (SDK'nın `before-ad`/`after-ad` olayları) sayfadaki

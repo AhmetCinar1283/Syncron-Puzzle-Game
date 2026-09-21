@@ -8,7 +8,7 @@ import { selectUser } from '@/store/userSlice';
 import { useT } from '@/contexts/LanguageContext';
 import { useCapabilities } from '@/contexts/MonetizationContext';
 import { useGamepad } from '@/hooks/useGamepad';
-import { useSoundManager } from '@/game-engine/hooks/useSoundManager';
+import { useSoundManager } from '@/services/audio';
 import { isDailyAvailable } from '@/features/daily';
 import type { IconName } from '@/components/icons';
 import { moveMenuSelection, PROFILE_INDEX } from '../lib/menuGrid';
@@ -50,11 +50,9 @@ export function useHomePage() {
   const dailyAvailable = isDailyAvailable(capabilities);
 
   /*
-   * Sesler Web Audio tabanlı tekil motordan çalınır. Önceki sürüm her tık için
-   * `new Audio()` açıyordu; Android WebView'de bu, dokunuş ile sesin duyulması
-   * arasında 50–200ms gecikme ve her seferinde yeni decoder demekti.
+   * Sesler Web Audio tabanlı tekil motordan menü ses ayarıyla çalınır.
    */
-  const { play: playSound } = useSoundManager();
+  const { play: playSound } = useSoundManager('menu');
 
   const motionTier = useMotionTier();
   const [slidePhase, setSlidePhase] = useState<SlidePhase>('idle');
@@ -99,6 +97,7 @@ export function useHomePage() {
   }, [storageGet]);
 
   const handlePlayNavigate = useCallback(async () => {
+    playSound('ui.navigate');
     const id = storageGet('lastPlayedLevelId');
     const src = storageGet('lastPlayedSource');
     if (id) {
@@ -123,7 +122,7 @@ export function useHomePage() {
     }
 
     router.push('/levels');
-  }, [router, storageGet]);
+  }, [router, storageGet, playSound]);
 
   /** Tahtanın kahraman şeridi: her zaman tek ve tartışmasız birincil eylem. */
   const playItem: HomeMenuItem = useMemo(
@@ -152,7 +151,7 @@ export function useHomePage() {
         color: '#ffd700',
         icon: 'star',
         badge: t('home.badge_daily'),
-        onClick: () => router.push('/daily'),
+        onClick: () => { playSound('ui.navigate'); router.push('/daily'); },
       });
     }
 
@@ -162,7 +161,7 @@ export function useHomePage() {
       sub: t('home.levels_sub'),
       color: '#00c4ff',
       icon: 'trophy',
-      onClick: () => router.push('/levels'),
+      onClick: () => { playSound('ui.navigate'); router.push('/levels'); },
     });
 
     items.push({
@@ -181,7 +180,7 @@ export function useHomePage() {
         sub: t('home.friends_sub'),
         color: '#ec4899',
         icon: 'friends',
-        onClick: () => router.push('/friends'),
+        onClick: () => { playSound('ui.navigate'); router.push('/friends'); },
       });
     }
 
@@ -191,7 +190,7 @@ export function useHomePage() {
       sub: t('home.controls_sub'),
       color: '#fbbf24',
       icon: 'joystick',
-      onClick: () => router.push('/controls'),
+      onClick: () => { playSound('ui.navigate'); router.push('/controls'); },
     });
 
     if (devTools) {
@@ -201,7 +200,7 @@ export function useHomePage() {
         sub: t('home.editor_sub'),
         color: '#f43f5e',
         icon: 'tools',
-        onClick: () => router.push('/editor'),
+        onClick: () => { playSound('ui.navigate'); router.push('/editor'); },
       });
     }
 
@@ -212,12 +211,12 @@ export function useHomePage() {
         sub: t('home.admin_sub'),
         color: '#10b981',
         icon: 'lightning',
-        onClick: () => router.push('/admin'),
+        onClick: () => { playSound('ui.navigate'); router.push('/admin'); },
       });
     }
 
     return items;
-  }, [t, router, dailyAvailable, accountLogin, devTools, user?.role]);
+  }, [t, router, playSound, dailyAvailable, accountLogin, devTools, user?.role]);
 
   /*
    * Izgara 4 hücreyi aşmaz: tam sığıyorsa hepsi görünür, aşıyorsa ilk 3 + bir
@@ -267,7 +266,7 @@ export function useHomePage() {
 
     setActiveIndex(0);
     setSlidePhase('freeze');
-    playSound('ice');
+    playSound('game.ice');
 
     schedule(() => setSlidePhase('sliding'), FREEZE_MS);
     schedule(() => {
@@ -284,7 +283,7 @@ export function useHomePage() {
   useEffect(() => {
     if (slidePhase !== 'won' || hasLaunchedRef.current) return;
     hasLaunchedRef.current = true;
-    playSound('win');
+    playSound('game.win');
     const timer = setTimeout(() => {
       void playItem.onClick();
     }, WIN_HOLD_MS);
@@ -309,7 +308,7 @@ export function useHomePage() {
       const tile = tiles[index - 1];
       if (!tile) return;
       setActiveIndex(index);
-      playSound('toggle');
+      playSound('ui.confirm');
       tile.onClick();
     },
     [slidePhase, tiles, triggerPlay, playSound]
@@ -348,7 +347,7 @@ export function useHomePage() {
       if (slidePhase !== 'idle') return;
       setActiveIndex((prev) => {
         const next = moveMenuSelection(prev, direction, heroFlags, columns, preferredColRef.current);
-        if (next !== prev) playSound('move');
+        if (next !== prev) playSound('ui.tick');
         return next;
       });
     },

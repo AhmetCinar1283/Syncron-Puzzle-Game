@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { GameIcon } from '@/components/icons';
+import { soundEngine, type SoundId } from '@/services/audio';
 
 export interface Toast {
   id: string;
@@ -14,6 +15,14 @@ interface ToastContextType {
   showToast: (message: string, type?: Toast['type'], duration?: number) => string;
   hideToast: (id: string) => void;
 }
+
+const TOAST_SOUND: Record<Toast['type'], SoundId> = {
+  success: 'notify.success',
+  error: 'notify.error',
+  warning: 'notify.warning',
+  info: 'notify.info',
+  message: 'notify.message',
+};
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
@@ -153,6 +162,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'message', duration = 4000) => {
     const id = Math.random().toString(36).substring(2, 9);
+    soundEngine.play(TOAST_SOUND[type]);
     setToasts((prev) => [...prev, { id, message, type, duration }]);
     return id;
   }, []);

@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TickSnapshot } from '../logic/types';
 import type { Entity } from '../logic/entityTypes';
 import type { LevelEdges } from '../logic/engine/getNextTopologyPosition';
-import type { SoundName } from '../hooks/useSoundManager';
+import type { SoundId } from '@/services/audio';
 import { calculateRoomLayoutOffsets } from '../logic/engine/rooms';
 import { useGameTheme } from '../contexts/GameThemeContext';
 import { NATIVE_CELL_SIZE, ROOM_LAYOUT_GAP } from '../components/play-screen/constants';
@@ -52,7 +52,7 @@ interface BoardCanvasProps {
     controlledRoomIds?: string[];
     levelEdges?: LevelEdges;
     onAnimationEnd?: () => void;
-    onPlaySound?: (sound: SoundName) => void;
+    onPlaySound?: (sound: SoundId) => void;
     muted?: boolean;
     /** Sarmalayıcının `aria-label`inde kullanılır (faz planı §2.4). */
     levelName?: string;

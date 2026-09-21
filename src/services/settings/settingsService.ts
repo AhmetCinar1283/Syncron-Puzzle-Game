@@ -36,6 +36,16 @@ export class SettingsService {
     return this.currentSettings.sound.volume;
   }
 
+  /** Menü sesinin kapalı (muted) olup olmadığını döner. */
+  isMenuSoundMuted(): boolean {
+    return this.currentSettings.sound.menuMuted;
+  }
+
+  /** Menü sesi yüksekliğini (0 - 100) döner. */
+  getMenuSoundVolume(): number {
+    return this.currentSettings.sound.menuVolume;
+  }
+
   /** Güncel dil kodunu döner. */
   getLanguage(): Lang {
     return this.currentSettings.language;
@@ -108,6 +118,32 @@ export class SettingsService {
     const clamped = clampVolume(volume);
     if (clamped !== this.currentSettings.sound.volume) {
       this.updateSettings({ sound: { volume: clamped } });
+    }
+  }
+
+  /**
+   * Menü sesi açık/kapalı durumunu ayarlar.
+   */
+  setMenuSoundMuted(muted: boolean): void {
+    if (muted !== this.currentSettings.sound.menuMuted) {
+      this.updateSettings({ sound: { menuMuted: muted } });
+    }
+  }
+
+  /**
+   * Menü sesi açık/kapalı durumunu tersine çevirir (toggle).
+   */
+  toggleMenuSoundMute(): void {
+    this.setMenuSoundMuted(!this.currentSettings.sound.menuMuted);
+  }
+
+  /**
+   * Menü ses seviyesini 0 ile 100 arasında ayarlar.
+   */
+  setMenuSoundVolume(volume: number): void {
+    const clamped = clampVolume(volume);
+    if (clamped !== this.currentSettings.sound.menuVolume) {
+      this.updateSettings({ sound: { menuVolume: clamped } });
     }
   }
 

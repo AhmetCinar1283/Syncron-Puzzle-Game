@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useT } from '@/contexts/LanguageContext';
-import { ThemeSelectorModal } from './ThemeSelectorModal';
-import { getThemeConfig, GameTheme } from '../../themes/themeConfig';
-import { RotateCcw, RotateCw, StepForward, Volume2, VolumeX, Palette } from 'lucide-react';
+import { SettingsButton } from '@/features/settings';
+import { Undo2, RefreshCw, StepForward } from 'lucide-react';
 
 interface HudControlsProps {
-    theme: string;
-    onToggleTheme: () => void;
-    muted: boolean;
-    onToggleMute: () => void;
+    theme?: string;
+    onToggleTheme?: () => void;
+    muted?: boolean;
+    onToggleMute?: () => void;
     isCompact: boolean;
     undoDisabled: boolean;
     onUndo: () => void;
@@ -26,13 +25,10 @@ interface HudControlsProps {
 
 /**
  * HUD Sağ Buton Grubu:
- * İki modüler konsol toolbar'ı (Oyun kontrolleri & Ayarlar).
+ * Ayarlar kısayolu (SettingsModal açar) ve Oyun Aksiyonları (Geri Al, İpucu/İleri Adım, Yeniden Başlat).
  * Metin kutuları yerine kısayol destekli, dokunsal, neon siber butonlar.
  */
 export function HudControls({
-    theme,
-    muted,
-    onToggleMute,
     isCompact,
     undoDisabled,
     onUndo,
@@ -43,95 +39,14 @@ export function HudControls({
     highlight = null,
 }: HudControlsProps) {
     const t = useT();
-    const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
-    const themeConfig = getThemeConfig(theme as GameTheme);
-    const themeName = t(themeConfig.nameKey) || themeConfig.defaultName;
 
     const btnSize = isCompact ? 32 : 36;
     const iconSize = isCompact ? 15 : 17;
 
     return (
         <div style={{ display: 'flex', gap: isCompact ? 5 : 8, alignItems: 'center', flexShrink: 0 }}>
-            {/* ── Ayarlar Grubu (Tema & Ses) ─────────────────────────── */}
-            {/* Tema Seçici */}
-            <button
-                onClick={() => setIsThemeModalOpen(true)}
-                title={`${t('theme.title')}: ${themeName}`}
-                aria-label={`${t('theme.title')}: ${themeName}`}
-                style={{
-                    width: btnSize,
-                    height: btnSize,
-                    borderRadius: 8,
-                    border: `1px solid ${themeConfig.accentColor}50`,
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    color: themeConfig.accentColor,
-                    boxShadow: `0 0 8px ${themeConfig.accentGlow}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.06)';
-                    e.currentTarget.style.borderColor = themeConfig.accentColor;
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.borderColor = `${themeConfig.accentColor}50`;
-                }}
-                onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)';
-                }}
-                onMouseUp={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.06)';
-                }}
-            >
-                <Palette size={iconSize} />
-            </button>
-
-            {isThemeModalOpen && (
-                <ThemeSelectorModal onClose={() => setIsThemeModalOpen(false)} />
-            )}
-
-            {/* Ses Aç / Kapat */}
-            <button
-                onClick={onToggleMute}
-                title={muted ? t('hud.unmute') : t('hud.mute')}
-                aria-label={muted ? t('hud.unmute') : t('hud.mute')}
-                style={{
-                    width: btnSize,
-                    height: btnSize,
-                    borderRadius: 8,
-                    border: muted ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 255, 136, 0.25)',
-                    background: muted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 255, 136, 0.05)',
-                    color: muted ? '#64748b' : '#00ff88',
-                    boxShadow: muted ? 'none' : '0 0 8px rgba(0, 255, 136, 0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.06)';
-                    e.currentTarget.style.color = muted ? '#94a3b8' : '#00ff88';
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.color = muted ? '#64748b' : '#00ff88';
-                }}
-                onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)';
-                }}
-                onMouseUp={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.06)';
-                }}
-            >
-                {muted ? <VolumeX size={iconSize} /> : <Volume2 size={iconSize} />}
-            </button>
+            {/* ── Ayarlar Modalı Butonu ───────────────────────────────── */}
+            <SettingsButton isCompact={isCompact} />
 
             {/* Ayarlar ve Aksiyonlar Arası İnce Bölücü */}
             <div
@@ -188,7 +103,7 @@ export function HudControls({
                     e.currentTarget.style.transform = 'scale(1.06)';
                 }}
             >
-                <RotateCcw size={iconSize} />
+                <Undo2 size={iconSize} />
             </button>
 
             {hintButton}
@@ -278,7 +193,7 @@ export function HudControls({
                     e.currentTarget.style.transform = 'scale(1.06)';
                 }}
             >
-                <RotateCw size={iconSize} />
+                <RefreshCw size={iconSize} />
             </button>
         </div>
     );

@@ -8,6 +8,7 @@
 
 import { Volume2 } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
+import { soundEngine } from '@/services/audio';
 import type { SettingsGroup } from '../../lib/settingsModel';
 import { useSettings } from '../useSettings';
 
@@ -42,7 +43,10 @@ export function useSoundGroup(): SettingsGroup {
         step: 1,
         keyStep: 5,
         disabled: muted,
-        onChange: (v) => updateSettings({ sound: { volume: v, ...(muted && v > 0 ? { muted: false } : {}) } }),
+        onChange: (v) => {
+          updateSettings({ sound: { volume: v, ...(muted && v > 0 ? { muted: false } : {}) } });
+          soundEngine.play('game.move'); // Önizleme: değişen seviyeyi duyur
+        },
       },
       {
         kind: 'toggle',
@@ -64,7 +68,10 @@ export function useSoundGroup(): SettingsGroup {
         step: 1,
         keyStep: 5,
         disabled: menuMuted,
-        onChange: (v) => updateSettings({ sound: { menuVolume: v, ...(menuMuted && v > 0 ? { menuMuted: false } : {}) } }),
+        onChange: (v) => {
+          updateSettings({ sound: { menuVolume: v, ...(menuMuted && v > 0 ? { menuMuted: false } : {}) } });
+          soundEngine.play('ui.slider');
+        },
       },
     ],
   };

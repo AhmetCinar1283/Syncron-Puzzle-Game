@@ -18,8 +18,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { TickSnapshot, VFXEvent } from '../logic/types';
-import type { SoundName } from './useSoundManager';
-import { soundEngine } from '../audio/soundEngine';
+import type { SoundId } from '@/services/audio';
+import { soundEngine } from '@/services/audio';
 import { hapticImpact, hapticNotify } from '@/lib/haptics';
 import { VICTORY_CELEBRATION_DURATION } from '../components/effects/VictoryCelebration';
 
@@ -35,24 +35,24 @@ const MAX_FRAME_MS = 90;
 /** Ölüm karesinden sonra `onAnimationEnd` gecikmesi (ms). */
 const DEATH_HOLD_MS = 800;
 
-const VFX_TO_SOUND: Partial<Record<string, SoundName>> = {
-    sound_move:         'move',
-    sound_push:         'box_push',
-    sound_ice_slide:    'ice',
-    sound_ice_break:    'ice',
-    sound_portal_enter: 'portal',
-    sound_portal_exit:  'teleport',
-    sound_boing:        'boing',
-    sound_conveyor:     'conveyor',
-    sound_toggle:       'toggle',
-    sound_win:          'win',
-    sound_lose:         'lose',
+const VFX_TO_SOUND: Partial<Record<string, SoundId>> = {
+    sound_move:         'game.move',
+    sound_push:         'game.boxPush',
+    sound_ice_slide:    'game.ice',
+    sound_ice_break:    'game.ice',
+    sound_portal_enter: 'game.portal',
+    sound_portal_exit:  'game.teleport',
+    sound_boing:        'game.boing',
+    sound_conveyor:     'game.conveyor',
+    sound_toggle:       'game.toggle',
+    sound_win:          'game.win',
+    sound_lose:         'game.lose',
 };
 
 interface FilmPlaybackOptions {
     snapshots: TickSnapshot[] | null;
     onAnimationEnd?: () => void;
-    onPlaySound?: (sound: SoundName) => void;
+    onPlaySound?: (sound: SoundId) => void;
     muted?: boolean;
 }
 

@@ -10,6 +10,7 @@ import React, { useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings as SettingsIcon, X } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
+import { useModalSound } from '@/services/audio';
 import { useSettings } from '../hooks/useSettings';
 import { SettingsView } from './SettingsView';
 
@@ -31,6 +32,7 @@ export function SettingsModal({ isOpen: propIsOpen, onClose: propOnClose }: Sett
 
   const isOpen = propIsOpen !== undefined ? propIsOpen : contextIsOpen;
   const handleClose = propOnClose !== undefined ? propOnClose : contextCloseSettings;
+  useModalSound(isOpen);
 
   if (!isClient || !isOpen || typeof document === 'undefined') {
     return null;

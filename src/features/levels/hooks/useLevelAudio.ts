@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { soundEngine } from '@/game-engine/audio/soundEngine';
+import { soundEngine } from '@/services/audio';
 
 /**
  * DOSYA AMACI: Levels sayfasında taktil geri bildirim sunan mikro ses efektleri hook'u.
@@ -9,24 +9,29 @@ import { soundEngine } from '@/game-engine/audio/soundEngine';
  */
 export function useLevelAudio() {
   const playTick = useCallback(() => {
-    soundEngine.play('tick');
+    soundEngine.playMenu('ui.tick');
   }, []);
 
   const playSelect = useCallback(() => {
-    soundEngine.play('move');
+    soundEngine.playMenu('ui.navigate');
+  }, []);
+
+  const playBack = useCallback(() => {
+    soundEngine.playMenu('ui.back');
   }, []);
 
   const playWarp = useCallback(() => {
-    soundEngine.play('portal');
+    soundEngine.playMenu('game.portal');
   }, []);
 
   const playLock = useCallback(() => {
-    soundEngine.play('ice');
+    soundEngine.playMenu('game.ice');
   }, []);
 
   return {
     playTick,
     playSelect,
+    playBack,
     playWarp,
     playLock,
   };

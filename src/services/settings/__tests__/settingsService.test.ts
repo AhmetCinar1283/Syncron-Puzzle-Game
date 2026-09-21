@@ -104,6 +104,34 @@ describe('SettingsService', () => {
     expect(service.getSettings().sound.volume).toBe(43);
   });
 
+  it('setMenuSoundMuted ve toggleMenuSoundMute menü ses durumunu doğru yönetir', () => {
+    const service = new SettingsService();
+    expect(service.getSettings().sound.menuMuted).toBe(false);
+    expect(service.isMenuSoundMuted()).toBe(false);
+
+    service.toggleMenuSoundMute();
+    expect(service.getSettings().sound.menuMuted).toBe(true);
+    expect(service.isMenuSoundMuted()).toBe(true);
+
+    service.setMenuSoundMuted(false);
+    expect(service.getSettings().sound.menuMuted).toBe(false);
+    expect(service.isMenuSoundMuted()).toBe(false);
+  });
+
+  it('setMenuSoundVolume menü ses seviyesini 0 ile 100 arasına güvenle clamp eder', () => {
+    const service = new SettingsService();
+
+    service.setMenuSoundVolume(60);
+    expect(service.getSettings().sound.menuVolume).toBe(60);
+    expect(service.getMenuSoundVolume()).toBe(60);
+
+    service.setMenuSoundVolume(-10);
+    expect(service.getSettings().sound.menuVolume).toBe(0);
+
+    service.setMenuSoundVolume(120);
+    expect(service.getSettings().sound.menuVolume).toBe(100);
+  });
+
   it('subscribe dinleyicileri ayar değiştiğinde tetiklenir ve unsubscribe çalışır', () => {
     const service = new SettingsService();
     const listener = vi.fn();

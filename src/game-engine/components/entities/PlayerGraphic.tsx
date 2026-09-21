@@ -4,10 +4,17 @@
 import { Entity } from '../../logic/entityTypes';
 import { getPlayerColor } from '../playerColors';
 import { useGameTheme } from '../../contexts/GameThemeContext';
+import { ThemeDefinition } from '../../themes/themeConfig';
 import { GameIcon } from '@/components/icons';
 
-export const PlayerGraphic = ({ entity }: { entity: Entity }) => {
-    const { themeConfig } = useGameTheme();
+interface PlayerGraphicProps {
+    entity: Entity;
+    themeConfig?: ThemeDefinition;
+}
+
+export const PlayerGraphic = ({ entity, themeConfig: propThemeConfig }: PlayerGraphicProps) => {
+    const { themeConfig: contextThemeConfig } = useGameTheme();
+    const themeConfig = propThemeConfig ?? contextThemeConfig;
     const playerIndex = (entity.customData.playerIndex as number) ?? 0;
     const mode = (entity.customData.mode as 'normal' | 'reversed') ?? 'normal';
     const isReversed = mode === 'reversed';

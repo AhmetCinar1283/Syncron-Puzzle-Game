@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
+import { useModalSound } from '@/services/audio';
 
 export interface ModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export interface ModalProps {
  * + blur(6px)`, backdrop-click-to-close, ESC-to-close).
  */
 export function Modal({ open, onClose, title, footer, children, className }: ModalProps) {
+  useModalSound(open);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {

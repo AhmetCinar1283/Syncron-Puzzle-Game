@@ -7,7 +7,7 @@ import type { ActionIntent, Direction, UIButtonType } from '../logic/types';
 import { processActionRequest } from '../logic/actions/registry';
 import type { GameActionButton } from '../logic/actions/types';
 import type { useGameEngine } from './useGameEngine';
-import type { SoundName } from './useSoundManager';
+import type { SoundId } from '@/services/audio';
 import {
     OPPOSITE_DIRECTION,
     STEP_SOLVER_MAX_DEPTH,
@@ -20,7 +20,7 @@ interface UsePlayScreenActionsArgs {
     engine: GameEngine;
     controlMode: 'all_rooms' | 'selected_room';
     trailCollision: boolean | undefined;
-    play: (name: SoundName) => void;
+    play: (name: SoundId) => void;
     setMoveCount: Dispatch<SetStateAction<number>>;
     onMoveExecuted?: (direction: Direction | 'switch_room') => void;
     onUndoExecuted?: () => void;
@@ -85,7 +85,7 @@ export function usePlayScreenActions({
         if (actionIntents.length > 0) {
             executeTurn(actionIntents);
             setMoveCount(c => c + 1);
-            play('toggle');
+            play('game.toggle');
         }
     }, [isAnimating, isGameOver, rooms, getEntities, executeTurn, clearUiEvents, play, setMoveCount]);
 
@@ -141,7 +141,7 @@ export function usePlayScreenActions({
                 const currentIdx = roomKeys.indexOf(controlledRoomIds[0] ?? '');
                 const nextIdx = (currentIdx + 1) % roomKeys.length;
                 setControlledRoomIds([roomKeys[nextIdx]]);
-                play('toggle');
+                play('game.toggle');
                 onMoveExecuted?.('switch_room');
             }
         }
@@ -161,7 +161,7 @@ export function usePlayScreenActions({
             }
         }
         setControlledRoomIds([rId]);
-        play('toggle');
+        play('game.toggle');
     };
 
     const handleUndo = useCallback(() => {
@@ -170,7 +170,7 @@ export function usePlayScreenActions({
         if (undone) {
             setMoveCount(c => Math.max(0, c - 1));
             onUndoExecuted?.();
-            play('toggle');
+            play('game.toggle');
         }
     }, [isAnimating, undo, onUndoExecuted, play, setMoveCount]);
 
@@ -195,7 +195,7 @@ export function usePlayScreenActions({
                 triggerMove(nextStep);
             }
         } else {
-            play('lose');
+            play('game.lose');
         }
     }, [isAnimating, isGameOver, getEntities, rooms, controlledRoomIds, controlMode, trailCollision, triggerMove, play, cycleControlledRoom]);
 

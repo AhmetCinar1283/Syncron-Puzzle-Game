@@ -42,4 +42,18 @@ describe('Sound preferences via settingsService', () => {
     settingsService.setSoundVolume(45);
     expect(settingsService.getSoundVolume()).toBe(45);
   });
+
+  it('correctly toggles and persists menuSound preferences in settingsService', () => {
+    expect(settingsService.isMenuSoundMuted()).toBe(false);
+    expect(settingsService.getMenuSoundVolume()).toBe(70);
+
+    settingsService.setMenuSoundMuted(true);
+    expect(settingsService.isMenuSoundMuted()).toBe(true);
+
+    settingsService.toggleMenuSoundMute();
+    expect(settingsService.isMenuSoundMuted()).toBe(false);
+
+    settingsService.setMenuSoundVolume(55);
+    expect(settingsService.getMenuSoundVolume()).toBe(55);
+  });
 });

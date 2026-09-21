@@ -4,13 +4,12 @@ import { useMemo, useState } from 'react';
 import type { ReactNode, RefObject, TouchEvent as ReactTouchEvent } from 'react';
 import GameBoard from '../GameBoard';
 import BoardCanvas from '../../render/BoardCanvas';
-import { setBoardRendererSetting, useBoardRenderer } from '../../render/boardRenderer';
+import { useBoardRenderer } from '../../render/boardRenderer';
 import { useJankGuard } from '../../render/useJankGuard';
 import type { TickSnapshot } from '../../logic/types';
-import { BoardRendererToggle } from './BoardRendererToggle';
 import type { LevelEdges } from '../../logic/engine/getNextTopologyPosition';
 import type { useGameEngine } from '../../hooks/useGameEngine';
-import type { SoundName } from '../../hooks/useSoundManager';
+import type { SoundId } from '@/services/audio';
 
 type Snapshots = ReturnType<typeof useGameEngine>['snapshots'];
 
@@ -34,7 +33,7 @@ interface BoardAreaProps {
     boardOverlay?: ReactNode;
     /** Board alanının üstünde ölçeklenmeden çizilen katman (ör. ipucu şeridi). */
     areaOverlay?: ReactNode;
-    onPlaySound?: (sound: SoundName) => void;
+    onPlaySound?: (sound: SoundId) => void;
     muted?: boolean;
 }
 
@@ -150,10 +149,6 @@ export function BoardArea({
 
             {areaOverlay}
 
-            {/* Yalnızca geliştirme build'inde: iki yolu karşılaştırma aracı (09-kapanis §2.5). */}
-            {process.env.NODE_ENV !== 'production' && renderer && (
-                <BoardRendererToggle renderer={renderer} onChange={setBoardRendererSetting} />
-            )}
         </div>
     );
 }

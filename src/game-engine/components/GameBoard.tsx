@@ -14,7 +14,7 @@ import { calculateRoomLayoutOffsets, routePortalPath } from '../logic/engine/roo
 import { useGameTheme } from '../contexts/GameThemeContext';
 import { GameIcon } from '@/components/icons';
 import { VictoryCelebration, VICTORY_CELEBRATION_DURATION } from './effects/VictoryCelebration';
-import type { SoundName } from '../hooks/useSoundManager';
+import type { SoundId } from '@/services/audio';
 import { useFilmPlayback } from '../hooks/useFilmPlayback';
 import { BoardCell } from './board/BoardCell';
 import { RoomTrails, RoomCables } from './board/RoomOverlays';
@@ -33,7 +33,7 @@ interface GameBoardProps {
     controlledRoomIds?: string[]; // Aktif/kontrol edilen odalar
     levelEdges?: LevelEdges; // Legacy single-room edge behavior
     onAnimationEnd?: () => void;
-    onPlaySound?: (sound: SoundName) => void;
+    onPlaySound?: (sound: SoundId) => void;
     muted?: boolean;
     /** Kasma dedektörü için oynatma evresi (yalnızca DOM + Otomatik iken verilir). */
     onPlaybackPhase?: (phase: JankPhase) => void;

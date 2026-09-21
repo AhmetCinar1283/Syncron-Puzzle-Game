@@ -351,7 +351,7 @@ export function useLevelsPage() {
       const lv = currentList[idx];
       if (lv) playLevel(lv, activeTab === 'campaign');
     },
-    onBack: () => router.push('/'),
+    onBack: () => { audio.playBack(); router.push('/'); },
     onChapterPrev: () => goToChapter(currentPartIdx - 1),
     onChapterNext: () => {
       if (currentPartIdx === parts.length - 1 && isSessionCompleted) {

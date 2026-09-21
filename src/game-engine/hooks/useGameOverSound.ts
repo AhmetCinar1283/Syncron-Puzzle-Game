@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { UIEvent } from '../logic/types';
-import type { SoundName } from './useSoundManager';
+import type { SoundId } from '@/services/audio';
 
 /**
  * Oyun bittiğinde (animasyon da bittikten sonra) bir kez win/lose sesi çalar.
@@ -13,17 +13,17 @@ export function useGameOverSound(
     isGameOver: boolean,
     isAnimating: boolean,
     uiEvents: UIEvent[],
-    play: (name: SoundName) => void,
+    play: (name: SoundId) => void,
 ) {
     const prevIsGameOver = useRef(false);
     useEffect(() => {
         if (isGameOver && !prevIsGameOver.current) {
             const hasSuccess = uiEvents.some(e => e.kind === 'text' && e.textType === 'success');
             if (hasSuccess) {
-                play('win');
+                play('game.win');
                 prevIsGameOver.current = true;
             } else if (!isAnimating) {
-                play('lose');
+                play('game.lose');
                 prevIsGameOver.current = true;
             }
         }

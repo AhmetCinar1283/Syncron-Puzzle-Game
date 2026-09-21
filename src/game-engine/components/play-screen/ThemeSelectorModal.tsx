@@ -5,8 +5,32 @@ import { createPortal } from 'react-dom';
 import { useT } from '@/contexts/LanguageContext';
 import { useGameTheme } from '../../contexts/GameThemeContext';
 import { ALL_THEMES, GameTheme } from '../../themes/themeConfig';
-import { THEME_CURSORS } from '../../themes/themeCursors';
+import { PlayerGraphic } from '../entities/PlayerGraphic';
+import type { Entity } from '../../logic/entityTypes';
 import { GameIcon } from '@/components/icons';
+
+const PREVIEW_ENTITIES: [Entity, Entity] = [
+    {
+        id: 1,
+        type: 'player',
+        position: { row: 0, col: 0 },
+        physics: { direction: 'up', force: 0, z: 0 },
+        def: { mass: 1, resistance: 0, isSolid: true },
+        traits: new Set(),
+        isElectrified: false,
+        customData: { playerIndex: 0, mode: 'normal' },
+    },
+    {
+        id: 2,
+        type: 'player',
+        position: { row: 0, col: 1 },
+        physics: { direction: 'up', force: 0, z: 0 },
+        def: { mass: 1, resistance: 0, isSolid: true },
+        traits: new Set(),
+        isElectrified: false,
+        customData: { playerIndex: 1, mode: 'normal' },
+    },
+];
 
 interface ThemeSelectorModalProps {
     onClose: () => void;
@@ -210,7 +234,7 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                                     {localizedDesc}
                                 </p>
 
-                                {/* Mini Color Palette & Cursor Preview */}
+                                {/* Mini Color Palette & Player Entities Preview */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                                     <div style={{ display: 'flex', gap: 4 }}>
                                         <div
@@ -231,31 +255,39 @@ export function ThemeSelectorModal({ onClose }: ThemeSelectorModalProps) {
                                             }}
                                         />
                                     </div>
-                                    {/* Cursor icons preview */}
-                                    {THEME_CURSORS[themeDef.id] && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {/* Player entities preview (P1 green & P2 blue) */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {PREVIEW_ENTITIES.map((ent) => (
                                             <div
-                                                title={t('theme.cursor_normal')}
-                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
-                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].default.svg }}
-                                            />
-                                            <div
-                                                title={t('theme.cursor_pointer')}
-                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
-                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].pointer.svg }}
-                                            />
-                                            <div
-                                                title={t('theme.cursor_crosshair')}
-                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
-                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].crosshair.svg }}
-                                            />
-                                            <div
-                                                title={t('theme.cursor_text')}
-                                                style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}
-                                                dangerouslySetInnerHTML={{ __html: THEME_CURSORS[themeDef.id].text.svg }}
-                                            />
-                                        </div>
-                                    )}
+                                                key={ent.id}
+                                                title={`P${ent.id}`}
+                                                style={{
+                                                    width: 28,
+                                                    height: 28,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        transform: 'scale(0.44)',
+                                                        transformOrigin: 'center',
+                                                        width: 64,
+                                                        height: 64,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        pointerEvents: 'none',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    <PlayerGraphic entity={ent} themeConfig={themeDef} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         );

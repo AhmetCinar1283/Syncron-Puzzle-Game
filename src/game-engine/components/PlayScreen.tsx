@@ -7,7 +7,7 @@ import { Entity } from '../logic/entityTypes';
 import { Cell } from '../logic/cellTypes';
 import { Direction, UIButtonType, RoomState } from '../logic/types';
 import { LevelEdges } from '../logic/engine/getNextTopologyPosition';
-import { useSoundManager } from '../hooks/useSoundManager';
+import { useSoundManager } from '@/services/audio';
 import { warmUpHaptics } from '@/lib/haptics';
 import { useGameTheme } from '../contexts/GameThemeContext';
 import { useCompactLayout } from '../hooks/useCompactLayout';
@@ -16,6 +16,7 @@ import { useBoardScale } from '../hooks/useBoardScale';
 import { usePlayScreenActions } from '../hooks/usePlayScreenActions';
 import { usePlayInput } from '../hooks/usePlayInput';
 import { usePlayScreenHint, type PlayScreenHint } from '../hooks/usePlayScreenHint';
+import { useSettings } from '@/features/settings';
 import { PlayHud } from './play-screen/PlayHud';
 import { HudControls } from './play-screen/HudControls';
 import { SolutionSteps, CompactSolutionBar } from './play-screen/SolutionSteps';
@@ -90,8 +91,9 @@ export function PlayScreen({
     inputLocked: externalInputLocked = false,
     areaAccessory,
 }: PlayScreenProps) {
-    const { theme, toggleTheme } = useGameTheme();
-    const { play, muted, toggleMute } = useSoundManager();
+    const { theme } = useGameTheme();
+    const { play, muted } = useSoundManager();
+    const { isSettingsOpen } = useSettings();
 
     // Haptik eklentisini önceden yükle: ilk swipe'ın dinamik import'u
     // beklemesini engeller.
@@ -173,8 +175,8 @@ export function PlayScreen({
         isAnimating,
         isGameOver,
     });
-    // İpucu kartı açıkken oyun girdisi kilitli (ipucu tam o durum için hazırlanır).
-    const inputLocked = !!playerHint?.inputLocked || externalInputLocked;
+    // İpucu kartı veya ayarlar modalı açıkken oyun girdisi kilitli.
+    const inputLocked = !!playerHint?.inputLocked || externalInputLocked || isSettingsOpen;
     const inputLockedRef = useRef(inputLocked);
     useEffect(() => {
         inputLockedRef.current = inputLocked;
@@ -258,10 +260,6 @@ export function PlayScreen({
                 moveCount={moveCount}
                 controls={
                     <HudControls
-                        theme={theme}
-                        onToggleTheme={toggleTheme}
-                        muted={muted}
-                        onToggleMute={toggleMute}
                         isCompact={isCompact}
                         undoDisabled={isAnimating || !canUndo}
                         onUndo={handleUndo}

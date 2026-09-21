@@ -5,7 +5,7 @@ import { GameIcon } from '@/components/icons';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { useT } from '@/contexts/LanguageContext';
 import { useGamepad } from '@/hooks/useGamepad';
-import { useSoundManager } from '@/game-engine/hooks/useSoundManager';
+import { useSoundManager } from '@/services/audio';
 import type { HomeMenuItem } from '../hooks/useHomePage';
 
 interface MoreMenuSheetProps {
@@ -21,7 +21,7 @@ interface MoreMenuSheetProps {
 export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
   const t = useT();
   const { themeConfig } = useGameTheme();
-  const { play: playSound } = useSoundManager();
+  const { play: playSound } = useSoundManager('menu');
   const panelRef = useRef<HTMLDivElement | null>(null);
   const rowRefs = useRef<(HTMLDivElement | HTMLButtonElement | null)[]>([]);
 
@@ -30,7 +30,7 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
 
   const activateIndex = useCallback(
     (index: number) => {
-      playSound('toggle');
+      playSound('ui.confirm');
       if (index >= 0 && index < items.length) {
         onClose();
         items[index].onClick();
@@ -44,7 +44,7 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
   const moveUp = useCallback(() => {
     setActiveIndex((prev) => {
       const next = prev > 0 ? prev - 1 : totalCount - 1;
-      playSound('move');
+      playSound('ui.tick');
       return next;
     });
   }, [totalCount, playSound]);
@@ -52,7 +52,7 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
   const moveDown = useCallback(() => {
     setActiveIndex((prev) => {
       const next = prev < totalCount - 1 ? prev + 1 : 0;
-      playSound('move');
+      playSound('ui.tick');
       return next;
     });
   }, [totalCount, playSound]);
@@ -68,7 +68,7 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
       activateIndex(activeIndex);
     },
     onCancel: () => {
-      playSound('toggle');
+      playSound('ui.confirm');
       onClose();
     },
   });
@@ -87,7 +87,7 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
         activateIndex(activeIndex);
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        playSound('toggle');
+        playSound('ui.confirm');
         onClose();
       }
     };
