@@ -7,6 +7,7 @@
 import React from 'react';
 import type { ToggleRow } from '../../lib/settingsModel';
 import { COLORS } from '../../lib/styles';
+import { changeToggle } from '../../lib/rowActions';
 import { SettingRowShell } from './SettingRowShell';
 
 interface Props {
@@ -31,7 +32,7 @@ export function ToggleRowView({ row, focused, onFocus }: Props) {
           role="switch"
           aria-checked={on}
           aria-label={row.label}
-          onClick={() => row.onChange(!on)}
+          onClick={() => changeToggle(row, !on)}
           style={{
             flexShrink: 0,
             padding: '6px 14px',

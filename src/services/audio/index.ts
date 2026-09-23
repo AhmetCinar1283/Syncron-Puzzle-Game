@@ -6,6 +6,6 @@
 export { soundEngine, SoundEngine } from './soundEngine';
 export { SOUNDS, SOUND_IDS } from './registry';
 export { useSoundManager, useGameSound, useMenuSound } from './useSound';
-export { useModalSound } from './useModalSound';
+export { useModalSound, useMountedModalSound } from './useModalSound';
 export type { SoundId, SoundChannel } from './soundEngine';
 export type { SoundDef, SoundSource, SynthRecipe } from './types';

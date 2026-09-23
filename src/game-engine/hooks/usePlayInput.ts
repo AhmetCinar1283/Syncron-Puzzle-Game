@@ -77,6 +77,7 @@ export function usePlayInput({
             return;
         }
 
+        if (typeof document !== 'undefined' && document.body.hasAttribute('data-modal-open')) return;
         if (isGameOverRef.current) return;
         const rawDirection = KEY_TO_DIRECTION[e.key];
         if (!rawDirection) return;
@@ -92,14 +93,17 @@ export function usePlayInput({
     // ── Gamepad ────────────────────────────────────────────────────────────
     useGamepad({
         onMove: useCallback((dir: Direction) => {
+            if (typeof document !== 'undefined' && document.body.hasAttribute('data-modal-open')) return;
             if (isGameOverRef.current || inputLockedRef?.current) return;
             triggerMove(dir);
         }, [triggerMove, isGameOverRef, inputLockedRef]),
         onRestart: useCallback(() => {
+            if (typeof document !== 'undefined' && document.body.hasAttribute('data-modal-open')) return;
             if (inputLockedRef?.current) return;
             handleButtonPress('restart');
         }, [handleButtonPress, inputLockedRef]),
         onMenu: useCallback(() => {
+            if (typeof document !== 'undefined' && document.body.hasAttribute('data-modal-open')) return;
             if (inputLockedRef?.current) return;
             handleButtonPress('menu');
         }, [handleButtonPress, inputLockedRef]),

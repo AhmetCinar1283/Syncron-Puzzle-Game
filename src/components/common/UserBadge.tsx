@@ -15,6 +15,7 @@ import { useAppSelector } from '@/store/hooks';
 import AuthModal from './AuthModal';
 import { useT } from '@/contexts/LanguageContext';
 import { useGamepad } from '@/hooks/useGamepad';
+import { useSoundManager } from '@/services/audio';
 import { subscribeToUserTickets } from '@/services/firebase/support';
 import { LogIn, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
 
@@ -22,6 +23,7 @@ const HIDDEN_PREFIXES = ['/play', '/editor', '/levels', '/profile', '/admin', '/
 
 export default function UserBadge() {
   const t = useT();
+  const { play: playSound } = useSoundManager('menu');
   const { user, isAnonymous, loading } = useAuthContext();
   const reduxDisplayName = useAppSelector((state) => state.user.displayName);
   const { accountLogin } = useCapabilities();
@@ -38,10 +40,27 @@ export default function UserBadge() {
   const badgeContainerRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const closeMenuAndReturn = useCallback(() => {
+    setIsMenuOpen(false);
+    setIsFocused(false);
+    playSound('ui.tick');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('profile-menu-state', { detail: { open: false } }));
+    }
+  }, [playSound]);
+
+  // Menü açık durumunu global olarak duyur (ana sayfa ve diğer bileşenlerle senkronizasyon)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('profile-menu-state', { detail: { open: isMenuOpen } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('profile-menu-state', { detail: { open: false } }));
+    };
+  }, [isMenuOpen]);
+
   // Canlı okunmamış destek bildirimlerini dinle
   useEffect(() => {
     if (loading || !user || isAnonymous) {
-      setHasUnread(false);
       return;
     }
 
@@ -50,7 +69,10 @@ export default function UserBadge() {
         const unread = tickets.some((tk) => tk.hasUnreadUser === true);
         setHasUnread(unread);
       });
-      return () => unsubscribe();
+      return () => {
+        unsubscribe();
+        setHasUnread(false);
+      };
     } catch (err) {
       console.warn('[UserBadge] Destek biletleri dinlenemedi:', err);
     }
@@ -58,17 +80,14 @@ export default function UserBadge() {
 
   // Ana sayfadan gelen profil odak olayını dinle (gamepad/klavye ile üst bar seçimi)
   useEffect(() => {
-    if (pathname !== '/') {
-      setIsFocused(false);
-      return;
-    }
-
     const handleFocus = (e: Event) => {
+      if (pathname !== '/') return;
       const customEvent = e as CustomEvent<{ focused?: boolean }>;
       const focused = customEvent.detail?.focused ?? false;
       setIsFocused(focused);
       if (focused) {
         setIsMenuOpen(true);
+        setMenuIndex(0);
       }
     };
 
@@ -83,12 +102,12 @@ export default function UserBadge() {
     if (!isMenuOpen) return;
     const handlePointerDown = (e: PointerEvent) => {
       if (badgeContainerRef.current && !badgeContainerRef.current.contains(e.target as Node)) {
-        setIsMenuOpen(false);
+        closeMenuAndReturn();
       }
     };
     window.addEventListener('pointerdown', handlePointerDown);
     return () => window.removeEventListener('pointerdown', handlePointerDown);
-  }, [isMenuOpen]);
+  }, [isMenuOpen, closeMenuAndReturn]);
 
   const signed = user !== null && !isAnonymous;
   const displayName = user?.displayName || reduxDisplayName || user?.email?.split('@')[0] || null;
@@ -97,8 +116,12 @@ export default function UserBadge() {
   const badgeHeight = 34;
 
   const handleSelectOption = useCallback((index: number) => {
+    playSound('ui.confirm');
     setIsMenuOpen(false);
     setIsFocused(false);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('profile-menu-state', { detail: { open: false } }));
+    }
     if (index === 0) {
       if (signed) {
         router.push('/profile');
@@ -108,58 +131,94 @@ export default function UserBadge() {
     } else if (index === 1) {
       router.push('/settings');
     }
-  }, [signed, router]);
+  }, [signed, router, playSound]);
 
-  // Gamepad etkileşimi
+  // Gamepad etkileşimi (Menü açıkken modal öncelikli, arka planı bloke eder)
   useGamepad({
     enabled: isFocused || isMenuOpen,
+    priority: isMenuOpen ? 'modal' : 'normal',
     onMove: (dir) => {
       if (!isMenuOpen) {
         setIsMenuOpen(true);
+        setMenuIndex(0);
         return;
       }
       if (dir === 'up') {
-        setMenuIndex(0);
+        if (menuIndex === 1) {
+          setMenuIndex(0);
+          playSound('ui.tick');
+        } else if (menuIndex === 0) {
+          closeMenuAndReturn();
+        }
       } else if (dir === 'down') {
-        setMenuIndex(1);
+        if (menuIndex === 0) {
+          setMenuIndex(1);
+          playSound('ui.tick');
+        } else if (menuIndex === 1) {
+          closeMenuAndReturn();
+        }
+      } else if (dir === 'left') {
+        closeMenuAndReturn();
       }
     },
     onConfirm: () => {
       if (!isMenuOpen) {
         setIsMenuOpen(true);
+        setMenuIndex(0);
       } else {
         handleSelectOption(menuIndex);
       }
     },
     onCancel: () => {
-      setIsMenuOpen(false);
+      closeMenuAndReturn();
     },
   });
 
-  // Klavye etkileşimi (Menü açıkken)
+  // Klavye etkileşimi (Menü açıkken - capture modunda diğer dinleyicileri ezer)
   useEffect(() => {
     if (!isMenuOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
-        e.preventDefault();
-        setMenuIndex(0);
-      } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setMenuIndex(1);
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
+      const isUp = e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W';
+      const isDown = e.key === 'ArrowDown' || e.key === 's' || e.key === 'S';
+      const isLeft = e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A';
+      const isConfirm = e.key === 'Enter' || e.key === ' ';
+      const isEscape = e.key === 'Escape';
+
+      if (!isUp && !isDown && !isLeft && !isConfirm && !isEscape) return;
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      if (isUp) {
+        if (menuIndex === 1) {
+          setMenuIndex(0);
+          playSound('ui.tick');
+        } else if (menuIndex === 0) {
+          closeMenuAndReturn();
+        }
+      } else if (isDown) {
+        if (menuIndex === 0) {
+          setMenuIndex(1);
+          playSound('ui.tick');
+        } else if (menuIndex === 1) {
+          closeMenuAndReturn();
+        }
+      } else if (isLeft || isEscape) {
+        closeMenuAndReturn();
+      } else if (isConfirm) {
         handleSelectOption(menuIndex);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setIsMenuOpen(false);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMenuOpen, menuIndex, handleSelectOption]);
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [isMenuOpen, menuIndex, handleSelectOption, closeMenuAndReturn, playSound]);
 
   const onMouseEnterBadge = () => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    if (!isHovered && !isMenuOpen) {
+      playSound('ui.tick');
+    }
     setIsHovered(true);
     setIsMenuOpen(true);
   };
@@ -167,7 +226,7 @@ export default function UserBadge() {
   const onMouseLeaveBadge = () => {
     hoverTimerRef.current = setTimeout(() => {
       setIsHovered(false);
-      setIsMenuOpen(false);
+      closeMenuAndReturn();
     }, 250);
   };
 
@@ -305,7 +364,12 @@ export default function UserBadge() {
           <button
             type="button"
             onClick={() => handleSelectOption(0)}
-            onMouseEnter={() => setMenuIndex(0)}
+            onMouseEnter={() => {
+              if (menuIndex !== 0) {
+                playSound('ui.tick');
+                setMenuIndex(0);
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -333,7 +397,12 @@ export default function UserBadge() {
           <button
             type="button"
             onClick={() => handleSelectOption(1)}
-            onMouseEnter={() => setMenuIndex(1)}
+            onMouseEnter={() => {
+              if (menuIndex !== 1) {
+                playSound('ui.tick');
+                setMenuIndex(1);
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -16,6 +16,8 @@ import { useEffect, useRef, useState } from 'react';
 // Yön tanımlamaları
 export type GamepadDirection = 'up' | 'down' | 'left' | 'right';
 
+let activeModalGamepadCount = 0;
+
 // Hook parametre tipleri
 interface UseGamepadProps {
   onMove?: (direction: GamepadDirection) => void;
@@ -27,6 +29,7 @@ interface UseGamepadProps {
   onButtonPress?: (buttonIndex: number, pressed: boolean) => void;
   onAxisMove?: (axisIndex: number, value: number) => void;
   enabled?: boolean;
+  priority?: 'normal' | 'modal';
 }
 
 const AXIS_DEADZONE_TRIGGER = 0.38;
@@ -47,7 +50,17 @@ export function useGamepad({
   onButtonPress,
   onAxisMove,
   enabled = true,
+  priority = 'normal',
 }: UseGamepadProps = {}) {
+  // Modal önceliği takibi: Modal açıkken normal arka plan dinleyicilerini durdur
+  useEffect(() => {
+    if (!enabled || priority !== 'modal') return;
+    activeModalGamepadCount++;
+    return () => {
+      activeModalGamepadCount = Math.max(0, activeModalGamepadCount - 1);
+    };
+  }, [enabled, priority]);
+
   // Bağlı olan aktif gamepad durumunu tutar
   const [connectedGamepad, setConnectedGamepad] = useState<Gamepad | null>(null);
 
@@ -141,6 +154,12 @@ export function useGamepad({
 
     const pollGamepad = (timestamp: number) => {
       if (typeof navigator === 'undefined' || !navigator.getGamepads) {
+        rAFId = requestAnimationFrame(pollGamepad);
+        return;
+      }
+
+      // Eğer modal öncelikli bir dinleyici aktifse ve biz normal dinleyiciysek, arka planda girdi işleme
+      if (priority !== 'modal' && activeModalGamepadCount > 0) {
         rAFId = requestAnimationFrame(pollGamepad);
         return;
       }

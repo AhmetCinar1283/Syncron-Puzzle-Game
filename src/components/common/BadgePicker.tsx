@@ -5,6 +5,7 @@ import BadgeIcon from './BadgeIcon';
 import { useT } from '@/contexts/LanguageContext';
 import { Badge } from '@/services/api/badgesClient';
 import { GameIcon } from '@/components/icons';
+import { Modal } from '@/components/ui';
 
 export interface BadgePickerProps {
   isOpen: boolean;
@@ -66,86 +67,22 @@ export default function BadgePicker({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(3, 7, 18, 0.9)',
-        backdropFilter: 'blur(8px)',
-        padding: '16px',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={t('leaderboard.standing') === 'SENİN YERİN' ? 'VİTRİNİ DÜZENLE' : 'EDIT SHOWCASE'}
+      subtitle={
+        t('leaderboard.standing') === 'SENİN YERİN'
+          ? 'En fazla 5 rozet seçerek profilinde sergileyebilirsin. Seçim sıranız vitrindeki sıralamayı belirler.'
+          : 'Select up to 5 badges to show off on your profile. The order of selection determines their display position.'
+      }
+      accentColor="#00ff88"
+      maxWidth={480}
+      maxHeight="85dvh"
+      showCloseButton={false}
+      zIndex={1100}
     >
-      <div
-        style={{
-          background: '#0a0f1a',
-          border: '1px solid #00ff8825',
-          borderRadius: '16px',
-          width: '100%',
-          maxWidth: '480px',
-          padding: '24px',
-          boxShadow: '0 0 40px rgba(0, 255, 136, 0.08), 0 20px 50px rgba(0,0,0,0.8)',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '85vh',
-        }}
-      >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: 14,
-            right: 16,
-            background: 'none',
-            border: 'none',
-            color: '#4b5563',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#ff2d55')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#4b5563')}
-        >
-          <GameIcon name="close" size={16} />
-        </button>
-
-        {/* Title */}
-        <h3
-          style={{
-            color: '#00ff88',
-            fontSize: '18px',
-            fontWeight: 800,
-            letterSpacing: '0.05em',
-            margin: '0 0 8px 0',
-            textShadow: '0 0 15px rgba(0, 255, 136, 0.4)',
-          }}
-        >
-          {t('leaderboard.standing') === 'SENİN YERİN' ? 'VİTRİNİ DÜZENLE' : 'EDIT SHOWCASE'}
-        </h3>
-
-        <p
-          style={{
-            color: '#6b7280',
-            fontSize: '12px',
-            margin: '0 0 20px 0',
-            lineHeight: 1.5,
-          }}
-        >
-          {t('leaderboard.standing') === 'SENİN YERİN'
-            ? 'En fazla 5 rozet seçerek profilinde sergileyebilirsin. Seçim sıranız vitrindeki sıralamayı belirler.'
-            : 'Select up to 5 badges to show off on your profile. The order of selection determines their display position.'}
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
         {/* Badge List (Scrollable Area) */}
         <div
@@ -330,6 +267,6 @@ export default function BadgePicker({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

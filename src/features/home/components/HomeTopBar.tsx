@@ -4,6 +4,7 @@ import React, { memo } from 'react';
 import { GameIcon } from '@/components/icons';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { useT } from '@/contexts/LanguageContext';
+import { useSoundManager } from '@/services/audio';
 
 interface HomeTopBarProps {
   onOpenThemeModal: () => void;
@@ -17,6 +18,7 @@ interface HomeTopBarProps {
 function HomeTopBarBase({ onOpenThemeModal }: HomeTopBarProps) {
   const t = useT();
   const { themeConfig } = useGameTheme();
+  const { play: playSound } = useSoundManager('menu');
 
   return (
     <div className="home-topbar">
@@ -29,6 +31,7 @@ function HomeTopBarBase({ onOpenThemeModal }: HomeTopBarProps) {
         type="button"
         className="home-chip"
         onClick={onOpenThemeModal}
+        onMouseEnter={() => playSound('ui.tick')}
         title={t('home.change_theme')}
         aria-label={t('home.change_theme')}
       >

@@ -16,3 +16,11 @@ export function useModalSound(open: boolean): void {
     prev.current = open;
   }, [open]);
 }
+
+/** Yalnızca açıkken mount edilen modallar için: mount'ta açılış, unmount'ta kapanış sesi. */
+export function useMountedModalSound(): void {
+  useEffect(() => {
+    soundEngine.play('modal.open');
+    return () => soundEngine.play('modal.close');
+  }, []);
+}

@@ -6,6 +6,7 @@ import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { useT } from '@/contexts/LanguageContext';
 import { useGamepad } from '@/hooks/useGamepad';
 import { useSoundManager } from '@/services/audio';
+import { Modal, type ModalRef } from '@/components/ui';
 import type { HomeMenuItem } from '../hooks/useHomePage';
 
 interface MoreMenuSheetProps {
@@ -14,31 +15,44 @@ interface MoreMenuSheetProps {
 }
 
 /**
- * Izgaraya sığmayan menü öğeleri. Mobilde alttan kayan sayfa, 640px üstünde
- * ortalanmış panel (bkz. src/app/home.css). Giriş animasyonu yalnızca transform
- * + opacity; blur/backdrop-filter kullanılmaz.
+ * Izgaraya sığmayan menü öğeleri. Ortak Modal/Sheet altyapısı üzerine inşa edilmiştir.
+ * Mobilde alttan kayan sayfa, 640px üstünde ortalanmış panel.
  */
 export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
   const t = useT();
   const { themeConfig } = useGameTheme();
   const { play: playSound } = useSoundManager('menu');
-  const panelRef = useRef<HTMLDivElement | null>(null);
   const rowRefs = useRef<(HTMLDivElement | HTMLButtonElement | null)[]>([]);
+  const modalRef = useRef<ModalRef>(null);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const totalCount = items.length + 1; // items + Kapat butonu
 
-  const activateIndex = useCallback(
-    (index: number) => {
-      playSound('ui.confirm');
-      if (index >= 0 && index < items.length) {
-        onClose();
-        items[index].onClick();
+  const handleModalClose = useCallback(
+    (afterClose?: () => void) => {
+      if (modalRef.current) {
+        modalRef.current.close();
+        if (afterClose) {
+          setTimeout(afterClose, 210);
+        }
       } else {
+        playSound('ui.confirm');
         onClose();
+        afterClose?.();
       }
     },
-    [items, onClose, playSound]
+    [onClose, playSound]
+  );
+
+  const activateIndex = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < items.length) {
+        handleModalClose(() => items[index].onClick());
+      } else {
+        handleModalClose();
+      }
+    },
+    [items, handleModalClose]
   );
 
   const moveUp = useCallback(() => {
@@ -57,9 +71,10 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
     });
   }, [totalCount, playSound]);
 
-  // Gamepad desteği
+  // Gamepad desteği (yukarı/aşağı gezinti ve seçim) - priority: 'modal'
   useGamepad({
     enabled: true,
+    priority: 'modal',
     onMove: (dir) => {
       if (dir === 'up') moveUp();
       else if (dir === 'down') moveDown();
@@ -68,8 +83,7 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
       activateIndex(activeIndex);
     },
     onCancel: () => {
-      playSound('ui.confirm');
-      onClose();
+      handleModalClose();
     },
   });
 
@@ -87,19 +101,13 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
         activateIndex(activeIndex);
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        playSound('ui.confirm');
-        onClose();
+        handleModalClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [moveUp, moveDown, activateIndex, activeIndex, onClose, playSound]);
-
-  // Sayfa açılır açılmaz odak panele girsin
-  useEffect(() => {
-    panelRef.current?.focus();
-  }, []);
+  }, [moveUp, moveDown, activateIndex, activeIndex, handleModalClose]);
 
   // Aktif eleman değiştiğinde görünür alana kaydır
   useEffect(() => {
@@ -107,110 +115,108 @@ export function MoreMenuSheet({ items, onClose }: MoreMenuSheetProps) {
   }, [activeIndex]);
 
   return (
-    <div
-      className="home-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('home.more')}
+    <Modal
+      ref={modalRef}
+      open={true}
+      onClose={onClose}
+      hideHeader={true}
+      showCloseButton={false}
+      playSounds={true}
+      maxWidth={440}
+      showHandle={true}
     >
-      <div className="home-sheet__scrim" onClick={onClose} />
+      {items.map((item, idx) => {
+        const isActive = activeIndex === idx;
+        return (
+          <div
+            key={item.id}
+            ref={(el) => {
+              rowRefs.current[idx] = el;
+            }}
+            className="home-sheet__row"
+            role="button"
+            tabIndex={0}
+            data-active={isActive}
+            style={{
+              background: isActive
+                ? `linear-gradient(160deg, ${item.color}26 0%, rgba(15, 23, 42, 0.95) 100%)`
+                : 'rgba(255, 255, 255, 0.04)',
+              border: `1.5px solid ${isActive ? item.color : `${item.color}40`}`,
+              boxShadow: isActive ? `0 0 16px ${item.color}40` : 'none',
+            }}
+            onPointerEnter={() => {
+              if (activeIndex !== idx) {
+                playSound('ui.tick');
+                setActiveIndex(idx);
+              }
+            }}
+            onClick={() => activateIndex(idx)}
+          >
+            <span className="home-sheet__icon-wrap">
+              <GameIcon name={item.icon} size={20} color={isActive ? item.color : '#94a3b8'} />
+            </span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: isActive ? '#ffffff' : '#e2e8f0',
+                }}
+              >
+                {item.label}
+              </span>
+              <span
+                style={{
+                  fontSize: 10.5,
+                  color: isActive ? '#cbd5e1' : '#64748b',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {item.sub}
+              </span>
+            </span>
+          </div>
+        );
+      })}
 
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        className="home-sheet__panel"
-        style={{ background: themeConfig.board.background || '#070e1c', outline: 'none' }}
+      <button
+        type="button"
+        ref={(el) => {
+          rowRefs.current[items.length] = el;
+        }}
+        data-active={activeIndex === items.length}
+        onClick={() => activateIndex(items.length)}
+        onPointerEnter={() => setActiveIndex(items.length)}
+        className="home-sheet__row"
+        style={{
+          justifyContent: 'center',
+          background:
+            activeIndex === items.length
+              ? 'rgba(255, 255, 255, 0.12)'
+              : 'transparent',
+          border: `1.5px solid ${
+            activeIndex === items.length
+              ? themeConfig.accentColor || '#ffffff'
+              : 'rgba(255, 255, 255, 0.1)'
+          }`,
+          color: activeIndex === items.length ? '#ffffff' : '#94a3b8',
+          boxShadow:
+            activeIndex === items.length
+              ? `0 0 14px ${themeConfig.accentGlow || 'rgba(255, 255, 255, 0.3)'}`
+              : 'none',
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          marginBottom: 0,
+        }}
       >
-        <div className="home-sheet__handle" />
-
-        {items.map((item, idx) => {
-          const isActive = activeIndex === idx;
-          return (
-            <div
-              key={item.id}
-              ref={(el) => {
-                rowRefs.current[idx] = el;
-              }}
-              className="home-sheet__row"
-              role="button"
-              tabIndex={0}
-              data-active={isActive}
-              style={{
-                background: isActive
-                  ? `linear-gradient(160deg, ${item.color}26 0%, rgba(15, 23, 42, 0.95) 100%)`
-                  : 'rgba(255, 255, 255, 0.04)',
-                border: `1.5px solid ${isActive ? item.color : `${item.color}40`}`,
-                boxShadow: isActive ? `0 0 16px ${item.color}40` : 'none',
-              }}
-              onPointerEnter={() => setActiveIndex(idx)}
-              onClick={() => activateIndex(idx)}
-            >
-              <span className="home-sheet__icon-wrap">
-                <GameIcon name={item.icon} size={20} color={isActive ? item.color : '#94a3b8'} />
-              </span>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    color: isActive ? '#ffffff' : '#e2e8f0',
-                  }}
-                >
-                  {item.label}
-                </span>
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    color: isActive ? '#cbd5e1' : '#64748b',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {item.sub}
-                </span>
-              </span>
-            </div>
-          );
-        })}
-
-        <button
-          type="button"
-          ref={(el) => {
-            rowRefs.current[items.length] = el;
-          }}
-          data-active={activeIndex === items.length}
-          onClick={() => activateIndex(items.length)}
-          onPointerEnter={() => setActiveIndex(items.length)}
-          className="home-sheet__row"
-          style={{
-            justifyContent: 'center',
-            background:
-              activeIndex === items.length
-                ? 'rgba(255, 255, 255, 0.12)'
-                : 'transparent',
-            border: `1.5px solid ${
-              activeIndex === items.length
-                ? themeConfig.accentColor || '#ffffff'
-                : 'rgba(255, 255, 255, 0.1)'
-            }`,
-            color: activeIndex === items.length ? '#ffffff' : '#94a3b8',
-            boxShadow:
-              activeIndex === items.length
-                ? `0 0 14px ${themeConfig.accentGlow || 'rgba(255, 255, 255, 0.3)'}`
-                : 'none',
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            marginBottom: 0,
-          }}
-        >
-          {t('common.close')}
-        </button>
-      </div>
-    </div>
+        {t('common.close')}
+      </button>
+    </Modal>
   );
 }

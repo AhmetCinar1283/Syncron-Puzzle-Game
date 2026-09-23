@@ -55,18 +55,22 @@ export function NBtn({ children, onClick, active, color = '#94a3b8', style, disa
   );
 }
 
+import { Modal as UiModal } from '@/components/ui';
+
 export function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(2,5,14,0.82)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}
+    <UiModal
+      open={true}
+      onClose={onClose}
+      accentColor="#00c4ff"
+      maxWidth={500}
+      showCloseButton={false}
+      hideHeader={true}
+      zIndex={120}
     >
-      <div
-        style={{ background: 'rgba(6,13,26,0.98)', border: '1px solid rgba(30,58,95,0.6)', borderRadius: 14, padding: '24px 28px', boxShadow: '0 0 40px rgba(0,0,0,0.8)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div style={{ padding: '4px 2px', width: '100%', boxSizing: 'border-box' }}>
         {children}
       </div>
-    </div>
+    </UiModal>
   );
 }

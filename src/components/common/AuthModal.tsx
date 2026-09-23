@@ -3,9 +3,11 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useT, useLanguage } from '@/contexts/LanguageContext';
+import { useMountedModalSound } from '@/services/audio';
 import { LANGS, type Lang } from '@/lib/i18n';
 import { getUserTagData, requestNewTag } from '@/services/firebase/users';
 import { GameIcon } from '@/components/icons';
+import { Modal } from '@/components/ui';
 
 interface Props {
   onClose: () => void;
@@ -48,6 +50,7 @@ const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
 export default function AuthModal({ onClose }: Props) {
   const t = useT();
+  useMountedModalSound();
   const { lang, setLang } = useLanguage();
   const { user, isAnonymous, linkWithGoogle, linkWithEmail, signOut } = useAuthContext();
 
@@ -380,42 +383,30 @@ function LangSection({ lang, setLang, label }: { lang: Lang; setLang: (l: Lang) 
 
 function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(3,7,18,0.88)', backdropFilter: 'blur(6px)',
-        padding: '16px',
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      maxWidth={380}
+      showCloseButton={false}
+      hideHeader={true}
     >
-      <div
-        style={{
-          background: '#0a0f1a',
-          border: '1px solid #00ff8820',
-          borderRadius: 16,
-          padding: '28px 24px 24px',
-          width: '100%',
-          maxWidth: 340,
-          boxShadow: '0 0 60px rgba(0,255,136,0.06), 0 20px 60px rgba(0,0,0,0.6)',
-          position: 'relative',
-        }}
-      >
+      <div style={{ position: 'relative', width: '100%', padding: '4px 2px' }}>
         {/* Close */}
         <button
           onClick={onClose}
           style={{
-            position: 'absolute', top: 12, right: 14,
-            background: 'none', border: 'none', color: '#374151',
+            position: 'absolute', top: -6, right: -4,
+            background: 'none', border: 'none', color: '#64748b',
             cursor: 'pointer', padding: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
+          aria-label="Close"
         >
-          <GameIcon name="close" size={14} />
+          <GameIcon name="close" size={15} />
         </button>
         {children}
       </div>
-    </div>
+    </Modal>
   );
 }
 

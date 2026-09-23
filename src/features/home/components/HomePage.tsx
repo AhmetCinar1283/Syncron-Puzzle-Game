@@ -46,7 +46,7 @@ export function HomePage() {
     tiles,
     overflowItems,
     activeIndex,
-    setActiveIndex,
+    selectIndex,
     slidePhase,
     isSliding,
     triggerPlay,
@@ -104,7 +104,7 @@ export function HomePage() {
               item={playItem}
               phase={slidePhase}
               isActive={activeIndex === 0}
-              onSelect={() => setActiveIndex(0)}
+              onSelect={() => selectIndex(0)}
               onTrigger={triggerPlay}
               onSlideEnd={onSlideEnd}
             />
@@ -113,7 +113,7 @@ export function HomePage() {
               tiles={tiles}
               activeIndex={activeIndex}
               disabled={isSliding}
-              onSelect={setActiveIndex}
+              onSelect={selectIndex}
               onActivate={activateIndex}
             />
           </div>

@@ -11,6 +11,7 @@ import { useGamepad } from '@/hooks/useGamepad';
 import { useSoundManager } from '@/services/audio';
 import { isDailyAvailable } from '@/features/daily';
 import type { IconName } from '@/components/icons';
+import { useSettings } from '@/features/settings';
 import { moveMenuSelection, PROFILE_INDEX } from '../lib/menuGrid';
 import { useMotionTier } from '../lib/motionTier';
 
@@ -60,7 +61,22 @@ export function useHomePage() {
   const [inputMode, setInputMode] = useState<'touch' | 'controller'>('touch');
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const { isSettingsOpen } = useSettings();
   const [lastPlayedLevelId, setLastPlayedLevelId] = useState<string | null>(null);
+
+  const selectIndex = useCallback(
+    (index: number) => {
+      if (slidePhase !== 'idle') return;
+      setActiveIndex((prev) => {
+        if (prev !== index) {
+          playSound('ui.tick');
+        }
+        return index;
+      });
+    },
+    [slidePhase, playSound]
+  );
 
   const isSliding = slidePhase !== 'idle';
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -359,7 +375,21 @@ export function useHomePage() {
     setActiveIndex((prev) => (prev > tiles.length ? 0 : prev));
   }, [tiles.length]);
 
-  const isOverlayOpen = isThemeModalOpen || isSheetOpen;
+  useEffect(() => {
+    const handleProfileMenuState = (e: Event) => {
+      const customEvent = e as CustomEvent<{ open?: boolean }>;
+      const open = customEvent.detail?.open ?? false;
+      setIsProfileMenuOpen(open);
+      if (!open) {
+        setActiveIndex((prev) => (prev === PROFILE_INDEX ? 0 : prev));
+      }
+    };
+
+    window.addEventListener('profile-menu-state', handleProfileMenuState);
+    return () => window.removeEventListener('profile-menu-state', handleProfileMenuState);
+  }, []);
+
+  const isOverlayOpen = isThemeModalOpen || isSheetOpen || isSettingsOpen || isProfileMenuOpen;
 
   const { isConnected } = useGamepad({
     onMove: (dir) => {
@@ -439,6 +469,7 @@ export function useHomePage() {
     overflowItems,
     activeIndex,
     setActiveIndex,
+    selectIndex,
     slidePhase,
     isSliding,
     triggerPlay,

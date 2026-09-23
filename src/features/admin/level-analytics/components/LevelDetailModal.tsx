@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { GameIcon } from '@/components/icons';
+import { Modal } from '@/components/ui';
 import type { AlertRule } from '@/services/firebase/adminLevelAnalytics';
 import { TREND_METRICS } from '../lib/types';
 import type { LevelStats, StoredLevelInfo } from '../lib/types';
@@ -49,70 +50,22 @@ export function LevelDetailModal({
   );
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(3, 7, 18, 0.85)',
-        backdropFilter: 'blur(8px)',
-        padding: '24px',
-        boxSizing: 'border-box',
-      }}
-      onClick={onClose}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ color: '#10b981' }}>{selectedLevel.name}</span>
+          <span>Detay Analiz Raporu</span>
+        </div>
+      }
+      subtitle={`Paket: ${selectedLevel.part.toUpperCase()} | Sıra: #${selectedLevel.position !== undefined ? selectedLevel.position + 1 : 1}`}
+      accentColor="#10b981"
+      maxWidth={1050}
+      maxHeight="90dvh"
+      showCloseButton={false}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        transition={{ duration: 0.2 }}
-        style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 1050,
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          background: '#090d16',
-          border: '1px solid rgba(148, 163, 184, 0.15)',
-          borderRadius: 20,
-          padding: 24,
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
-          boxSizing: 'border-box',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(148, 163, 184, 0.1)', paddingBottom: 14 }}>
-            <div>
-              <h2 style={{ fontSize: 20, fontWeight: 900, margin: 0, textTransform: 'uppercase' }}>
-                <span style={{ color: '#10b981' }}>{selectedLevel.name}</span> Detay Analiz Raporu
-              </h2>
-              <p style={{ color: '#94a3b8', fontSize: 11, margin: '4px 0 0 0', fontWeight: 600 }}>
-                Paket: {selectedLevel.part.toUpperCase()} | Sıra: #{selectedLevel.position !== undefined ? selectedLevel.position + 1 : 1}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                color: '#94a3b8',
-                borderRadius: 8,
-                width: 32,
-                height: 32,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              <GameIcon name="close" size={14} color="#94a3b8" />
-            </button>
-          </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '4px 2px' }}>
 
           <DifficultyGapPanel selectedLevel={selectedLevel} latestStats={latestStats} />
 
@@ -239,7 +192,6 @@ export function LevelDetailModal({
           </div>
 
         </div>
-      </motion.div>
-    </div>
+      </Modal>
   );
 }

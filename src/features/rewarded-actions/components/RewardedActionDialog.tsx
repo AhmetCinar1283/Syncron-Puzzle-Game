@@ -4,13 +4,16 @@
  * DOSYA AMACI: Ödüllü aksiyon onay kartı (aksiyondan bağımsız). Başlık/açıklama
  * çağırandan gelir; butonun "reklam izle" mi "ücretsiz kullan" mı olduğunu ve
  * engel/hata mesajını erişim durumuna göre bu bileşen seçer.
+ * Ortak Modal.tsx sistemi üzerine inşa edilmiştir.
  */
 
-import type { CSSProperties } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback, type CSSProperties } from 'react';
 import { Clapperboard, Gift, Loader2 } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
+import { useMountedModalSound, soundEngine } from '@/services/audio';
 import type { RewardedAvailability } from '@/services/monetization';
+import { Modal } from '@/components/ui';
+import { useGamepad } from '@/hooks/useGamepad';
 import { declineMessageKey } from '../lib/declineMessages';
 
 interface RewardedActionDialogProps {
@@ -42,33 +45,80 @@ export function RewardedActionDialog({
     accentColor = '#00c4ff',
 }: RewardedActionDialogProps) {
     const t = useT();
+    useMountedModalSound();
     const blockedKey = availability.kind === 'blocked' ? declineMessageKey(availability.reason) : null;
     const message = errorKey ?? blockedKey;
 
+    // 0: Cancel / Close, 1: Confirm / Watch Ad
+    const hasPrimary = availability.kind !== 'blocked';
+    const [focusedBtn, setFocusedBtn] = useState<0 | 1>(hasPrimary ? 1 : 0);
+
+    const toggleFocus = useCallback(() => {
+        if (!hasPrimary) return;
+        setFocusedBtn((prev) => {
+            soundEngine.play('ui.tick');
+            return prev === 0 ? 1 : 0;
+        });
+    }, [hasPrimary]);
+
+    const handleConfirm = useCallback(() => {
+        if (!busy && hasPrimary) {
+            soundEngine.play('ui.confirm');
+            onConfirm();
+        }
+    }, [busy, hasPrimary, onConfirm]);
+
+    const handleClose = useCallback(() => {
+        if (!busy) {
+            onClose();
+        }
+    }, [busy, onClose]);
+
+    // Gamepad desteği - priority: 'modal'
+    useGamepad({
+        enabled: !busy,
+        priority: 'modal',
+        onMove: () => {
+            toggleFocus();
+        },
+        onConfirm: () => {
+            if (focusedBtn === 1) {
+                handleConfirm();
+            } else {
+                handleClose();
+            }
+        },
+        onCancel: handleClose,
+    });
+
+    // Klavye desteği
+    useEffect(() => {
+        if (busy) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab') {
+                e.preventDefault();
+                toggleFocus();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (focusedBtn === 1) handleConfirm();
+                else handleClose();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [busy, focusedBtn, toggleFocus, handleConfirm, handleClose]);
+
     return (
-        <motion.div
-            className="ad-banner-inset"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.18 }}
-            onClick={busy ? undefined : onClose}
-            style={OVERLAY_STYLE}
+        <Modal
+            open={true}
+            onClose={handleClose}
+            title={title}
+            accentColor={accentColor}
+            maxWidth={380}
+            showCloseButton={false}
+            zIndex={300}
         >
-            <motion.div
-                role="dialog"
-                aria-modal="true"
-                aria-label={title}
-                initial={{ scale: 0.92, opacity: 0, y: 10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                    ...CARD_STYLE,
-                    border: `1px solid ${accentColor}59`,
-                    boxShadow: `0 0 35px ${accentColor}1f, 0 20px 40px rgba(0, 0, 0, 0.7)`,
-                }}
-            >
-                <h2 style={{ ...TITLE_STYLE, color: accentColor, textShadow: `0 0 16px ${accentColor}73` }}>{title}</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'center', padding: '4px 2px' }}>
                 <p style={BODY_STYLE}>{description}</p>
                 {notice && <p style={NOTICE_STYLE}>{notice}</p>}
 
@@ -78,21 +128,38 @@ export function RewardedActionDialog({
 
                 {message && <p role="alert" style={ERROR_STYLE}>{t(message)}</p>}
 
-                <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 2 }}>
-                    <button type="button" onClick={onClose} disabled={busy} style={SECONDARY_BUTTON_STYLE}>
+                <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 6 }}>
+                    <button
+                        type="button"
+                        onClick={handleClose}
+                        disabled={busy}
+                        onPointerEnter={() => setFocusedBtn(0)}
+                        style={{
+                            ...SECONDARY_BUTTON_STYLE,
+                            border: focusedBtn === 0 ? `1.5px solid ${accentColor}` : '1px solid rgba(255, 255, 255, 0.15)',
+                            background: focusedBtn === 0 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                            color: focusedBtn === 0 ? '#ffffff' : '#cbd5e1',
+                            transform: focusedBtn === 0 ? 'scale(1.02)' : 'scale(1)',
+                            boxShadow: focusedBtn === 0 ? `0 0 12px ${accentColor}40` : 'none',
+                        }}
+                    >
                         {availability.kind === 'blocked' ? t('rewarded.close') : t('rewarded.cancel')}
                     </button>
-                    {availability.kind !== 'blocked' && (
+
+                    {hasPrimary && (
                         <button
                             type="button"
-                            onClick={onConfirm}
+                            onClick={handleConfirm}
                             disabled={busy}
+                            onPointerEnter={() => setFocusedBtn(1)}
                             style={{
                                 ...PRIMARY_BUTTON_STYLE,
-                                background: `${accentColor}24`,
-                                border: `1px solid ${accentColor}80`,
+                                background: focusedBtn === 1 ? `${accentColor}38` : `${accentColor}20`,
+                                border: focusedBtn === 1 ? `2px solid ${accentColor}` : `1px solid ${accentColor}80`,
                                 color: accentColor,
                                 cursor: busy ? 'wait' : 'pointer',
+                                transform: focusedBtn === 1 ? 'scale(1.02)' : 'scale(1)',
+                                boxShadow: focusedBtn === 1 ? `0 0 18px ${accentColor}60` : 'none',
                             }}
                         >
                             {busy ? (
@@ -108,51 +175,11 @@ export function RewardedActionDialog({
                         </button>
                     )}
                 </div>
-                <style>{`@keyframes rewarded-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-            </motion.div>
-        </motion.div>
+            </div>
+            <style>{`@keyframes rewarded-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        </Modal>
     );
 }
-
-const OVERLAY_STYLE: CSSProperties = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(2, 5, 14, 0.8)',
-    backdropFilter: 'blur(6px)',
-    WebkitBackdropFilter: 'blur(6px)',
-    // HUD (50) ve kazanma overlay'inin (200) üstünde, reklam sonrası teşvik kartıyla (300) aynı katman.
-    zIndex: 300,
-    padding: 'env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px)',
-    boxSizing: 'border-box',
-    touchAction: 'manipulation',
-};
-
-const CARD_STYLE: CSSProperties = {
-    background: 'rgba(4, 9, 20, 0.97)',
-    borderRadius: 20,
-    padding: 'clamp(20px, 4vw, 26px) clamp(16px, 4vw, 22px)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 12,
-    width: 'min(90vw, 340px)',
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    boxSizing: 'border-box',
-    textAlign: 'center',
-};
-
-const TITLE_STYLE: CSSProperties = {
-    fontSize: 'clamp(16px, 4.2vw, 19px)',
-    fontWeight: 800,
-    letterSpacing: '0.04em',
-    margin: 0,
-};
 
 const BODY_STYLE: CSSProperties = {
     color: '#94a3b8',
@@ -175,7 +202,7 @@ const ERROR_STYLE: CSSProperties = {
 
 const BUTTON_BASE: CSSProperties = {
     fontSize: 'clamp(11px, 3vw, 13px)',
-    padding: '9px 12px',
+    padding: '10px 14px',
     borderRadius: 10,
     letterSpacing: '0.03em',
     touchAction: 'manipulation',
@@ -184,14 +211,13 @@ const BUTTON_BASE: CSSProperties = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    transition: 'all 160ms ease',
+    outline: 'none',
 };
 
 const SECONDARY_BUTTON_STYLE: CSSProperties = {
     ...BUTTON_BASE,
     flex: 1,
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    color: '#cbd5e1',
     cursor: 'pointer',
     fontWeight: 600,
 };

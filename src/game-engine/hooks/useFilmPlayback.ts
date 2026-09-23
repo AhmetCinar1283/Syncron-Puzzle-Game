@@ -38,9 +38,10 @@ const DEATH_HOLD_MS = 800;
 const VFX_TO_SOUND: Partial<Record<string, SoundId>> = {
     sound_move:         'game.move',
     sound_push:         'game.boxPush',
+    sound_tick:         'game.bump',
     sound_ice_slide:    'game.ice',
     sound_ice_break:    'game.ice',
-    sound_portal_enter: 'game.portal',
+    sound_portal_enter: 'game.teleport',
     sound_portal_exit:  'game.teleport',
     sound_boing:        'game.boing',
     sound_conveyor:     'game.conveyor',

@@ -5,6 +5,14 @@
 import type { SynthRecipe } from '../../types';
 import { tone } from '../helpers';
 
+/** Duvara/engele çarpma: kısa, mat, alçalan tok vuruş. */
+export const bump: SynthRecipe = {
+  duration: 0.12,
+  build: (ctx) => {
+    tone(ctx, { type: 'sine', freq: 160, freqEnd: 70, dur: 0.1, gain: 0.55, attack: 0.002 });
+  },
+};
+
 /** Yay gibi zıplama: hızlı yükselip yavaşça düşen pitch süpürmesi. */
 export const boing: SynthRecipe = {
   duration: 0.35,

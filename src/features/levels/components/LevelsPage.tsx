@@ -4,12 +4,14 @@ import { Suspense, useState } from 'react';
 import { useCapabilities } from '@/contexts/MonetizationContext';
 import { useLevelsPage, type LevelEntry } from '../hooks/useLevelsPage';
 import { LevelsHUD } from './LevelsHUD';
+import { LevelsControlBar } from './LevelsControlBar';
 import { ChapterBar } from './chapters/ChapterBar';
 import { ChapterLockShield } from './chapters/ChapterLockShield';
 import { ConstellationCircuit } from './circuit/ConstellationCircuit';
 import { CustomLevelsView } from './custom/CustomLevelsView';
 import { WarpTransition } from './WarpTransition';
 import { GameIcon } from '@/components/icons';
+import { Modal } from '@/components/ui';
 import LevelPreviewModal from '@/components/common/LevelPreviewModal';
 
 function LevelsPageContent() {
@@ -61,12 +63,19 @@ function LevelsPageContent() {
   const [previewLevel, setPreviewLevel] = useState<LevelEntry | null>(null);
   const [previewIsPreset, setPreviewIsPreset] = useState<boolean>(true);
 
+  // Alt kontrol çubuğundaki "Oyna" butonunun hedeflediği seviye (scroll/klavye/gamepad ile seçilen)
+  const activeLevel = filteredPresets[selectedIndex ?? defaultActiveIdx];
+
   return (
     <div
       className="relative z-1 flex h-[100dvh] w-screen flex-col overflow-hidden text-slate-200 bg-transparent"
     >
       {/* 1. Üst HUD */}
-      <div className="relative z-30" style={{ height: isMobile ? 52 : 60 }}>
+      {/* Yükseklik = bar içeriği + çentik/status bar payı (safe-area). HUD bu kutuyu inset-0 ile doldurur. */}
+      <div
+        className="relative z-30 shrink-0"
+        style={{ height: `calc(${isMobile ? 52 : 60}px + env(safe-area-inset-top))` }}
+      >
         <LevelsHUD
           isMobile={isMobile}
           activeTab={activeTab}
@@ -147,6 +156,27 @@ function LevelsPageContent() {
                 containerRef={gridContainerRef}
               />
             )}
+
+            {/* Alt Kontrol Çubuğu: önceki/sonraki sektör + seçili seviyeyi doğrudan oynat */}
+            {!isCurrentChapterLocked && (
+              <LevelsControlBar
+                isMobile={isMobile}
+                themeDef={themeDef}
+                canGoPrevSector={hasPortalStart}
+                canGoNextSector={isSessionCompleted}
+                onPrevSector={handleEntryPortal}
+                onNextSector={handleExitPortal}
+                onPlay={() => {
+                  const idx = selectedIndex ?? defaultActiveIdx;
+                  const lv = filteredPresets[idx];
+                  if (lv) playLevel(lv, true);
+                }}
+                playDisabled={
+                  !activeLevel || (!!activeLevel.firestoreId && lockedSet.has(activeLevel.firestoreId))
+                }
+                playLabel={t('levels.play_btn')}
+              />
+            )}
           </div>
         ) : (
           /* Özel / Kullanıcı Seviyeleri */
@@ -173,71 +203,108 @@ function LevelsPageContent() {
 
       {/* 5. Kampanya Bitiş Modalı */}
       {victoryModal && (
-        <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#03070f]/92 p-4 backdrop-blur-sm"
-          onClick={() => setVictoryModal(false)}
+        <Modal
+          open={victoryModal}
+          onClose={() => setVictoryModal(false)}
+          maxWidth={420}
+          accentColor="#facc15"
+          showCloseButton={false}
+          showHandle={true}
         >
-          <div
-            className="w-full max-w-[420px] rounded-2xl border border-yellow-400/30 bg-[#070a13] p-7 text-center shadow-[0_0_50px_rgba(255,215,0,0.15)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex justify-center">
+          <div style={{ textAlign: 'center', padding: '10px 4px 6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <GameIcon
                 name="trophy"
                 size={54}
                 color="#facc15"
-                style={{ filter: 'drop-shadow(0 0 16px rgba(250, 204, 21, 0.4))' }}
+                style={{ filter: 'drop-shadow(0 0 16px rgba(250, 204, 21, 0.5))' }}
               />
             </div>
-            <h3 className="mb-3 text-lg font-black uppercase tracking-wide text-yellow-400">
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#facc15' }}>
               {t('levels.victory_portal_title')}
             </h3>
-            <p className="mb-6 text-[13px] leading-relaxed text-slate-400">
+            <p style={{ margin: '0 0 20px', fontSize: 13, lineHeight: 1.6, color: '#94a3b8' }}>
               {t('levels.victory_portal_body')}
             </p>
             <button
+              type="button"
               onClick={() => setVictoryModal(false)}
-              className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-[13px] font-extrabold uppercase tracking-wide text-[#030712] shadow-[0_4px_12px_rgba(245,158,11,0.3)]"
+              className="home-sheet__close-btn"
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                borderColor: '#f59e0b',
+                color: '#030712',
+                fontWeight: 900,
+                boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
+              }}
             >
               {t('levels.victory_portal_back')}
             </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* 6. Hazır Bölüm Silme Onayı (Moderatör) */}
       {deleteConfirm && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#03070f]/88 p-4 backdrop-blur-[6px]"
-          onClick={() => !deleting && setDeleteConfirm(null)}
+        <Modal
+          open={!!deleteConfirm}
+          onClose={() => !deleting && setDeleteConfirm(null)}
+          title={t('levels.delete_title')}
+          accentColor="#ef4444"
+          maxWidth={380}
+          showCloseButton={false}
         >
-          <div
-            className="w-full max-w-[360px] rounded-2xl border border-red-500/30 bg-[#0a0f1a] p-6 shadow-[0_0_40px_rgba(239,68,68,0.1)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-3 text-[15px] tracking-wide text-red-500">{t('levels.delete_title')}</h3>
-            <p className="mb-1.5 text-[13px] text-slate-500">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '4px 2px' }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#e2e8f0', lineHeight: 1.5 }}>
               {t('levels.delete_body', { name: deleteConfirm.name })}
             </p>
-            <p className="mb-5 text-[11px] text-slate-700">{t('levels.delete_warning')}</p>
-            <div className="flex gap-2">
+            <p style={{ margin: 0, fontSize: 11, color: '#f87171' }}>
+              {t('levels.delete_warning')}
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button
+                type="button"
                 onClick={confirmDeletePreset}
                 disabled={deleting}
-                className="rounded-lg border border-red-500/50 bg-red-500/10 px-5 py-2 text-[13px] font-bold text-red-500 disabled:opacity-60"
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: '1.5px solid #ef4444',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  color: '#ef4444',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.6 : 1,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
               >
                 {deleting ? '...' : t('levels.delete_yes')}
               </button>
               <button
+                type="button"
                 onClick={() => setDeleteConfirm(null)}
                 disabled={deleting}
-                className="rounded-lg border border-white/10 px-4 py-2 text-[13px] text-slate-500"
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  color: '#94a3b8',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  textTransform: 'uppercase',
+                }}
               >
                 {t('common.cancel')}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* 7. Bölüm Detay & Harita Önizleme Modalı */}

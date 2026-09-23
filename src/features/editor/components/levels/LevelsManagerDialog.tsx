@@ -9,6 +9,7 @@ import { useLevelReorderDrag } from '../../hooks/useLevelReorderDrag';
 import SavedLevelsList from './SavedLevelsList';
 import FirestoreLevelsList from './FirestoreLevelsList';
 import { GameIcon } from '@/components/icons';
+import { Modal } from '@/components/ui';
 
 interface LevelsManagerDialogProps {
   open: boolean;
@@ -67,70 +68,16 @@ export default function LevelsManagerDialog({ open, onClose }: LevelsManagerDial
   if (!open) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(2, 5, 14, 0.85)',
-        backdropFilter: 'blur(5px)',
-        zIndex: 110,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-      onClick={onClose}
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('editor.saved_levels')}
+      accentColor="#00c4ff"
+      maxWidth={620}
+      maxHeight="85dvh"
+      showCloseButton={false}
     >
-      <div
-        style={{
-          background: 'rgba(6, 13, 26, 0.98)',
-          border: '1px solid rgba(0, 196, 255, 0.25)',
-          borderRadius: 14,
-          padding: '20px 24px',
-          boxShadow: '0 0 40px rgba(0, 196, 255, 0.15)',
-          width: '90%',
-          maxWidth: 600,
-          maxHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxSizing: 'border-box',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Title Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 15,
-              fontWeight: 800,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: '#00c4ff',
-              textShadow: '0 0 10px rgba(0,196,255,0.3)',
-            }}
-          >
-            {t('editor.saved_levels')}
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#475569',
-              fontSize: 16,
-              cursor: 'pointer',
-              transition: 'color 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-          >
-            <GameIcon name="close" size={14} />
-          </button>
-        </div>
-
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         {/* Tab Buttons & New Level Button */}
         <div
           style={{
@@ -221,6 +168,6 @@ export default function LevelsManagerDialog({ open, onClose }: LevelsManagerDial
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

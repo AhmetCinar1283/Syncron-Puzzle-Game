@@ -53,17 +53,26 @@ export function ConstellationCircuit({
   const nodeRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const [contentWidth, setContentWidth] = useState(400);
 
-  // Kaydırma (scroll/touch) esnasında hover olayının seçimi bozmasını engellemek için bayrak
-  const isScrollNavigatingRef = useRef(false);
-  // Dokunmatik ekranda sürükleme yaparken seviyenin yanlışlıkla açılmasını engelleyen bayrak
-  const isSwipingRef = useRef(false);
+  // Seçim, kaydırma takibinden (veya tıklamadan) geldiyse otomatik ortalama kaydırmayı atla
+  // (böylece sayfa kullanıcının parmağına/tekerleğine karşı "akmaz")
+  const skipAutoScrollRef = useRef(false);
+  // Programatik (kod tarafından tetiklenen) kaydırma sürerken, kaydırma takibinin
+  // seçimi değiştirmesini engelleyen bayrak (klavye/gamepad ile hedefe süzülürken çakışmayı önler)
+  const suppressScrollTrackingRef = useRef(false);
+  const suppressScrollTrackingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialMountRef = useRef(true);
   const prevLevelsRef = useRef(levels);
 
+  useEffect(() => {
+    return () => {
+      if (suppressScrollTrackingTimerRef.current) clearTimeout(suppressScrollTrackingTimerRef.current);
+    };
+  }, []);
+
   // Dinamik yükseklik ve düğüm koordinatlarını hesapla
   const layout = useMemo(() => {
-    return calculateCircuitLayout(levels.length, isMobile);
-  }, [levels.length, isMobile]);
+    return calculateCircuitLayout(levels.length, isMobile, hasPortalStart);
+  }, [levels.length, isMobile, hasPortalStart]);
 
   // Tuval genişliğini takip et
   useEffect(() => {
@@ -81,174 +90,113 @@ export function ConstellationCircuit({
   }, []);
 
   // Belirli bir seviyeyi dikeyde tam merkeze getiren pürüzsüz kaydırma fonksiyonu
-  const scrollToLevel = (targetIdx: number, smooth = true) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+  const scrollToLevel = useCallback(
+    (targetIdx: number, smooth = true) => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
 
-    const pt = layout.nodePoints[targetIdx];
-    if (!pt) {
-      const el = nodeRefs.current.get(targetIdx);
-      el?.scrollIntoView({
-        behavior: smooth ? 'smooth' : 'instant',
-        block: 'center',
-        inline: 'center',
-      });
-      return;
-    }
+      // Bu, kod tarafından tetiklenen bir kaydırma — bitene kadar kaydırma takibinin
+      // seçimi ele geçirip hedefle çakışmasını engelle
+      suppressScrollTrackingRef.current = true;
+      if (suppressScrollTrackingTimerRef.current) clearTimeout(suppressScrollTrackingTimerRef.current);
+      suppressScrollTrackingTimerRef.current = setTimeout(
+        () => {
+          suppressScrollTrackingRef.current = false;
+        },
+        smooth ? 600 : 100,
+      );
 
-    // Seviye düğümünün dikey piksel konumu eksi ekran yüksekliğinin yarısı
-    const targetTop = pt.yPx - container.clientHeight / 2;
-    const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
-    const clampedTop = Math.max(0, Math.min(targetTop, maxScroll));
-
-    container.scrollTo({
-      top: clampedTop,
-      behavior: smooth ? 'smooth' : 'instant',
-    });
-  };
-
-  // Seviye adım fonksiyonu (ileri +1, geri -1)
-  const stepLevel = useCallback(
-    (delta: -1 | 1) => {
-      if (levels.length === 0) return;
-      const current = selectedIndex !== null ? selectedIndex : defaultActiveIndex;
-      const next = Math.max(0, Math.min(levels.length - 1, current + delta));
-      if (next !== current) {
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate(10);
-        }
-        onSelect(next);
+      const pt = layout.nodePoints[targetIdx];
+      if (!pt) {
+        const el = nodeRefs.current.get(targetIdx);
+        el?.scrollIntoView({
+          behavior: smooth ? 'smooth' : 'instant',
+          block: 'center',
+          inline: 'center',
+        });
+        return;
       }
+
+      // Seviye düğümünün dikey piksel konumu eksi ekran yüksekliğinin yarısı
+      const targetTop = pt.yPx - container.clientHeight / 2;
+      const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+      const clampedTop = Math.max(0, Math.min(targetTop, maxScroll));
+
+      container.scrollTo({
+        top: clampedTop,
+        behavior: smooth ? 'smooth' : 'instant',
+      });
     },
-    [levels.length, selectedIndex, defaultActiveIndex, onSelect],
+    [scrollContainerRef, layout.nodePoints],
   );
 
-  // 1. Masaüstü/Web: Fare tekerleği (wheel) ile seviyeler arası adım adım geçiş
+  // Kaydırma konumuna göre "şu an ekranda olan" seviyenin index'ini bulur.
+  // Ham piksel-merkez mesafesi yerine kaydırma *ilerlemesini* (0 = en üst, 1 = en alt)
+  // düğümlerin kendi konum aralığına eşliyoruz. Böylece:
+  //  - En üste tam kaydırıldığında her zaman ilk seviye, en alta tam kaydırıldığında
+  //    her zaman son seviye seçilir (viewport düğüm aralığından büyük/küçük olsa bile).
+  //  - Aradaki seviyeler kaydırma oranına göre doğal bir sırayla seçilir.
+  const getNearestIndexToCenter = useCallback(() => {
+    const container = scrollContainerRef.current;
+    const points = layout.nodePoints;
+    if (!container || points.length === 0) return null;
+
+    const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+    const progress = maxScroll > 0 ? Math.max(0, Math.min(1, container.scrollTop / maxScroll)) : 0;
+
+    const minY = points[0].yPx;
+    const maxY = points[points.length - 1].yPx;
+    const targetY = minY + progress * (maxY - minY);
+
+    let nearestIdx = 0;
+    let nearestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const dist = Math.abs(points[i].yPx - targetY);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestIdx = i;
+      }
+    }
+    return nearestIdx;
+  }, [scrollContainerRef, layout.nodePoints]);
+
+  // 1. Serbest kaydırma (mouse tekerleği, touch sürükleme, trackpad — hepsi native scroll):
+  // kaydırdıkça o anki seviyeyi canlı olarak seçili hale getir.
+  // NOT: 'scroll' olayına değil, her animasyon karesinde scrollTop'u okuyan sürekli bir
+  // döngüye dayanıyor — bazı Android tarayıcılarında touch kaydırma sırasında 'scroll'
+  // olayının güvenilmez/seyrek tetiklenmesi (event coalescing) yüzünden seçim hiç
+  // güncellenmiyordu; doğrudan konum okumak tüm platformlarda tutarlı çalışır.
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    let wheelAccumulator = 0;
-    let wheelCooldown = false;
-    let wheelTimer: ReturnType<typeof setTimeout> | null = null;
-    let navTimer: ReturnType<typeof setTimeout> | null = null;
+    let rafId: number;
+    let lastScrollTop = container.scrollTop;
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
+    const tick = () => {
+      rafId = requestAnimationFrame(tick);
 
-      if (wheelCooldown) return;
+      const st = container.scrollTop;
+      if (Math.abs(st - lastScrollTop) < 0.5) return;
+      lastScrollTop = st;
 
-      wheelAccumulator += e.deltaY;
+      if (suppressScrollTrackingRef.current) return;
 
-      if (wheelTimer) clearTimeout(wheelTimer);
-      wheelTimer = setTimeout(() => {
-        wheelAccumulator = 0;
-      }, 150);
+      const nearest = getNearestIndexToCenter();
+      if (nearest === null) return;
 
-      const WHEEL_THRESHOLD = 30;
-
-      if (Math.abs(wheelAccumulator) >= WHEEL_THRESHOLD) {
-        const delta: -1 | 1 = wheelAccumulator > 0 ? 1 : -1;
-        wheelAccumulator = 0;
-        wheelCooldown = true;
-        isScrollNavigatingRef.current = true;
-
-        stepLevel(delta);
-
-        setTimeout(() => {
-          wheelCooldown = false;
-        }, 180);
-
-        if (navTimer) clearTimeout(navTimer);
-        navTimer = setTimeout(() => {
-          isScrollNavigatingRef.current = false;
-        }, 350);
+      const current = selectedIndex !== null ? selectedIndex : defaultActiveIndex;
+      if (nearest !== current) {
+        skipAutoScrollRef.current = true;
+        onSelect(nearest);
       }
     };
 
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-      if (wheelTimer) clearTimeout(wheelTimer);
-      if (navTimer) clearTimeout(navTimer);
-    };
-  }, [scrollContainerRef, stepLevel]);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [scrollContainerRef, getNearestIndexToCenter, selectedIndex, defaultActiveIndex, onSelect]);
 
-  // 2. Mobil/Android/Dokunmatik: Kaydırma (touch swipe/drag) ile seviyeler arası adım adım geçiş
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    let touchStartY = 0;
-    let touchStartX = 0;
-    let touchCooldown = false;
-    let navTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
-      isSwipingRef.current = false;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-
-      const currentY = e.touches[0].clientY;
-      const currentX = e.touches[0].clientX;
-      const deltaY = touchStartY - currentY; // Pozitif = yukarı kaydırma (sonraki seviye)
-      const deltaX = touchStartX - currentX;
-
-      if (Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        isSwipingRef.current = true;
-        isScrollNavigatingRef.current = true;
-
-        if (e.cancelable) {
-          e.preventDefault();
-        }
-
-        const SWIPE_STEP_THRESHOLD = 40;
-
-        if (!touchCooldown && Math.abs(deltaY) >= SWIPE_STEP_THRESHOLD) {
-          const delta: -1 | 1 = deltaY > 0 ? 1 : -1;
-          touchStartY = currentY; // Sürekli sürüklemede bir sonraki adıma zemin hazırla
-          touchCooldown = true;
-
-          stepLevel(delta);
-
-          setTimeout(() => {
-            touchCooldown = false;
-          }, 160);
-        }
-      }
-    };
-
-    const handleTouchEnd = () => {
-      setTimeout(() => {
-        isSwipingRef.current = false;
-      }, 120);
-
-      if (navTimer) clearTimeout(navTimer);
-      navTimer = setTimeout(() => {
-        isScrollNavigatingRef.current = false;
-      }, 350);
-    };
-
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: true });
-    container.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-
-    return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
-      container.removeEventListener('touchcancel', handleTouchEnd);
-      if (navTimer) clearTimeout(navTimer);
-    };
-  }, [scrollContainerRef, stepLevel]);
-
-  // 3. Seçili seviye veya chapter değiştiğinde otomatik kaydırma (auto-scroll)
+  // 2. Seçili seviye veya chapter değiştiğinde otomatik kaydırma (auto-scroll)
   useEffect(() => {
     const targetIdx = selectedIndex !== null ? selectedIndex : defaultActiveIndex;
     if (targetIdx === null || targetIdx === undefined) return;
@@ -263,6 +211,11 @@ export function ConstellationCircuit({
 
     const isChapterChange = prevLevelsRef.current !== levels;
     prevLevelsRef.current = levels;
+
+    if (skipAutoScrollRef.current && !isChapterChange) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
 
     // Sektör değiştiğinde anında odaklan; seviye gezintisinde yumuşak süzül
     scrollToLevel(targetIdx, !isChapterChange);
@@ -359,13 +312,10 @@ export function ConstellationCircuit({
               playedData={playedData}
               themeDef={themeDef}
               onSelect={() => {
-                if (isScrollNavigatingRef.current) return;
+                skipAutoScrollRef.current = idx !== selectedIndex;
                 onSelect(idx);
               }}
-              onPlay={() => {
-                if (isSwipingRef.current) return;
-                onPlay(lv);
-              }}
+              onPlay={() => onPlay(lv)}
             />
           );
         })}

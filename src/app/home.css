@@ -582,7 +582,7 @@
 .home-sheet {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 9999;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -593,21 +593,39 @@
   position: absolute;
   inset: 0;
   background: rgba(2, 6, 16, 0.74);
-  animation: homeFade 180ms ease forwards;
+  animation: homeFadeIn 200ms ease forwards;
+}
+
+.home-sheet[data-closing="true"] .home-sheet__scrim {
+  animation: homeFadeOut 200ms ease forwards;
 }
 
 .home-sheet__panel {
   position: relative;
   width: 100%;
-  max-width: var(--home-max);
-  max-height: 80dvh;
+  max-width: var(--home-max, 520px);
+  max-height: 85dvh;
   overflow-y: auto;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
   box-sizing: border-box;
-  padding: 14px 14px calc(18px + var(--ad-banner-height));
+  padding: 14px 14px calc(18px + var(--ad-banner-height, 0px));
   border-top: 2px solid var(--home-accent-50);
   border-radius: var(--home-radius) var(--home-radius) 0 0;
   animation: homeSheetIn 260ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
   will-change: transform;
+}
+
+.home-sheet__panel::-webkit-scrollbar,
+.home-sheet__body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.home-sheet[data-closing="true"] .home-sheet__panel {
+  animation: homeSheetOut 220ms cubic-bezier(0.32, 0, 0.67, 0) forwards;
 }
 
 @media (min-width: 640px) {
@@ -619,8 +637,13 @@
   .home-sheet__panel {
     border-radius: var(--home-radius);
     border: 2px solid var(--home-accent-50);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px var(--home-accent-glow, rgba(0, 255, 136, 0.15));
     padding-bottom: 18px;
-    animation-name: homePop;
+    animation: homeSheetIn 260ms cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+  }
+
+  .home-sheet[data-closing="true"] .home-sheet__panel {
+    animation: homeSheetOut 220ms cubic-bezier(0.32, 0, 0.67, 0) forwards;
   }
 }
 
@@ -636,6 +659,109 @@
   .home-sheet__handle {
     display: none;
   }
+}
+
+.home-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.home-sheet__title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.home-sheet__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--home-accent, #00ff88);
+  text-shadow: 0 0 10px var(--home-accent-glow, rgba(0, 255, 136, 0.4));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-sheet__subtitle {
+  margin: -6px 0 14px 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.home-sheet__close-icon-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+
+.home-sheet__close-icon-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-sheet__body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.home-sheet__close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 14px;
+  margin-top: 14px;
+  box-sizing: border-box;
+  border-radius: calc(var(--home-radius, 14px) * 0.6);
+  cursor: pointer;
+  text-align: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.home-sheet__close-btn:hover,
+.home-sheet__close-btn:focus-visible,
+.home-sheet__close-btn[data-active="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--home-accent, #00ff88);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--home-accent-glow, rgba(0, 255, 136, 0.3));
+  transform: scale(1.01);
+}
+
+.home-sheet__close-btn:active {
+  transform: scale(0.98);
 }
 
 .home-sheet__row {
@@ -1017,12 +1143,43 @@
   }
 }
 
+@keyframes homeFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes homeFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes homeSheetIn {
   from {
     transform: translateY(100%);
+    opacity: 0.85;
   }
   to {
     transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes homeSheetOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
   }
 }
 

@@ -61,6 +61,7 @@ export function useSettingsNavigation({ items, enabled, onCancel }: Options) {
 
   useGamepad({
     enabled,
+    priority: 'modal',
     onMove: (dir) => {
       if (dir === 'up') move(-1);
       else if (dir === 'down') move(1);

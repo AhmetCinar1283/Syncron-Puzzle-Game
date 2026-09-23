@@ -75,6 +75,7 @@ export const boxBehavior: EntityBehavior = {
                 },
                 force: appliedForce,
                 isPush: true,
+                vfxTriggers: ['sound_push'],
             },
             forceRemaining: appliedForce,
         };

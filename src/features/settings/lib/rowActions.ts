@@ -3,15 +3,22 @@
  * atma, onaylama) saf mantığı. Gezinme hook'u satır türünü bilmek zorunda kalmaz.
  */
 
-import type { SettingRow } from './settingsModel';
+import { soundEngine } from '@/services/audio';
+import type { SettingRow, ToggleRow } from './settingsModel';
 
 export type StepDirection = -1 | 1;
+
+/** Toggle değerini değiştirir ve yeni duruma göre açma/kapama sesini çalar. */
+export function changeToggle(row: ToggleRow, value: boolean): void {
+  soundEngine.play(value ? 'ui.toggleOn' : 'ui.toggleOff');
+  row.onChange(value);
+}
 
 /** Sol/sağ girdisini satıra uygular: toggle aç/kapa, slider ±keyStep, segment döngüsü. */
 export function stepRow(row: SettingRow, direction: StepDirection): void {
   switch (row.kind) {
     case 'toggle':
-      if (row.value !== (direction > 0)) row.onChange(direction > 0);
+      if (row.value !== (direction > 0)) changeToggle(row, direction > 0);
       return;
     case 'slider': {
       if (row.disabled) return;
@@ -32,6 +39,6 @@ export function stepRow(row: SettingRow, direction: StepDirection): void {
 
 /** Onay (Enter / A tuşu): toggle'ı çevirir, segment'te sonraki seçeneğe geçer. */
 export function activateRow(row: SettingRow): void {
-  if (row.kind === 'toggle') row.onChange(!row.value);
+  if (row.kind === 'toggle') changeToggle(row, !row.value);
   else if (row.kind === 'segment') stepRow(row, 1);
 }

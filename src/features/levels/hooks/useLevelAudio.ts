@@ -21,11 +21,11 @@ export function useLevelAudio() {
   }, []);
 
   const playWarp = useCallback(() => {
-    soundEngine.playMenu('game.portal');
+    soundEngine.playMenu('game.teleport');
   }, []);
 
   const playLock = useCallback(() => {
-    soundEngine.playMenu('game.ice');
+    soundEngine.playMenu('ui.denied');
   }, []);
 
   return {

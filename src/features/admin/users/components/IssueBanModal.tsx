@@ -1,7 +1,7 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { GameIcon } from '@/components/icons';
+import { Modal } from '@/components/ui';
 import { getMinDateTime } from '../lib/format';
 
 type BanType = 'platform' | 'tag' | 'social' | 'coop';
@@ -39,62 +39,16 @@ export function IssueBanModal({
   submittingBan: boolean;
 }) {
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(3, 7, 18, 0.85)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-        >
-          <motion.div
-            initial={{ scale: 0.95, y: 10 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.95, y: 10 }}
-            style={{
-              width: '100%',
-              maxWidth: '500px',
-              background: 'linear-gradient(to bottom, #0a0f1a, #070a12)',
-              border: '1px solid rgba(147, 51, 234, 0.3)',
-              boxShadow: '0 0 40px rgba(147, 51, 234, 0.15)',
-              borderRadius: '16px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <GameIcon name="ban" size={16} color="#ef4444" />
-                <span>{isTr ? 'YENİ BAN / KISITLAMA TANIMLA' : 'ISSUE NEW RESTRICTION'}</span>
-              </h3>
-              <button
-                onClick={onClose}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#475569',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 4,
-                }}
-              >
-                <GameIcon name="close" size={14} color="#475569" />
-              </button>
-            </div>
+    <Modal
+      open={show}
+      onClose={onClose}
+      title={isTr ? 'YENİ BAN / KISITLAMA TANIMLA' : 'ISSUE NEW RESTRICTION'}
+      icon={<GameIcon name="ban" size={18} color="#ef4444" />}
+      accentColor="#ef4444"
+      maxWidth={520}
+      showCloseButton={false}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 2px' }}>
 
             {banError && (
               <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -286,9 +240,7 @@ export function IssueBanModal({
                 </button>
               </div>
             </form>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      </div>
+    </Modal>
   );
 }

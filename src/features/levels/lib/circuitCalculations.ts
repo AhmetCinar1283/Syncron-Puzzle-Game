@@ -22,9 +22,13 @@ export interface CircuitLayout {
 export function calculateCircuitLayout(
   levelCount: number,
   isMobile: boolean,
+  hasStartPortal = false,
 ): CircuitLayout {
   const rowSpacing = isMobile ? 120 : 140;
-  const topPadding = isMobile ? 90 : 110;
+  // Başlangıç portalı (buton + etiket ≈ 82px) varsa ona tam bir satır ayır;
+  // aksi halde portal etiketi ilk seviyenin üstüne biner
+  const startPortalY = 60;
+  const topPadding = hasStartPortal ? startPortalY + rowSpacing : isMobile ? 90 : 110;
   const bottomPadding = isMobile ? 120 : 140;
 
   const nodePoints: CircuitPoint[] = [];
@@ -38,7 +42,7 @@ export function calculateCircuitLayout(
 
   const startPortal: CircuitPoint = {
     xPercent: 50,
-    yPx: Math.max(30, topPadding - Math.round(rowSpacing * 0.6)),
+    yPx: hasStartPortal ? startPortalY : Math.max(30, topPadding - Math.round(rowSpacing * 0.6)),
   };
 
   const lastNodeY = levelCount > 0 ? topPadding + (levelCount - 1) * rowSpacing : topPadding;

@@ -20,7 +20,7 @@ export interface LevelsHUDProps {
 }
 
 /**
- * Üst HUD çubuğu — sabit yükseklik (`--hud-h` ile senkron), safe-area üst payı.
+ * Üst HUD çubuğu — yüksekliği sarmalayıcıdan alır (LevelsPage: içerik + safe-area üst payı).
  * Tüm alt bileşenler bu barın sabit olduğunu bilerek yerleşir; artık bağımsız
  * "position: absolute + sihirli piksel" yok.
  */
@@ -42,8 +42,8 @@ export function LevelsHUD({
 
   return (
     <div
-      className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 border-b border-white/[0.08] bg-[#080c1c]/80 px-3 backdrop-blur-md"
-      style={{ height: 'var(--hud-h)', paddingTop: 'env(safe-area-inset-top)' }}
+      className="absolute inset-0 z-30 flex items-center justify-between gap-2 border-b border-white/[0.08] bg-[#080c1c]/80 px-3 backdrop-blur-md"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <button
         onClick={onBack}

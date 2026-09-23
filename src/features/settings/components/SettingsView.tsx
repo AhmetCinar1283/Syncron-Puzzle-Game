@@ -9,6 +9,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { useT } from '@/contexts/LanguageContext';
+import { useModal } from '@/components/ui';
 import { useSettings } from '../hooks/useSettings';
 import { useSettingsGroups } from '../hooks/useSettingsGroups';
 import { useSettingsNavigation, type FocusItem } from '../hooks/useSettingsNavigation';
@@ -28,6 +29,8 @@ export interface SettingsViewProps {
   enableNavigation?: boolean;
 }
 
+export const CLOSE_FOCUS_ID = '__settings_close__';
+
 export function SettingsView({
   variant = 'page',
   onBack,
@@ -38,10 +41,19 @@ export function SettingsView({
   const { resetToDefaults } = useSettings();
   const groups = useSettingsGroups();
   const isModal = variant === 'modal';
+  const modal = useModal();
 
   const handleBackOrClose = useCallback(() => {
-    (isModal ? onClose : onBack)?.();
-  }, [isModal, onClose, onBack]);
+    if (isModal) {
+      if (modal) {
+        modal.close();
+      } else {
+        onClose?.();
+      }
+    } else {
+      onBack?.();
+    }
+  }, [isModal, modal, onClose, onBack]);
 
   const handleReset = useCallback(() => {
     if (typeof window !== 'undefined' && window.confirm(t('settings.reset_confirm'))) {
@@ -49,7 +61,7 @@ export function SettingsView({
     }
   }, [t, resetToDefaults]);
 
-  // Odak sırası: [geri (yalnız sayfa)] → tüm grupların satırları → sıfırla
+  // Odak sırası: [geri (yalnız sayfa)] → tüm grupların satırları → sıfırla → [kapat (yalnız modal)]
   const items = useMemo<FocusItem[]>(() => {
     const rowItems = groups.flatMap((g) =>
       g.rows.map((row): FocusItem => ({
@@ -62,6 +74,7 @@ export function SettingsView({
       ...(isModal ? [] : [{ id: BACK_FOCUS_ID, activate: handleBackOrClose }]),
       ...rowItems,
       { id: RESET_FOCUS_ID, activate: handleReset },
+      ...(isModal ? [{ id: CLOSE_FOCUS_ID, activate: handleBackOrClose }] : []),
     ];
   }, [groups, isModal, handleBackOrClose, handleReset]);
 
@@ -91,6 +104,30 @@ export function SettingsView({
       ))}
 
       <SettingsFooter focused={focusId === RESET_FOCUS_ID} onFocus={setFocusId} onReset={handleReset} />
+
+      {isModal && (
+        <button
+          type="button"
+          data-focus-id={CLOSE_FOCUS_ID}
+          data-active={focusId === CLOSE_FOCUS_ID}
+          onClick={handleBackOrClose}
+          onMouseEnter={() => setFocusId(CLOSE_FOCUS_ID)}
+          className="home-sheet__close-btn"
+          style={{
+            marginTop: 8,
+            border: focusId === CLOSE_FOCUS_ID
+              ? '1.5px solid var(--home-accent, #00ff88)'
+              : '1.5px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: focusId === CLOSE_FOCUS_ID
+              ? '0 0 14px var(--home-accent-glow, rgba(0, 255, 136, 0.3))'
+              : 'none',
+            color: focusId === CLOSE_FOCUS_ID ? '#ffffff' : '#94a3b8',
+            transform: focusId === CLOSE_FOCUS_ID ? 'scale(1.01)' : 'scale(1)',
+          }}
+        >
+          {t('common.close')}
+        </button>
+      )}
     </div>
   );
 }

@@ -27,39 +27,39 @@ const synth = (
 
 export const SOUNDS = {
   // — Arayüz —
-  'ui.tick':      synth(ui.tick, 'menu', 0.5, { pitchJitter: 0.04 }),
-  'ui.navigate':  synth(ui.navigate, 'menu', 0.6),
-  'ui.confirm':   synth(ui.confirm, 'menu', 0.6),
-  'ui.back':      synth(ui.back, 'menu', 0.55),
+  'ui.tick':      synth(ui.tick, 'menu', 0.32, { pitchJitter: 0.04 }),
+  'ui.navigate':  synth(ui.navigate, 'menu', 0.5),
+  'ui.confirm':   synth(ui.confirm, 'menu', 0.55),
+  'ui.back':      synth(ui.back, 'menu', 0.5),
   'ui.denied':    synth(ui.denied, 'menu', 0.5),
-  'ui.toggleOn':  synth(ui.toggleOn, 'menu', 0.6),
-  'ui.toggleOff': synth(ui.toggleOff, 'menu', 0.6),
-  'ui.slider':    synth(ui.slider, 'menu', 0.5, { pitchJitter: 0.03 }),
+  'ui.toggleOn':  synth(ui.toggleOn, 'menu', 0.5),
+  'ui.toggleOff': synth(ui.toggleOff, 'menu', 0.5),
+  'ui.slider':    synth(ui.slider, 'menu', 0.35, { pitchJitter: 0.03 }),
 
   // — Modal —
-  'modal.open':   synth(ui.modalOpen, 'menu', 0.6),
-  'modal.close':  synth(ui.modalClose, 'menu', 0.55),
+  'modal.open':   synth(ui.modalOpen, 'menu', 0.5),
+  'modal.close':  synth(ui.modalClose, 'menu', 0.45),
 
   // — Bildirim —
-  'notify.success': synth(notify.success, 'menu', 0.6),
-  'notify.error':   synth(notify.error, 'menu', 0.6),
-  'notify.warning': synth(notify.warning, 'menu', 0.6),
-  'notify.info':    synth(notify.info, 'menu', 0.55),
-  'notify.message': synth(notify.message, 'menu', 0.55),
+  'notify.success': synth(notify.success, 'menu', 0.5),
+  'notify.error':   synth(notify.error, 'menu', 0.5),
+  'notify.warning': synth(notify.warning, 'menu', 0.5),
+  'notify.info':    synth(notify.info, 'menu', 0.45),
+  'notify.message': synth(notify.message, 'menu', 0.45),
 
   // — Oyun (sentez) —
   'game.boing':    synth(game.boing, 'game', 0.5),
-  'game.toggle':   synth(ui.toggleOn, 'game', 0.5),
+  'game.bump':     synth(game.bump, 'game', 0.28, { pitchJitter: 0.05 }),
+  'game.toggle':   synth(ui.toggleOn, 'game', 0.45),
 
   // — Oyun (mp3) —
   'game.move':     file('/sounds/move.mp3', 'game', 0.4),
-  'game.portal':   file('/sounds/portal.mp3', 'game', 0.7),
-  'game.teleport': file('/sounds/teleport.mp3', 'game', 0.7),
-  'game.ice':      file('/sounds/ice.mp3', 'game', 0.5),
-  'game.conveyor': file('/sounds/conveyor.mp3', 'game', 0.4),
-  'game.win':      file('/sounds/win.mp3', 'game', 0.8),
-  'game.lose':     file('/sounds/lose.mp3', 'game', 0.7),
-  'game.boxPush':  file('/sounds/box_push.flac', 'game', 0.45),
+  'game.teleport': file('/sounds/teleport.mp3', 'game', 0.55),
+  'game.ice':      file('/sounds/ice.mp3', 'game', 0.45),
+  'game.conveyor': file('/sounds/conveyor.mp3', 'game', 0.5),
+  'game.win':      file('/sounds/win.mp3', 'game', 0.65),
+  'game.lose':     file('/sounds/lose.mp3', 'game', 0.6),
+  'game.boxPush':  file('/sounds/box_push.mp3', 'game', 0.4),
 } satisfies Record<string, SoundDef>;
 
 export type SoundId = keyof typeof SOUNDS;

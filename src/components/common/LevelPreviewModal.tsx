@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Edit3, X, User, ShieldAlert, Award, Compass, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { User, ShieldAlert, Award, Compass, RefreshCw } from 'lucide-react';
 import type { LevelData, CellType } from '@/game-engine/level-format';
 import type { StoredPlayedLevel } from '@/services/db';
 import LevelMiniPreview from '@/game-engine/components/LevelMiniPreview';
 import PlayTestOverlay from '@/game-engine/components/PlayTestOverlay';
 import { DIFFICULTY_COLORS, DIFFICULTY_LABELS } from '@/features/editor/lib/editorConfig';
+import { Modal, type ModalRef } from '@/components/ui';
+import { GameIcon } from '@/components/icons';
+import { soundEngine } from '@/services/audio';
+import { useGamepad } from '@/hooks/useGamepad';
+import { useT } from '@/contexts/LanguageContext';
 
 export interface LevelPreviewMetadata {
   name?: string;
@@ -94,22 +98,15 @@ export default function LevelPreviewModal({
   onPlay,
   onEdit,
 }: LevelPreviewModalProps) {
+  const t = useT();
   const [data, setData] = useState<LevelData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [focusedActionIndex, setFocusedActionIndex] = useState(0);
 
-  // Esc tuşu ile kapatma
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isTesting) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isTesting, onClose]);
+  const modalRef = useRef<ModalRef>(null);
+  const actionButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Seviye verisini yükleme
   const loadData = useCallback(async () => {
@@ -130,7 +127,6 @@ export default function LevelPreviewModal({
 
     try {
       if (typeof levelId === 'string') {
-        // Firestore ID ile çek
         const { getFirestoreLevel } = await import('@/services/firebase/adminLevels');
         const fl = await getFirestoreLevel(levelId);
         if (fl) {
@@ -139,12 +135,10 @@ export default function LevelPreviewModal({
           setError('Seviye verisi bulunamadı.');
         }
       } else if (typeof levelId === 'number') {
-        // Dexie ID ile yerel veritabanından çek
         const { getPresetLevelById, getUserLevelById } = await import('@/services/db');
         let lvl = (await getPresetLevelById(levelId)) || (await getUserLevelById(levelId));
 
         if (lvl && (!lvl.grid || (Array.isArray(lvl.grid) && lvl.grid.length === 0) || lvl.isNeedSync) && lvl.firestoreId) {
-          // İhtiyaç varsa Firestore'dan önbelleğe tazele
           try {
             const { fetchAndCacheLevel } = await import('@/services/firebase/sync');
             await fetchAndCacheLevel(lvl.firestoreId, levelId);
@@ -171,6 +165,7 @@ export default function LevelPreviewModal({
   useEffect(() => {
     if (isOpen) {
       setIsTesting(false);
+      setFocusedActionIndex(0);
       loadData();
     } else {
       setData(null);
@@ -195,6 +190,147 @@ export default function LevelPreviewModal({
   const creator = data?.creatorName || metadata?.creatorName;
   const firestoreId = data?.firestoreId || metadata?.firestoreId || (typeof levelId === 'string' ? levelId : undefined);
 
+  // Aksiyon butonları listesi (Klavye ve Gamepad D-pad için)
+  type ActionDef = {
+    id: string;
+    label: string;
+    icon?: React.ReactNode;
+    primary?: boolean;
+    danger?: boolean;
+    disabled?: boolean;
+    onClick: () => void;
+  };
+
+  const actions = useMemo<ActionDef[]>(() => {
+    const list: ActionDef[] = [];
+
+    if (mode === 'play') {
+      const canPlay = !!data && !loading && !metadata?.isLocked;
+      list.push({
+        id: 'play',
+        label: metadata?.isLocked ? 'KİLİTLİ' : 'OYNA ▶',
+        icon: <Compass size={14} />,
+        primary: true,
+        disabled: !canPlay,
+        onClick: () => {
+          if (data && onPlay && canPlay) {
+            onPlay(data);
+          }
+        },
+      });
+      list.push({
+        id: 'close',
+        label: t('common.close') || 'KAPAT',
+        onClick: () => {
+          if (modalRef.current) modalRef.current.close();
+          else onClose();
+        },
+      });
+    } else {
+      // mode === 'test'
+      if (firestoreId) {
+        list.push({
+          id: 'edit',
+          label: 'Editörde Aç',
+          icon: <GameIcon name="pencil" size={13} />,
+          onClick: () => {
+            if (onEdit) {
+              onEdit(firestoreId);
+            } else {
+              window.location.href = `/editor?firestoreId=${firestoreId}`;
+            }
+          },
+        });
+      }
+
+      list.push({
+        id: 'test',
+        label: 'Test Modunda Oyna',
+        icon: <GameIcon name="play" size={13} />,
+        primary: true,
+        disabled: !data || loading,
+        onClick: () => {
+          setIsTesting(true);
+        },
+      });
+
+      list.push({
+        id: 'close',
+        label: t('common.close') || 'KAPAT',
+        onClick: () => {
+          if (modalRef.current) modalRef.current.close();
+          else onClose();
+        },
+      });
+    }
+
+    return list;
+  }, [mode, data, loading, metadata?.isLocked, firestoreId, onPlay, onEdit, onClose, t]);
+
+  const moveAction = useCallback((dir: 1 | -1) => {
+    if (actions.length <= 1) return;
+    setFocusedActionIndex((prev) => {
+      let next = (prev + dir + actions.length) % actions.length;
+      soundEngine.play('ui.tick');
+      return next;
+    });
+  }, [actions.length]);
+
+  const executeAction = useCallback((index: number) => {
+    const action = actions[index];
+    if (action && !action.disabled) {
+      soundEngine.play('ui.confirm');
+      action.onClick();
+    }
+  }, [actions]);
+
+  // Gamepad desteği - priority: 'modal'
+  useGamepad({
+    enabled: isOpen && !isTesting,
+    priority: 'modal',
+    onMove: (dir) => {
+      if (dir === 'left' || dir === 'up') {
+        moveAction(-1);
+      } else if (dir === 'right' || dir === 'down') {
+        moveAction(1);
+      }
+    },
+    onConfirm: () => {
+      executeAction(focusedActionIndex);
+    },
+    onCancel: () => {
+      if (modalRef.current) modalRef.current.close();
+      else onClose();
+    },
+  });
+
+  // Klavye ok tuşları ve WASD desteği
+  useEffect(() => {
+    if (!isOpen || isTesting) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'arrowleft' || key === 'arrowup' || key === 'a' || key === 'w') {
+        e.preventDefault();
+        moveAction(-1);
+      } else if (key === 'arrowright' || key === 'arrowdown' || key === 'd' || key === 's') {
+        e.preventDefault();
+        moveAction(1);
+      } else if (key === 'enter' || key === ' ') {
+        e.preventDefault();
+        executeAction(focusedActionIndex);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isTesting, moveAction, executeAction, focusedActionIndex]);
+
+  // Odak butonunu görünür kıl
+  useEffect(() => {
+    actionButtonRefs.current[focusedActionIndex]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [focusedActionIndex]);
+
   if (!isOpen) return null;
 
   // Test modu aktifse tam ekran overlay'i aç
@@ -208,229 +344,316 @@ export default function LevelPreviewModal({
   }
 
   return (
-    <AnimatePresence>
-      <div
-        className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-5 select-none"
-        style={{
-          background: 'rgba(3, 7, 18, 0.88)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-        }}
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 12 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#060a14] shadow-[0_12px_45px_rgba(0,0,0,0.8),0_0_35px_rgba(0,196,255,0.1)] flex flex-col"
-          style={{ maxHeight: '92vh' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* 1. Üst Başlık Barı */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-cyan-500/15 bg-gradient-to-r from-cyan-950/30 to-transparent">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00c4ff]" />
-              <div className="min-w-0">
-                <h2 className="text-base font-extrabold tracking-wide text-slate-100 truncate">
-                  {displayName}
-                </h2>
-                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                  <span className="font-semibold text-cyan-300">{dimensionsLabel}</span>
-                  {difficulty && (
-                    <>
-                      <span>·</span>
-                      <span className="font-bold" style={{ color: difficultyColor }}>
-                        {difficultyLabel}
-                      </span>
-                    </>
-                  )}
-                  {creator && (
-                    <>
-                      <span>·</span>
-                      <span className="flex items-center gap-1 text-slate-400">
-                        <User size={11} /> {creator}
-                      </span>
-                    </>
-                  )}
-                </div>
+    <Modal
+      ref={modalRef}
+      open={isOpen}
+      onClose={onClose}
+      accentColor={difficultyColor}
+      maxWidth={520}
+      maxHeight="88dvh"
+      showCloseButton={false}
+      title={displayName}
+      icon={
+        <div
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: '50%',
+            background: difficultyColor,
+            boxShadow: `0 0 10px ${difficultyColor}`,
+            flexShrink: 0,
+          }}
+        />
+      }
+      subtitle={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ color: difficultyColor, fontWeight: 700 }}>{dimensionsLabel}</span>
+          {difficultyLabel && (
+            <>
+              <span style={{ opacity: 0.35 }}>·</span>
+              <span style={{ color: difficultyColor, fontWeight: 800 }}>{difficultyLabel}</span>
+            </>
+          )}
+          {creator && (
+            <>
+              <span style={{ opacity: 0.35 }}>·</span>
+              <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <User size={11} /> {creator}
+              </span>
+            </>
+          )}
+        </div>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 12 }}>
+            <RefreshCw size={26} className="animate-spin" style={{ color: difficultyColor }} />
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: '#94a3b8' }}>
+              Harita yükleniyor...
+            </span>
+          </div>
+        ) : error ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 10, textAlign: 'center' }}>
+            <ShieldAlert size={30} style={{ color: '#f43f5e' }} />
+            <span style={{ fontSize: 12, color: '#f43f5e', fontWeight: 600 }}>{error}</span>
+            <button
+              type="button"
+              onClick={loadData}
+              style={{
+                marginTop: 6,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                borderRadius: 8,
+                border: `1px solid ${difficultyColor}60`,
+                background: `${difficultyColor}18`,
+                color: difficultyColor,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              <RefreshCw size={12} /> Tekrar Dene
+            </button>
+          </div>
+        ) : data ? (
+          <>
+            {/* Bulmaca Haritası Önizlemesi */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 10,
+                borderRadius: 12,
+                border: `1px solid ${difficultyColor}25`,
+                background: 'rgba(3, 6, 13, 0.8)',
+                boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.6)',
+                minHeight: 160,
+                overflow: 'hidden',
+              }}
+            >
+              <LevelMiniPreview level={data} maxBoardSize={250} />
+            </div>
+
+            {/* Seviye Detay Rozetleri & İstatistikleri */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 8,
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '8px 4px',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontWeight: 800 }}>
+                  Hedefler
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: '#34d399' }}>
+                  {data.targets?.length ?? 0}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '8px 4px',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontWeight: 800 }}>
+                  Oyuncular
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: '#38bdf8' }}>
+                  {data.initialObjects?.length ?? 0}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '8px 4px',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontWeight: 800 }}>
+                  Kutular
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: '#fbbf24' }}>
+                  {data.initialBoxes?.length ?? 0}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '8px 4px',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontWeight: 800 }}>
+                  Çarpışma
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: data.trailCollision ? '#f43f5e' : '#94a3b8' }}>
+                  {data.trailCollision ? 'Açık' : 'Kapalı'}
+                </span>
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/40 text-slate-400 hover:text-white hover:border-cyan-400/40 transition-colors"
-              title="Kapat (Esc)"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* 2. Gövde / İçerik */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <RefreshCw size={24} className="text-cyan-400 animate-spin" />
-                <span className="text-xs tracking-wider text-slate-400 font-medium">
-                  Harita yükleniyor...
-                </span>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
-                <ShieldAlert size={28} className="text-rose-400" />
-                <span className="text-xs text-rose-300 font-medium">{error}</span>
-                <button
-                  onClick={loadData}
-                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-400/40 bg-cyan-500/10 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/20"
-                >
-                  <RefreshCw size={12} /> Tekrar Dene
-                </button>
-              </div>
-            ) : data ? (
-              <>
-                {/* Bulmaca Haritası Önizlemesi */}
-                <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-cyan-500/15 bg-[#03060d] shadow-inner min-h-[170px] overflow-hidden">
-                  <LevelMiniPreview level={data} maxBoardSize={280} />
-                </div>
-
-                {/* Seviye Detay Rozetleri & İstatistikleri */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                  <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-                    <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">
-                      Hedefler
-                    </span>
-                    <span className="text-sm font-black text-emerald-400">
-                      {data.targets?.length ?? 0}
-                    </span>
-                  </div>
-                  <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-                    <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">
-                      Oyuncular
-                    </span>
-                    <span className="text-sm font-black text-cyan-400">
-                      {data.initialObjects?.length ?? 0}
-                    </span>
-                  </div>
-                  <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-                    <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">
-                      Kutular
-                    </span>
-                    <span className="text-sm font-black text-amber-400">
-                      {data.initialBoxes?.length ?? 0}
-                    </span>
-                  </div>
-                  <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-                    <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">
-                      Çarpışma
-                    </span>
-                    <span
-                      className={`text-xs font-extrabold ${
-                        data.trailCollision ? 'text-rose-400' : 'text-slate-400'
-                      }`}
-                    >
-                      {data.trailCollision ? 'Açık' : 'Kapalı'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Varsa Oynanış / Başarı Bilgisi (/levels için) */}
-                {metadata?.playedData && (
-                  <div className="flex items-center justify-between rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3.5 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <Award size={18} className="text-yellow-400" />
-                      <div className="text-left">
-                        <span className="block text-[10px] uppercase font-bold text-yellow-500 tracking-wider">
-                          En İyi Derece
-                        </span>
-                        <span className="text-xs font-semibold text-slate-200">
-                          {metadata.playedData.moveCount ?? '?'} Hamle · {formatDuration(metadata.playedData.timeSpent)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3].map((star) => (
-                        <span
-                          key={star}
-                          className="text-sm"
-                          style={{
-                            color: star <= (metadata.playedData?.stars ?? 0) ? '#ffd700' : '#334155',
-                          }}
-                        >
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Varsa Tasarımcı / Oyun Notu */}
-                {(data.gameNotes || data.creatorNotes) && (
-                  <div className="rounded-lg border border-slate-700/40 bg-slate-900/40 p-2.5 text-left text-[11px] text-slate-300">
-                    <span className="block font-bold text-cyan-400 text-[10px] uppercase mb-1">
-                      Bölüm Notu
-                    </span>
-                    <p className="line-clamp-3 leading-relaxed">
-                      {data.gameNotes || data.creatorNotes}
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          {/* 3. Alt Butonlar */}
-          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-cyan-500/15 bg-slate-950/70">
-            {mode === 'test' ? (
-              <>
-                {firestoreId && (
-                  <button
-                    onClick={() => {
-                      if (onEdit) {
-                        onEdit(firestoreId);
-                      } else {
-                        window.location.href = `/editor?firestoreId=${firestoreId}`;
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-cyan-400/40 bg-cyan-500/10 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 active:scale-95 transition-all"
-                  >
-                    <Edit3 size={13} />
-                    <span>Editörde Aç</span>
-                  </button>
-                )}
-
-                <button
-                  disabled={!data || loading}
-                  onClick={() => setIsTesting(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-emerald-500/50 bg-gradient-to-r from-emerald-600 to-teal-500 text-xs font-extrabold text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] hover:from-emerald-500 hover:to-teal-400 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Play size={13} fill="currentColor" />
-                  <span>Test Modunda Oyna</span>
-                </button>
-              </>
-            ) : (
-              <button
-                disabled={!data || loading}
-                onClick={() => {
-                  if (data && onPlay) {
-                    onPlay(data);
-                  }
+            {/* Varsa Oynanış / Başarı Bilgisi (/levels için) */}
+            {metadata?.playedData && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderRadius: 12,
+                  border: '1px solid rgba(250, 204, 21, 0.25)',
+                  background: 'rgba(250, 204, 21, 0.06)',
+                  padding: '10px 14px',
                 }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 text-xs font-extrabold text-slate-950 shadow-[0_0_20px_rgba(0,196,255,0.4)] hover:from-cyan-400 hover:to-blue-500 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Compass size={14} />
-                <span>OYNA ▶</span>
-              </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Award size={20} style={{ color: '#facc15' }} />
+                  <div style={{ textAlign: 'left' }}>
+                    <span style={{ display: 'block', fontSize: 10, textTransform: 'uppercase', fontWeight: 800, color: '#facc15', letterSpacing: '0.08em' }}>
+                      En İyi Derece
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>
+                      {metadata.playedData.moveCount ?? '?'} Hamle · {formatDuration(metadata.playedData.timeSpent)}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {[1, 2, 3].map((star) => (
+                    <span
+                      key={star}
+                      style={{
+                        fontSize: 15,
+                        color: star <= (metadata.playedData?.stars ?? 0) ? '#ffd700' : 'rgba(255, 255, 255, 0.15)',
+                        textShadow: star <= (metadata.playedData?.stars ?? 0) ? '0 0 8px rgba(255, 215, 0, 0.5)' : 'none',
+                      }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
 
-            <button
-              onClick={onClose}
-              className="px-3.5 py-2 rounded-xl border border-slate-700/60 bg-transparent text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
-            >
-              Kapat
-            </button>
-          </div>
-        </motion.div>
+            {/* Varsa Tasarımcı / Oyun Notu */}
+            {(data.gameNotes || data.creatorNotes) && (
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: 'rgba(15, 23, 42, 0.45)',
+                  padding: '10px 12px',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'block',
+                    fontWeight: 800,
+                    color: difficultyColor,
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    marginBottom: 4,
+                  }}
+                >
+                  Bölüm Notu
+                </span>
+                <p style={{ margin: 0, fontSize: 11.5, color: '#cbd5e1', lineHeight: 1.5 }}>
+                  {data.gameNotes || data.creatorNotes}
+                </p>
+              </div>
+            )}
+          </>
+        ) : null}
+
+        {/* Aksiyon Butonları (Klavye & D-pad ile Odaklanabilir) */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 8,
+            marginTop: 4,
+            width: '100%',
+          }}
+        >
+          {actions.map((action, idx) => {
+            const isFocused = focusedActionIndex === idx;
+            const isPrimary = action.primary;
+
+            return (
+              <button
+                key={action.id}
+                ref={(el) => {
+                  actionButtonRefs.current[idx] = el;
+                }}
+                type="button"
+                data-active={isFocused}
+                disabled={action.disabled}
+                onClick={() => executeAction(idx)}
+                onPointerEnter={() => setFocusedActionIndex(idx)}
+                style={{
+                  flex: isPrimary ? 2 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  cursor: action.disabled ? 'not-allowed' : 'pointer',
+                  opacity: action.disabled ? 0.4 : 1,
+                  outline: 'none',
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  touchAction: 'manipulation',
+                  transition: 'all 160ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  transform: isFocused ? 'scale(1.02)' : 'scale(1)',
+                  background: isPrimary
+                    ? isFocused
+                      ? `linear-gradient(135deg, ${difficultyColor} 0%, #0099ff 100%)`
+                      : `linear-gradient(135deg, ${difficultyColor}cc 0%, #0088e0cc 100%)`
+                    : isFocused
+                    ? 'rgba(255, 255, 255, 0.12)'
+                    : 'rgba(255, 255, 255, 0.04)',
+                  color: isPrimary ? '#030712' : isFocused ? '#ffffff' : '#94a3b8',
+                  border: isFocused
+                    ? `1.5px solid ${difficultyColor}`
+                    : isPrimary
+                    ? `1.5px solid ${difficultyColor}80`
+                    : '1.5px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: isFocused
+                    ? `0 0 16px ${difficultyColor}60, 0 4px 12px rgba(0, 0, 0, 0.4)`
+                    : 'none',
+                }}
+              >
+                {action.icon}
+                <span>{action.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </AnimatePresence>
+    </Modal>
   );
 }

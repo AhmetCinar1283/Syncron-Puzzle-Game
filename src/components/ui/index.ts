@@ -7,8 +7,8 @@ export type { IconButtonProps } from './IconButton';
 export { Card, Panel } from './Card';
 export type { CardProps } from './Card';
 
-export { Modal } from './Modal';
-export type { ModalProps } from './Modal';
+export { Modal, useModal, ModalContext } from './Modal';
+export type { ModalProps, ModalRef, ModalContextValue } from './Modal';
 
 export { Input, TextArea, Select } from './Input';
 export type { InputProps, TextAreaProps, SelectProps } from './Input';

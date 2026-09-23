@@ -36,6 +36,11 @@ describe('circuitCalculations', () => {
       expect(layout.startPortal.yPx).toBeLessThan(layout.nodePoints[0].yPx);
       expect(layout.endPortal.yPx).toBeGreaterThan(layout.nodePoints[9].yPx);
     });
+
+    it('reserves a full row for the start portal so it does not overlap the first node', () => {
+      const layout = calculateCircuitLayout(10, true, true);
+      expect(layout.nodePoints[0].yPx - layout.startPortal.yPx).toBe(layout.rowSpacing);
+    });
   });
 
   describe('generateSmoothSvgPath', () => {
