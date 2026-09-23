@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { completeLevelSchema, telemetrySchema, feedbackSchema } from '../schemas/game';
-import { firebaseAuth } from '../middleware/auth';
+import { firebaseAuth, requireVerifiedEmail } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimiter';
 import { recordVerifyMovesFailure } from '../services/securitySignals';
 import { trackSecurityEvent } from '../middleware/securityTrail';
@@ -329,7 +329,7 @@ gameRouter.post('/game/telemetry', firebaseAuth, rateLimit('game-telemetry'), as
 });
 
 // Feedback submission endpoint
-gameRouter.post('/game/feedback', firebaseAuth, rateLimit('game-feedback'), async (c) => {
+gameRouter.post('/game/feedback', firebaseAuth, requireVerifiedEmail, rateLimit('game-feedback'), async (c) => {
   const uid = c.get('uid');
 
   let body;

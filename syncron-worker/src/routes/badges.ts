@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../types';
-import { firebaseAuth } from '../middleware/auth';
+import { firebaseAuth, requireVerifiedEmail } from '../middleware/auth';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import { fsGet, fsCommit, docPath, fromDoc } from '../services/firestore';
 import { updateUserShowcaseBadges } from '../services/leaderboard';
@@ -60,7 +60,7 @@ badgesRouter.get('/badges/:uid', async (c) => {
 // ─── POST /badges/showcase ────────────────────────────────────────────────────
 // Authenticated endpoint for users to select up to 5 badges to show off on profile.
 // Giriş yapmış kullanıcının profilinde sergilemek üzere en fazla 5 adet rozet seçmesini sağlar.
-badgesRouter.post('/badges/showcase', firebaseAuth, rateLimit('badges-showcase'), async (c) => {
+badgesRouter.post('/badges/showcase', firebaseAuth, requireVerifiedEmail, rateLimit('badges-showcase'), async (c) => {
   const uid = c.get('uid');
 
   let body;

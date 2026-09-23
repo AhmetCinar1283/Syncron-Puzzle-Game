@@ -19,7 +19,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { z } from 'zod';
 import type { AppContext } from '../types';
-import { firebaseAuth } from '../middleware/auth';
+import { firebaseAuth, requireVerifiedEmail } from '../middleware/auth';
 import { friendRequestSchema, friendActionSchema, tagSearchSchema } from '../schemas/friends';
 import { checkActiveBan } from '../services/banService';
 import { rateLimit } from '../middleware/rateLimiter';
@@ -80,7 +80,7 @@ function queryResponse<T>(c: Context<AppContext>, key: string, outcome: QueryOut
 
 // ─── POST /friends/request ───────────────────────────────────────────────────
 // Başka bir oyuncuya arkadaşlık isteği gönderir (tag veya UID ile).
-friendsRouter.post('/friends/request', firebaseAuth, rateLimit('friends-request'), async (c) => {
+friendsRouter.post('/friends/request', firebaseAuth, requireVerifiedEmail, rateLimit('friends-request'), async (c) => {
   const uid = c.get('uid');
 
   // Check for active social ban
@@ -97,7 +97,7 @@ friendsRouter.post('/friends/request', firebaseAuth, rateLimit('friends-request'
 
 // ─── POST /friends/accept ────────────────────────────────────────────────────
 // Başka bir oyuncunun gönderdiği arkadaşlık isteğini onaylar ve arkadaşlığı başlatır.
-friendsRouter.post('/friends/accept', firebaseAuth, async (c) => {
+friendsRouter.post('/friends/accept', firebaseAuth, requireVerifiedEmail, async (c) => {
   const req = await readJsonBody(c, friendActionSchema);
   if (!req.ok) return req.response;
 
@@ -106,7 +106,7 @@ friendsRouter.post('/friends/accept', firebaseAuth, async (c) => {
 
 // ─── POST /friends/reject ────────────────────────────────────────────────────
 // Gelen bir arkadaşlık isteğini reddeder.
-friendsRouter.post('/friends/reject', firebaseAuth, async (c) => {
+friendsRouter.post('/friends/reject', firebaseAuth, requireVerifiedEmail, async (c) => {
   const req = await readJsonBody(c, friendActionSchema);
   if (!req.ok) return req.response;
 
@@ -115,7 +115,7 @@ friendsRouter.post('/friends/reject', firebaseAuth, async (c) => {
 
 // ─── DELETE /friends/:uid ────────────────────────────────────────────────────
 // Mevcut bir arkadaşlığı sonlandırır (arkadaşı siler).
-friendsRouter.delete('/friends/:uid', firebaseAuth, async (c) => {
+friendsRouter.delete('/friends/:uid', firebaseAuth, requireVerifiedEmail, async (c) => {
   const targetUid = c.req.param('uid');
   if (!isAcceptableUidParam(targetUid)) {
     return c.json({ success: false, error: 'Invalid UID' }, 400);
@@ -126,19 +126,19 @@ friendsRouter.delete('/friends/:uid', firebaseAuth, async (c) => {
 
 // ─── GET /friends ────────────────────────────────────────────────────────────
 // Kullanıcının arkadaşlarını ve profil detaylarını listeler.
-friendsRouter.get('/friends', firebaseAuth, async (c) => {
+friendsRouter.get('/friends', firebaseAuth, requireVerifiedEmail, async (c) => {
   return queryResponse(c, 'friends', await listFriends(c.env, c.get('uid')));
 });
 
 // ─── GET /friends/requests ───────────────────────────────────────────────────
 // Kullanıcıya gelen bekleyen arkadaşlık isteklerini listeler.
-friendsRouter.get('/friends/requests', firebaseAuth, async (c) => {
+friendsRouter.get('/friends/requests', firebaseAuth, requireVerifiedEmail, async (c) => {
   return queryResponse(c, 'requests', await listFriendRequests(c.env, c.get('uid')));
 });
 
 // ─── GET /users/search ────────────────────────────────────────────────────────
 // Oyuncuları tag (etiket) bazlı aramak için kullanılır.
-friendsRouter.get('/users/search', firebaseAuth, async (c) => {
+friendsRouter.get('/users/search', firebaseAuth, requireVerifiedEmail, async (c) => {
   const validation = tagSearchSchema.safeParse({ tag: c.req.query('tag') });
   if (!validation.success) {
     const error = validation.error.errors[0]?.message || 'Invalid search parameters';
@@ -150,7 +150,7 @@ friendsRouter.get('/users/search', firebaseAuth, async (c) => {
 
 // ─── POST /friends/block/:uid ───────────────────────────────────────────────
 // Belirtilen bir kullanıcıyı engeller.
-friendsRouter.post('/friends/block/:uid', firebaseAuth, async (c) => {
+friendsRouter.post('/friends/block/:uid', firebaseAuth, requireVerifiedEmail, async (c) => {
   const uid = c.get('uid');
   const targetUid = c.req.param('uid');
   if (!isAcceptableUidParam(targetUid) || targetUid === uid) {
@@ -162,7 +162,7 @@ friendsRouter.post('/friends/block/:uid', firebaseAuth, async (c) => {
 
 // ─── DELETE /friends/block/:uid ─────────────────────────────────────────────
 // Engellenmiş bir kullanıcının engelini kaldırır.
-friendsRouter.delete('/friends/block/:uid', firebaseAuth, async (c) => {
+friendsRouter.delete('/friends/block/:uid', firebaseAuth, requireVerifiedEmail, async (c) => {
   const targetUid = c.req.param('uid');
   if (!isAcceptableUidParam(targetUid)) {
     return c.json({ success: false, error: 'Invalid UID' }, 400);
@@ -173,6 +173,6 @@ friendsRouter.delete('/friends/block/:uid', firebaseAuth, async (c) => {
 
 // ─── GET /friends/blocked ───────────────────────────────────────────────────
 // Kullanıcının engellediği kişilerin listesini getirir.
-friendsRouter.get('/friends/blocked', firebaseAuth, async (c) => {
+friendsRouter.get('/friends/blocked', firebaseAuth, requireVerifiedEmail, async (c) => {
   return queryResponse(c, 'blocked', await listBlockedUsers(c.env, c.get('uid')));
 });

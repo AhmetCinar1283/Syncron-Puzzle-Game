@@ -9,10 +9,10 @@ vi.mock('../src/services/auth', () => {
   return {
     verifyIdToken: vi.fn(async (token: string) => {
       if (token === 'valid-token-user-1') {
-        return { uid: 'user-1' };
+        return { uid: 'user-1', email: 'user-1@example.com', emailVerified: true };
       }
       if (token === 'valid-token-user-2') {
-        return { uid: 'user-2' };
+        return { uid: 'user-2', email: 'user-2@example.com', emailVerified: true };
       }
       throw new Error('Invalid token');
     }),

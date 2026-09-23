@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { createTicketSchema } from '../schemas/tickets';
-import { firebaseAuth } from '../middleware/auth';
+import { firebaseAuth, requireVerifiedEmail } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimiter';
 import { getAdminAccessToken } from '../services/serviceAccount';
 import { fsGet, fsCommit, docPath, nowTimestamp, fromDoc } from '../services/firestore';
@@ -21,7 +21,7 @@ export const ticketsRouter = new Hono<AppContext>();
 // tek fark, limitin artık Zod doğrulamasından ÖNCE uygulanması (daha ucuz).
 
 // Kullanıcının gönderdiği destek talebini doğrular ve Firestore'a kaydeder.
-ticketsRouter.post('/create-ticket', firebaseAuth, rateLimit('create-ticket'), async (c) => {
+ticketsRouter.post('/create-ticket', firebaseAuth, requireVerifiedEmail, rateLimit('create-ticket'), async (c) => {
   const uid = c.get('uid');
   console.log(`[CreateTicket] Handling ticket creation request for UID: ${uid}`);
 

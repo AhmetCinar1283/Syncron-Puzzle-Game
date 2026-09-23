@@ -123,6 +123,14 @@ export interface CreateTicketResponse {
 export type AppContext = {
   Variables: {
     uid: string;
+    /**
+     * Çağıranın e-posta sahipliği kanıtlanmış mı — firebaseAuth /
+     * optionalFirebaseAuth tarafından yazılır. Anonim oturumlarda ve
+     * doğrulanmamış password hesaplarında `false`.
+     */
+    emailVerified: boolean;
+    /** Çağıranın token'daki e-postası (varsa) */
+    email?: string;
     /** Caller's role — set by adminAuth middleware ('admin' | 'moderator') */
     role: string;
     /** Pre-parsed JSON body — set by hmacAuth middleware for /internal/log */

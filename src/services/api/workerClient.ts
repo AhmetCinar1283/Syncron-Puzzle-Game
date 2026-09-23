@@ -25,6 +25,23 @@ export function isRateLimitError(err: unknown): err is WorkerRateLimitError {
 }
 
 /**
+ * Sunucu, e-posta sahipliği kanıtlanmadığı için isteği reddetti (403).
+ * Ayrı bir tip olmasının sebebi: çağıran taraf bunu "sunucu bozuk"tan ayırıp
+ * kullanıcıyı doğrulama akışına (AuthModal) yönlendirebilsin.
+ */
+export class EmailNotVerifiedError extends Error {
+  constructor() {
+    super('EMAIL_NOT_VERIFIED');
+    this.name = 'EmailNotVerifiedError';
+  }
+}
+
+/** Bir hatanın e-posta doğrulaması eksikliğinden olup olmadığını güvenle söyler. */
+export function isEmailNotVerifiedError(err: unknown): err is EmailNotVerifiedError {
+  return err instanceof EmailNotVerifiedError;
+}
+
+/**
  * Giriş yapmış kullanıcının Firebase ID Token'ını getirir.
  * Belirtecin süresi dolmak üzereyse (son 5 dakika) yenilenmeye zorlanır.
  */
@@ -99,7 +116,28 @@ export async function workerFetch<T = any>(
     fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
   }
 
-  const response = await fetch(url, fetchOptions);
+  let response = await fetch(url, fetchOptions);
+
+  // E-posta doğrulaması reddi + bayat token yarışı. getWorkerIdToken yalnızca
+  // son 5 dakikada zorla yeniler, yani 10 saniye önce doğrulamış bir kullanıcının
+  // elindeki token bir saate kadar eski olabilir ve hâlâ email_verified:false
+  // taşıyabilir. Bir kez zorla yenileyip tekrar dene; yine 403 ise gerçekten
+  // doğrulanmamış demektir.
+  if (response.status === 403 && token && auth.currentUser) {
+    const body403 = await response.clone().json().catch(() => null);
+    if (body403?.error === 'EMAIL_NOT_VERIFIED') {
+      const freshToken = await auth.currentUser.getIdToken(true).catch(() => null);
+      if (freshToken && freshToken !== token) {
+        response = await fetch(url, {
+          ...fetchOptions,
+          headers: { ...headers, Authorization: `Bearer ${freshToken}` },
+        });
+      }
+      if (response.status === 403) {
+        throw new EmailNotVerifiedError();
+      }
+    }
+  }
 
   if (response.status === 429) {
     // Retry-After eksik/bozuk gelirse 60 sn varsayılır; kullanıcıya gösterilen

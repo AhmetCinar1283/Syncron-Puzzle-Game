@@ -82,6 +82,27 @@ async function assignUniqueTag(uid: string, extraUpdates?: Record<string, any>):
     );
 }
 
+// ─── E-posta sahipliği kapısı ─────────────────────────────────────────────────
+
+/**
+ * Hesabın e-posta adresi kanıtlanmış mı — Auth kaydından okunur.
+ *
+ * Firestore dökümanındaki bir alana BAKILMAZ: o alanı istemci yazabilirdi.
+ * Tek otorite Auth kaydıdır. Anonim hesaplarda e-posta yoktur, dolayısıyla
+ * her zaman false döner.
+ *
+ * Hata durumunda `false` döner: kapı kapalı tarafa düşer.
+ */
+async function hasVerifiedEmail(uid: string): Promise<boolean> {
+    try {
+        const record = await admin.auth().getUser(uid);
+        return record.emailVerified === true && !!record.email;
+    } catch (err) {
+        functions.logger.warn(`[hasVerifiedEmail] Auth lookup failed for ${uid}:`, err);
+        return false;
+    }
+}
+
 // ─── Trigger: new users/{uid} document created ────────────────────────────────
 // Fires when any user doc is first created. Anonymous users are skipped.
 
@@ -99,6 +120,29 @@ export const onUserCreated = functions.firestore.onDocumentCreated(
         if (data.authProvider === 'anonymous') return; // no tag for anonymous users
         if (data.tag) return; // guard against re-trigger
 
+        // 0. Audit log — denemenin kaydı kapıdan ÖNCE yazılır. Doğrulanmamış
+        // bir hesabın döküman oluşturma denemesi de görülmek istenen bir şey.
+        await sendLogToWorker(
+            'account.create',
+            'account',
+            uid,
+            {
+                authProvider: data.authProvider ?? 'unknown',
+                hasEmail:     !!data.email,
+            },
+            workerUrl.value(),
+            logSecret.value(),
+        );
+
+        // 0b. E-posta sahipliği kapısı — derinlemesine savunma. Firestore
+        // kuralları istemci create'ini zaten kapatıyor, ama Worker'ın Admin
+        // SDK yazımları kuralları TAMAMEN bypass ediyor; tag kıt bir kaynak
+        // olduğu için burada ikinci kez kontrol ediliyor.
+        if (!(await hasVerifiedEmail(uid))) {
+            functions.logger.warn(`[onUserCreated] Skipping tag for unverified ${uid}`);
+            return;
+        }
+
         // 1. Assign tag & default displayName if missing
         try {
             const extraUpdates: Record<string, any> = {};
@@ -114,21 +158,7 @@ export const onUserCreated = functions.firestore.onDocumentCreated(
             functions.logger.info(`[onUserCreated] Tag and default displayName assigned to ${uid}`);
         } catch (err) {
             functions.logger.error(`[onUserCreated] Failed to assign tag/displayName to ${uid}:`, err);
-            // Do not return here — still attempt to log the account creation event
         }
-
-        // 2. Audit log — fire-and-forget, non-fatal
-        await sendLogToWorker(
-            'account.create',
-            'account',
-            uid,
-            {
-                authProvider: data.authProvider ?? 'unknown',
-                hasEmail:     !!data.email,
-            },
-            workerUrl.value(),
-            logSecret.value(),
-        );
     },
 );
 
@@ -147,9 +177,26 @@ export const onUserUpgraded = functions.firestore.onDocumentUpdated(
         const after  = event.data?.after.data();
 
         if (!before || !after) return;
-        if (before.authProvider !== 'anonymous') return; // only care about upgrades
-        if (after.authProvider === 'anonymous') return;  // not actually upgraded
+        if (after.authProvider === 'anonymous') return;  // still anonymous — no tag
         if (after.tag) return;                           // tag already present
+
+        // `before.authProvider === 'anonymous'` ARTIK bir ön koşul DEĞİL, yalnızca
+        // audit'in "gerçek yükseltme mi?" ayrımı. Sebebi: doğrulanmamışken
+        // link'leyen kullanıcının tag'i aşağıdaki kapıda haklı olarak verilmez,
+        // ama o doğruladığında `before.authProvider` çoktan 'email' olmuştur ve
+        // eski koşulla bir daha ASLA tag alamazdı. Bu haliyle tetikleyici kendi
+        // kendini onaran bir backfill'e dönüşür: doğrulamadan sonra istemci
+        // createOrUpdateUserDoc ile dökümana dokunur, bu update buraya düşer ve
+        // tag o anda atanır.
+        const isUpgrade = before.authProvider === 'anonymous';
+
+        // E-posta sahipliği kapısı — anonimden yükselenlerin tag sızıntısı
+        // `create`'te değil burada kapanır: bu kullanıcıların dökümanı Worker
+        // tarafından zaten oluşturulmuştur, dolayısıyla onUserCreated hiç çalışmaz.
+        if (!(await hasVerifiedEmail(uid))) {
+            functions.logger.info(`[onUserUpgraded] Tag withheld — ${uid} has no verified email yet`);
+            return;
+        }
 
         // 1. Assign tag & default displayName if missing
         try {
@@ -168,18 +215,21 @@ export const onUserUpgraded = functions.firestore.onDocumentUpdated(
             functions.logger.error(`[onUserUpgraded] Failed to assign tag/displayName to ${uid}:`, err);
         }
 
-        // 2. Audit log — fire-and-forget, non-fatal
-        await sendLogToWorker(
-            'account.upgrade',
-            'account',
-            uid,
-            {
-                from: 'anonymous',
-                to:   after.authProvider ?? 'unknown',
-            },
-            workerUrl.value(),
-            logSecret.value(),
-        );
+        // 2. Audit log — yalnızca gerçek anonim→gerçek geçişlerinde. Doğrulama
+        // sonrası backfill bir "yükseltme" değildir, log'u kirletmemeli.
+        if (isUpgrade) {
+            await sendLogToWorker(
+                'account.upgrade',
+                'account',
+                uid,
+                {
+                    from: 'anonymous',
+                    to:   after.authProvider ?? 'unknown',
+                },
+                workerUrl.value(),
+                logSecret.value(),
+            );
+        }
     },
 );
 
@@ -197,6 +247,15 @@ export const requestNewTag = functions.https.onCall(
         const uid = request.auth?.uid;
         if (!uid) {
             throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+        }
+
+        // E-posta sahipliği kapısı. Önce bedava claim'e bakılır; callable'ın
+        // token'ı bir saate kadar bayat olabildiği için doğrulanmamış GÖRÜNEN
+        // durumda Auth kaydına düşülür — aksi halde on dakika önce doğrulamış
+        // bir kullanıcı haksız yere reddedilirdi.
+        const claimVerified = request.auth?.token?.email_verified === true;
+        if (!claimVerified && !(await hasVerifiedEmail(uid))) {
+            throw new functions.https.HttpsError('failed-precondition', 'EMAIL_NOT_VERIFIED');
         }
 
         const raw: string | undefined = request.data?.tag;
@@ -228,12 +287,9 @@ export const requestNewTag = functions.https.onCall(
         }
 
         const userData = userSnap.data()!;
-        if (userData.authProvider === 'anonymous') {
-            throw new functions.https.HttpsError(
-                'permission-denied',
-                'Anonymous users cannot have tags.',
-            );
-        }
+        // NOT: Eskiden burada `authProvider === 'anonymous'` kontrolü vardı.
+        // Yukarıdaki e-posta sahipliği kapısı onu kapsıyor — anonim bir hesabın
+        // doğrulanmış e-postası olamaz — bu yüzden kaldırıldı.
 
         // No-op: user already has this tag
         if (userData.tag === tag) return { tag };
@@ -490,6 +546,16 @@ export const onTicketMessageCreated = functions.firestore.onDocumentCreated(
 
 const ANONYMOUS_RETENTION_DAYS = 30;
 
+/**
+ * Hiç doğrulanmamış password hesaplarının tutulma süresi.
+ *
+ * Kısa olması bilinçli: bu hesaplar e-posta işgalinin (birinin başkasının
+ * adresiyle kayıt olup hiç doğrulamaması, gerçek sahibin de bir daha o
+ * adresle kayıt olamaması) tek pratik çözümüdür — adresi geri serbest
+ * bırakırlar.
+ */
+const UNVERIFIED_RETENTION_DAYS = 14;
+
 // Belirli süre boyunca aktif olmayan anonim kullanıcıların verilerini ve hesaplarını temizler.
 export const cleanupOldAnonymousUsers = functions.scheduler.onSchedule(
     {
@@ -499,9 +565,11 @@ export const cleanupOldAnonymousUsers = functions.scheduler.onSchedule(
     },
     async () => {
         const cutoffMs = Date.now() - ANONYMOUS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+        const unverifiedCutoffMs = Date.now() - UNVERIFIED_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
         let pageToken: string | undefined;
         let totalDeleted = 0;
+        let totalUnverifiedDeleted = 0;
         let totalErrors  = 0;
 
         functions.logger.info('[AnonymousCleanup] Starting.', { cutoff: new Date(cutoffMs).toISOString() });
@@ -563,10 +631,56 @@ export const cleanupOldAnonymousUsers = functions.scheduler.onSchedule(
                 }
             }
 
+            // ── Hiç doğrulanmamış password hesapları ──────────────────────────
+            //
+            // Mevcut `candidateAnonymous` filtresi BİLEREK genişletilmedi:
+            // ikisinin güvenlik argümanı farklı ve tek bir ifadede birleşmeleri
+            // birinin gerekçesini görünmez kılardı.
+            //
+            // "Firestore dökümanı YOK" burada emniyet kilidi ve kesin bir anlam
+            // taşıyor: doküman yalnızca e-posta doğrulandıktan sonra oluşturuluyor
+            // (bkz. AuthContext effect 2) ve anonimden link'lenen hesapların
+            // dökümanını Worker zaten yaratmış oluyor. Dolayısıyla dökümansız +
+            // doğrulanmamış + password hesabı, tanımı gereği hiç doğrulanmamış
+            // bir kayıttır: sıfır oyun verisi, saf sahte. Anonimden yükselmiş
+            // hiçbir oyuncu bu filtreye DÜŞEMEZ, kimse ilerlemesini kaybetmez.
+            const candidateUnverified = listResult.users.filter((user) => {
+                if (user.emailVerified) return false;
+                const isPasswordAccount =
+                    user.providerData?.length === 1 &&
+                    user.providerData[0]?.providerId === 'password';
+                if (!isPasswordAccount) return false;
+                return new Date(user.metadata.creationTime).getTime() < unverifiedCutoffMs;
+            });
+
+            for (const user of candidateUnverified) {
+                try {
+                    const firestoreDoc = await db.collection('users').doc(user.uid).get();
+                    if (firestoreDoc.exists) {
+                        // Dökümanı varsa bu hesap ya doğrulanmıştı ya da anonimden
+                        // yükselmiş bir oyuncu — her iki halde de dokunulmaz.
+                        continue;
+                    }
+
+                    await admin.auth().deleteUser(user.uid);
+                    totalUnverifiedDeleted++;
+                    functions.logger.info(`[UnverifiedCleanup] Deleted uid=${user.uid}`);
+                } catch (err) {
+                    totalErrors++;
+                    functions.logger.error(
+                        `[UnverifiedCleanup] Failed to delete uid=${user.uid}:`, err,
+                    );
+                }
+            }
+
             pageToken = listResult.pageToken;
         } while (pageToken);
 
-        functions.logger.info('[AnonymousCleanup] Done.', { totalDeleted, totalErrors });
+        functions.logger.info('[AnonymousCleanup] Done.', {
+            totalDeleted,
+            totalUnverifiedDeleted,
+            totalErrors,
+        });
     },
 );
 

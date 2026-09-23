@@ -51,8 +51,11 @@ On Capacitor (Android/iOS), `getRedirectResult(auth)` is called on mount to capt
 
 | `mode` | Action | UID behaviour |
 |---|---|---|
-| `'register'` | `EmailAuthProvider.credential(email, pass)` → `linkWithCredential(user, cred)` | **UID preserved** — anonymous data kept |
-| `'signin'` | `signInWithEmailAndPassword(auth, email, pass)` | Switches to existing account (different UID possible) |
+| `'register'` (anonymous session) | `EmailAuthProvider.credential(email, pass)` → `linkWithCredential(user, cred)` → `sendEmailVerification` | **UID preserved** — anonymous data kept. Session stays open but is limited to the anonymous privilege tier until verified |
+| `'register'` (no session) | `createUserWithEmailAndPassword` → `sendEmailVerification` → **immediate `signOut`** | No session until the email is verified |
+| `'signin'` | `signInWithEmailAndPassword(auth, email, pass)`; if `!emailVerified` → resend + **immediate `signOut`** | Switches to existing account (different UID possible). Unverified legacy accounts get no exemption |
+
+Returns `{ needsVerification: boolean }`; when `true`, `AuthModal` stays open and shows the verification panel.
 
 > **Why `linkWithCredential` and not `linkWithEmailAndPassword`?**
 > Firebase v9 modular SDK does not export `linkWithEmailAndPassword` as a standalone function. The equivalent is: create a credential with `EmailAuthProvider.credential(email, password)`, then pass it to `linkWithCredential(user, credential)`.
@@ -105,8 +108,10 @@ users/{uid}
 ## Firestore Security Rules (relevant excerpts)
 
 ```javascript
-function isNotAnonymous() {
-  return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+function isVerifiedAccount() {
+  return isSignedIn()
+    && request.auth.token.get('email_verified', false) == true
+    && request.auth.token.get('email', '') != '';
 }
 function isAdmin() {
   return isSignedIn() &&
@@ -121,16 +126,35 @@ allow update: if isOwner(uid)
 match /levels/{id}      { allow read: if true; allow write: if isAdmin(); }
 match /levelParts/{id}  { allow read: if true; allow write: if isAdmin(); }
 
-// Community requests: non-anon users create, admin manages
+// Community requests: verified users create, admin manages
 match /levelRequests/{id} {
   allow get:    if isOwner(resource.data.submittedBy) || isAdmin();
   allow list:   if isAdmin();
-  allow create: if isNotAnonymous() && request.resource.data.submittedBy == request.auth.uid
+  allow create: if isVerifiedAccount() && request.resource.data.submittedBy == request.auth.uid
                 && request.resource.data.status == 'pending';
   allow update: if isAdmin();
   allow delete: if isOwner(resource.data.submittedBy) && resource.data.status == 'pending';
 }
 ```
+
+---
+
+## Email Verification (ownership proof)
+
+Without this anyone could register with a made-up address and immediately hold a fully privileged account. **Governing principle: an unverified account has exactly the anonymous privilege set — nothing more, nothing less.** Anonymous play (play, save, daily, rewards) stays open; verification gates everything above it (tag, friends, tickets, level requests, showcase, admin).
+
+| Layer | Enforcement |
+|---|---|
+| Client (`AuthContext`, `AuthModal`) | Sends `sendEmailVerification`, keeps `emailVerified` as its **own state slice** (`user.reload()` mutates the same `User` object, so deriving it would never re-render). Polls + `visibilitychange` + Capacitor `appStateChange` while pending; `refreshVerification()` forces `getIdToken(true)`. The Firestore user doc is **not created** until verified. UX only — not a security boundary |
+| Worker | `verifyIdToken` → `emailVerified` (`email_verified === true && email present`). `requireVerifiedEmail` (403 `EMAIL_NOT_VERIFIED`) on `/friends/*`, `/users/search`, `/badges/showcase`, `/create-ticket`, `/game/feedback`. `adminAuth` enforces it unconditionally, before the role read, and emits `auth.forbidden`. Gameplay routes are intentionally ungated |
+| Firestore rules | `isVerifiedAccount()` on `users` create, `levelRequests` create, `supportTickets` list, ticket-message create. `users` update may only touch `authProvider` / `email` / `acceptedTermsAt` when verified |
+| Cloud Functions | `requestNewTag`, `onUserCreated`, `onUserUpgraded` read `emailVerified` from the **Auth record** (never a Firestore field the client could write) before assigning a tag. `cleanupOldAnonymousUsers` also reaps password accounts unverified for 14 days **that have no `users/{uid}` doc** |
+
+> **Why not `firebase.sign_in_provider`?** That claim is bound to the sign-in event that minted the refresh token and stays `'anonymous'` after `linkWithCredential` until a full re-sign-in. It was the silent bug in the old `isNotAnonymous()` helper. `email` / `email_verified` are regenerated from the account record on every token refresh, so they are the correct signal.
+
+> **Why does the tag leak through `update`, not `create`?** An anonymous-then-linked user already has a Worker-created `users/{uid}` doc, so `createOrUpdateUserDoc` takes the update branch and patches `authProvider`, which fires `onUserUpgraded`. `onUserUpgraded` therefore no longer requires `before.authProvider === 'anonymous'`; it self-heals by assigning the tag once the user verifies.
+
+Setup that lives outside the repo (Firebase Console): email templates (tr/en), `NEXT_PUBLIC_SITE_URL`'s host in Authorized domains, and **Email enumeration protection ON** (`user-not-found` / `wrong-password` collapse into `auth/invalid-credential`; `AuthModal.toMessageKey` was updated accordingly). Continue URL is `${NEXT_PUBLIC_SITE_URL}/auth/verified` with `handleCodeInApp: false` (Dynamic Links were shut down in Aug 2025).
 
 ---
 

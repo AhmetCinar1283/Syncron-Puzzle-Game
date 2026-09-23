@@ -30,7 +30,18 @@ const JWKS = createRemoteJWKSet(GOOGLE_JWKS_URL);
 export interface VerifiedToken {
   uid: string;
   email?: string;
-  emailVerified?: boolean;
+  /**
+   * Sahipliği kanıtlanmış e-posta. Anonim oturumlar ve doğrulanmamış
+   * password hesapları için ikisi de `false` — aynı ayrıcalık kademesini
+   * paylaşırlar (bkz. middleware/auth.ts → requireVerifiedEmail).
+   *
+   * NOT: `firebase.sign_in_provider` bilerek okunmuyor. O claim oturumu
+   * BAŞLATAN olaya bağlıdır ve refresh token'a yapışıktır; anonim bir
+   * oturum `linkWithCredential` ile e-postaya yükseltildiğinde bile
+   * 'anonymous' kalmaya devam eder. `email` / `email_verified` ise her
+   * token yenilemesinde hesap kaydından yeniden üretilir — doğru kapı bu.
+   */
+  emailVerified: boolean;
 }
 
 /**
@@ -53,11 +64,11 @@ export async function verifyIdToken(
   const uid = payload.sub;
   if (!uid) throw new Error('Firebase token missing sub claim');
 
+  const email = typeof payload['email'] === 'string' ? payload['email'] : undefined;
+
   return {
     uid,
-    email: typeof payload['email'] === 'string' ? payload['email'] : undefined,
-    emailVerified: typeof payload['email_verified'] === 'boolean'
-      ? payload['email_verified']
-      : undefined,
+    email,
+    emailVerified: payload['email_verified'] === true && !!email,
   };
 }

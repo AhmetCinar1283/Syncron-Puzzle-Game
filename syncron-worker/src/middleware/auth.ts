@@ -27,6 +27,8 @@ export const firebaseAuth = createMiddleware<AppContext>(async (c, next) => {
     // verifyIdToken now uses jose + JWKS — no REST API call, cryptographic verification
     const verified = await verifyIdToken(idToken, c.env.FIREBASE_PROJECT_ID);
     c.set('uid', verified.uid);
+    c.set('emailVerified', verified.emailVerified);
+    c.set('email', verified.email);
     await next();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -66,6 +68,8 @@ export const optionalFirebaseAuth = createMiddleware<AppContext>(async (c, next)
   try {
     const verified = await verifyIdToken(idToken, c.env.FIREBASE_PROJECT_ID);
     c.set('uid', verified.uid);
+    c.set('emailVerified', verified.emailVerified);
+    c.set('email', verified.email);
     await next();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -73,4 +77,31 @@ export const optionalFirebaseAuth = createMiddleware<AppContext>(async (c, next)
     trackSecurityEvent(c, 'auth.failed', { reason: msg.slice(0, 120), optional: true }, null);
     return c.json({ success: false, error: 'Invalid or expired token' }, 401);
   }
+});
+
+/**
+ * E-posta sahipliği kapısı. `firebaseAuth`'tan SONRA zincirlenir ve yalnızca
+ * anonim seviyenin ÜSTÜNDEKİ rotalara takılır (sosyal graf, herkese açık profil
+ * yüzeyi, insan dikkati gerektiren yüzeyler).
+ *
+ * Yönetici ilke: doğrulanmamış hesap ≡ anonim hesap. Oynama/kaydetme rotaları
+ * bu middleware'i ALMAZ — anonim kullanıcı zaten oraya erişebildiği için,
+ * anonimden yükselmiş birinin oynama hakkını elinden almak kullanıcıyı
+ * cezalandırır ve hiçbir güvenlik kazancı sağlamaz.
+ *
+ * 403 döner, 401 değil: token kriptografik olarak geçerli ve süresi dolmamış.
+ * 401 dönmek istemciyi asla başarıya ulaşamayacak bir token-yenile-tekrar-dene
+ * döngüsüne sokar ve audit tablolarında gerçek auth hatalarından ayrılamaz.
+ *
+ * Bilerek `trackSecurityEvent` çağırmıyor: `auth.forbidden` katalogda `critical`
+ * ("yetki yükseltme sinyali"). Doğrulanmamış kullanıcının "Arkadaşlar"a dokunması
+ * sıradan ve yüksek hacimli bir durum; oraya akıtmak sinyali öldürür. Admin
+ * yüzeyi istisnadır ve kendi olayını adminAuth'ta yazar.
+ */
+export const requireVerifiedEmail = createMiddleware<AppContext>(async (c, next) => {
+  if (c.get('emailVerified') === true) {
+    await next();
+    return;
+  }
+  return c.json({ success: false, error: 'EMAIL_NOT_VERIFIED' }, 403);
 });

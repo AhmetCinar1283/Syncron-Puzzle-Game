@@ -18,6 +18,13 @@ export interface UserState {
   displayName: string | null;
   isAnonymous: boolean;
   authProvider: AuthProvider;
+  /**
+   * E-posta sahipliği kanıtlanmış mı. Anonim oturumlarda her zaman false.
+   * Özellik hook'larının AuthContext'e dokunmadan uyarı gösterebilmesi için
+   * burada da tutulur — ama yetkilendirme kararı DEĞİL, sadece UX sinyali:
+   * gerçek kapı Worker ve Firestore kurallarındadır.
+   */
+  emailVerified: boolean;
   role: UserRole;
   totalScore: number;
   completedCount: number;
@@ -34,6 +41,7 @@ const initialState: UserState = {
   displayName: null,
   isAnonymous: true,
   authProvider: null,
+  emailVerified: false,
   role: 'user',
   totalScore: 0,
   completedCount: 0,
@@ -56,6 +64,7 @@ const userSlice = createSlice({
         displayName: string | null;
         isAnonymous: boolean;
         authProvider: AuthProvider;
+        emailVerified?: boolean;
       }>,
     ) {
       state.uid = action.payload.uid;
@@ -63,6 +72,7 @@ const userSlice = createSlice({
       state.displayName = action.payload.displayName;
       state.isAnonymous = action.payload.isAnonymous;
       state.authProvider = action.payload.authProvider;
+      state.emailVerified = action.payload.emailVerified ?? false;
       state.loading = false;
     },
     // Kullanıcının Firestore'daki ek bilgilerini (puan, rol, etiket, xp) yükler

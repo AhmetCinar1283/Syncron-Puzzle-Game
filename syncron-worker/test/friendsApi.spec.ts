@@ -10,7 +10,13 @@ vi.mock('../src/services/auth', () => {
     verifyIdToken: vi.fn(async (token: string) => {
       if (token.startsWith('valid-token-')) {
         const uid = token.slice(12);
-        return { uid };
+        return { uid, email: uid + '@example.com', emailVerified: true };
+      }
+      // E-postası doğrulanmamış (ör. anonimden yükselmiş) hesap: token geçerli
+      // ama email_verified false — sosyal rotalar bunu 403 ile reddetmeli.
+      if (token.startsWith('unverified-token-')) {
+        const uid = token.slice(17);
+        return { uid, email: uid + '@example.com', emailVerified: false };
       }
       throw new Error('Invalid token');
     }),

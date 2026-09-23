@@ -6,6 +6,17 @@ import { useT, useLanguage } from '@/contexts/LanguageContext';
 import { useMountedModalSound } from '@/services/audio';
 import { LANGS, type Lang } from '@/lib/i18n';
 import { getUserTagData, requestNewTag } from '@/services/firebase/users';
+import {
+  getActionCodeSettings,
+  markVerificationSent,
+  verificationCooldownRemaining,
+} from '@/services/auth/verification';
+import { auth } from '@/services/firebase';
+import {
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
 import { GameIcon } from '@/components/icons';
 import { Modal } from '@/components/ui';
 
@@ -28,13 +39,17 @@ function GoogleIcon() {
 
 // ─── Error messages ───────────────────────────────────────────────────────────
 
+// NOT: Firebase Console'da "Email enumeration protection" AÇIK. Bu yüzden
+// `auth/user-not-found` ve `auth/wrong-password` artık gelmez — ikisi de
+// `auth/invalid-credential`'a çöker ve bu bilinçli bir bilgi sızıntısı
+// kapatmasıdır. Ölü eşlemeleri burada tutmuyoruz.
 function toMessageKey(err: unknown): string {
   const code = (err as { code?: string }).code ?? '';
   if (code === 'auth/invalid-email') return 'auth.err_invalid_email';
-  if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') return 'auth.err_wrong_password';
-  if (code === 'auth/user-not-found') return 'auth.err_user_not_found';
+  if (code === 'auth/invalid-credential') return 'auth.err_wrong_password';
   if (code === 'auth/email-already-in-use') return 'auth.err_email_in_use';
   if (code === 'auth/weak-password') return 'auth.err_weak_password';
+  if (code === 'auth/too-many-requests') return 'auth.err_too_many_requests';
   if (code === 'auth/popup-closed-by-user') return '';
   if (code === 'auth/provider-already-linked') return 'auth.err_already_linked';
   return 'auth.err_generic';
@@ -52,7 +67,16 @@ export default function AuthModal({ onClose }: Props) {
   const t = useT();
   useMountedModalSound();
   const { lang, setLang } = useLanguage();
-  const { user, isAnonymous, linkWithGoogle, linkWithEmail, signOut } = useAuthContext();
+  const {
+    user,
+    isAnonymous,
+    emailVerified,
+    linkWithGoogle,
+    linkWithEmail,
+    refreshVerification,
+    resendVerification,
+    signOut,
+  } = useAuthContext();
 
   const [tab, setTab] = useState<'signin' | 'register'>('signin');
   const [email, setEmail] = useState('');
@@ -60,6 +84,17 @@ export default function AuthModal({ onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  // Oturumsuz doğrulama bekleyişi: kayıt/giriş sonrası signOut edildiği için
+  // `user` null'dur ve doğrulama panelini gösterecek başka bir sinyal yoktur.
+  // Şifre YALNIZCA bellekte tutulur (yeniden gönderim ve "doğruladım" için
+  // geçici bir signIn gerekiyor) — localStorage'a asla yazılmaz.
+  const [pendingVerification, setPendingVerification] = useState<
+    { email: string; password: string } | null
+  >(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyNotice, setVerifyNotice] = useState('');
+  const [cooldownMs, setCooldownMs] = useState(0);
 
   // Tag state (signed-in view only)
   const [tagData, setTagData] = useState<TagData | null>(null);
@@ -75,11 +110,27 @@ export default function AuthModal({ onClose }: Props) {
     });
   }, [isAnonymous, user]);
 
-  const run = async (fn: () => Promise<void>) => {
+  // Geri sayım tıklayıcısı — yalnızca doğrulama beklenirken çalışır.
+  const cooldownSubject = pendingVerification?.email.toLowerCase() ?? user?.uid ?? '';
+  const awaitingVerification = Boolean(pendingVerification) || (user !== null && !isAnonymous && !emailVerified);
+  useEffect(() => {
+    if (!awaitingVerification || !cooldownSubject) return;
+    const tick = () => setCooldownMs(verificationCooldownRemaining(cooldownSubject));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [awaitingVerification, cooldownSubject]);
+
+  /**
+   * Başarıda modalı kapatır — DOĞRULAMA GEREKMİYORSA. `needsVerification`
+   * dönen akışlar modalı açık bırakıp doğrulama panelini gösterir.
+   */
+  const run = async (fn: () => Promise<{ needsVerification: boolean } | void>) => {
     setBusy(true);
     setError('');
     try {
-      await fn();
+      const result = await fn();
+      if (result && result.needsVerification) return;
       onClose();
     } catch (err: any) {
       console.error('[AuthModal] Error during auth operation:', err);
@@ -112,10 +163,103 @@ export default function AuthModal({ onClose }: Props) {
     if (tab === 'register') {
       localStorage.setItem('accepted_terms', 'true');
     }
-    run(() => linkWithEmail(email, password, tab));
+    const submitted = { email, password };
+    run(async () => {
+      const result = await linkWithEmail(submitted.email, submitted.password, tab);
+      if (result.needsVerification && auth.currentUser === null) {
+        // Oturumsuz yol: signOut edildi, panelin çalışması için kimlik
+        // bilgileri bellekte tutulmalı (yeniden gönderim + "doğruladım"
+        // geçici bir signIn gerektiriyor).
+        setPendingVerification(submitted);
+        setPassword('');
+      }
+      return result;
+    });
   };
 
   const handleSignOut = () => run(signOut);
+
+  // ── Doğrulama paneli işlemleri ──────────────────────────────────────────────
+
+  /** Oturumsuz bekleyişte: geçici giriş → e-posta gönder → tekrar çıkış. */
+  const handleResendSignedOut = async () => {
+    if (!pendingVerification) return;
+    setVerifyBusy(true);
+    setError('');
+    setVerifyNotice('');
+    try {
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        pendingVerification.email,
+        pendingVerification.password,
+      );
+      auth.languageCode = lang;
+      await sendEmailVerification(cred.user, getActionCodeSettings());
+      markVerificationSent(pendingVerification.email.toLowerCase());
+      setCooldownMs(verificationCooldownRemaining(pendingVerification.email.toLowerCase()));
+      setVerifyNotice(t('auth.verify_resent'));
+    } catch (err) {
+      const key = toMessageKey(err);
+      if (key) setError(t(key));
+    } finally {
+      // Doğrulanmadan oturum açık kalmamalı — hata olsa da kapat.
+      await firebaseSignOut(auth).catch(() => {});
+      setVerifyBusy(false);
+    }
+  };
+
+  /** Oturumlu (anonimden yükselmiş) bekleyişte: doğrudan yeniden gönder. */
+  const handleResendSignedIn = async () => {
+    setVerifyBusy(true);
+    setError('');
+    setVerifyNotice('');
+    try {
+      await resendVerification();
+      if (user) setCooldownMs(verificationCooldownRemaining(user.uid));
+      setVerifyNotice(t('auth.verify_resent'));
+    } catch (err) {
+      const key = toMessageKey(err);
+      if (key) setError(t(key));
+    } finally {
+      setVerifyBusy(false);
+    }
+  };
+
+  /**
+   * "Doğruladım". Oturumsuz bekleyişte yeniden giriş dener: doğrulanmışsa
+   * oturum AÇIK KALIR ve modal kapanır, değilse tekrar çıkış yapılır.
+   */
+  const handleCheckVerification = async () => {
+    setVerifyBusy(true);
+    setError('');
+    setVerifyNotice('');
+    try {
+      if (pendingVerification) {
+        const cred = await signInWithEmailAndPassword(
+          auth,
+          pendingVerification.email,
+          pendingVerification.password,
+        );
+        await cred.user.reload();
+        if (auth.currentUser?.emailVerified) {
+          await auth.currentUser.getIdToken(true);
+          setPendingVerification(null);
+          onClose();
+          return;
+        }
+        await firebaseSignOut(auth);
+        setVerifyNotice(t('auth.verify_not_yet'));
+        return;
+      }
+      const ok = await refreshVerification();
+      if (!ok) setVerifyNotice(t('auth.verify_not_yet'));
+    } catch (err) {
+      const key = toMessageKey(err);
+      if (key) setError(t(key));
+    } finally {
+      setVerifyBusy(false);
+    }
+  };
 
   const handleTagSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -137,6 +281,7 @@ export default function AuthModal({ onClose }: Props) {
       if (msg === 'TAG_INVALID_CHARS') setTagError(t('auth.err_tag_chars'));
       else if (msg.startsWith('TAG_LENGTH')) setTagError(t('auth.err_tag_length'));
       else if (msg === 'TAG_TAKEN') setTagError(t('auth.err_tag_taken'));
+      else if (msg.includes('EMAIL_NOT_VERIFIED')) setTagError(t('auth.err_email_not_verified'));
       else if (msg.startsWith('TAG_COOLDOWN')) {
         const days = msg.split(':')[1] ?? '14';
         setTagError(t('auth.err_tag_cooldown', { n: days }));
@@ -146,6 +291,82 @@ export default function AuthModal({ onClose }: Props) {
       setTagBusy(false);
     }
   };
+
+  // ── Doğrulama bekleyen görünüm ──────────────────────────────────────────────
+  // İmzalı görünümden ÖNCE gelir: doğrulanmamış bir hesap "Hesabım" ekranını
+  // (tag yönetimi dahil) görmemeli, çünkü oradaki işlemlerin hepsi sunucuda
+  // zaten reddedilir.
+  if (awaitingVerification) {
+    const targetEmail = pendingVerification?.email ?? user?.email ?? '';
+    const dailyLimit = cooldownMs === Infinity;
+    const waiting = cooldownMs > 0 && !dailyLimit;
+    const seconds = waiting ? Math.ceil(cooldownMs / 1000) : 0;
+
+    return (
+      <Backdrop onClose={onClose}>
+        <h2 style={headingStyle}>{t('auth.verify_title')}</h2>
+        <p style={{ color: '#9ca3af', fontSize: 13, margin: '8px 0 4px', lineHeight: 1.6 }}>
+          {t('auth.verify_sent_to', { email: targetEmail })}
+        </p>
+        <p style={{ color: '#4b5563', fontSize: 12, margin: '0 0 4px', lineHeight: 1.6 }}>
+          {t('auth.verify_instructions')}
+        </p>
+        <p style={{ color: '#374151', fontSize: 11, margin: '0 0 16px', lineHeight: 1.5 }}>
+          {t('auth.verify_spam_hint')}
+        </p>
+
+        <button
+          onClick={handleCheckVerification}
+          disabled={verifyBusy}
+          style={{ ...primaryBtn, marginBottom: 8 }}
+        >
+          {verifyBusy ? t('auth.verify_checking') : t('auth.verify_check_now')}
+        </button>
+
+        <button
+          onClick={pendingVerification ? handleResendSignedOut : handleResendSignedIn}
+          disabled={verifyBusy || waiting || dailyLimit}
+          style={{
+            ...primaryBtn,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid #1f2937',
+            color: waiting || dailyLimit ? '#374151' : '#9ca3af',
+            cursor: waiting || dailyLimit ? 'default' : 'pointer',
+          }}
+        >
+          {dailyLimit
+            ? t('auth.verify_daily_limit')
+            : waiting
+              ? t('auth.verify_cooldown', { n: seconds })
+              : t('auth.verify_resend')}
+        </button>
+
+        <p style={{ color: '#4b5563', fontSize: 11, margin: '14px 0 0', lineHeight: 1.6 }}>
+          {pendingVerification ? t('auth.verify_signed_out_note') : t('auth.verify_limited_note')}
+        </p>
+
+        {verifyNotice && (
+          <p style={{ color: '#00ff88', fontSize: 12, margin: '8px 0 0' }}>{verifyNotice}</p>
+        )}
+        {error && <p style={errorStyle}>{error}</p>}
+
+        <div style={{ borderTop: '1px solid #0d1420', marginTop: 18, paddingTop: 14 }}>
+          {pendingVerification ? (
+            <button
+              onClick={() => { setPendingVerification(null); setVerifyNotice(''); setError(''); }}
+              style={{ ...dangerBtn, background: 'rgba(255,255,255,0.03)', border: '1px solid #1f2937', color: '#64748b' }}
+            >
+              {t('auth.tab_signin')}
+            </button>
+          ) : (
+            <button onClick={handleSignOut} disabled={busy} style={dangerBtn}>
+              {busy ? '...' : t('auth.sign_out')}
+            </button>
+          )}
+        </div>
+      </Backdrop>
+    );
+  }
 
   // ── Signed-in view ──────────────────────────────────────────────────────────
   if (user !== null && !isAnonymous) {

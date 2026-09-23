@@ -23,3 +23,12 @@ Yapılandırma:
 - `capacitor.config.ts` → `plugins.SocialLogin.providers`: yalnızca `google: true`;
   Facebook/Apple/Twitter SDK'ları APK'ya girmez.
 - Eklenti değişikliği sonrası `npx cap sync android` gerekir.
+
+## verification.ts
+
+E-posta doğrulama akışının istemci yapılandırması: `getActionCodeSettings()` (continue URL =
+`NEXT_PUBLIC_SITE_URL` + `/auth/verified`, `handleCodeInApp: false`) ve yeniden gönderme kotası
+(`verificationCooldownRemaining`, `markVerificationSent`; 60 sn bekleme, günde en fazla 5).
+Kota anahtarı oturumluyken uid, oturumsuz bekleyişte e-postadır. Bu bir güvenlik sınırı değil,
+Firebase'in proje başına e-posta kotasını korumaktır. Bütünsel tasarım: `docs/auth.md` →
+*Email Verification*.

@@ -14,8 +14,27 @@ rules_version = '2';
         return isSignedIn() && exists(userPath) && get(userPath).data.role
              in ['admin', 'moderator'];
       }
-      function isNotAnonymous() {
-        return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      // Sahipliği KANITLANMIŞ gerçek kimlik.
+      //
+      // Anonim oturumlarda `email` claim'i hiç yoktur; onları dışarıda bırakan
+      // şey budur — `sign_in_provider` DEĞİL. O claim oturumu BAŞLATAN olaya
+      // bağlıdır ve refresh token'a yapışıktır: anonim bir oturum
+      // `linkWithCredential` ile e-postaya/Google'a yükseltildiğinde bile
+      // 'anonymous' kalmaya devam eder ve ancak tam bir yeniden girişte
+      // değişir. Bu, yerine geçtiği eski `isNotAnonymous` helper'ının sessiz
+      // hatasıydı: anonimden yükselen kullanıcılar level talebi gönderemiyor,
+      // destek taleplerini listeleyemiyordu. `email` ve `email_verified` ise
+      // her token yenilemesinde hesap kaydından yeniden üretilir.
+      //
+      // `.get(key, default)` kullanımı zorunlu: kurallarda bir Map'te OLMAYAN
+      // anahtara doğrudan erişmek değerlendirme hatası fırlatır ve bu hata bir
+      // `||` ifadesinin TAMAMINI kısa devre yaptırır (ör. `isAdmin() ||
+      // isVerifiedAccount()` anonim bir kullanıcı için hiç değerlendirilemezdi).
+      // `.get()` totaldir.
+      function isVerifiedAccount() {
+        return isSignedIn()
+          && request.auth.token.get('email_verified', false) == true
+          && request.auth.token.get('email', '') != '';
       }
 
       // Checks whether the current user is allowed to read a level document.
@@ -31,8 +50,11 @@ rules_version = '2';
 
         allow create: if isOwner(uid)
           // Anonymous users cannot self-create their profile — the Worker does it
-          // via Admin SDK (which bypasses these rules). Only real accounts may create.
-          && isNotAnonymous()
+          // via Admin SDK (which bypasses these rules). Only accounts whose email
+          // ownership is PROVEN may create: onUserCreated tetikleyicisi döküman
+          // oluşumunda kıt bir tag atıyor; sahte bir hesabın onu yakmasını
+          // engelleyen kapı burasıdır.
+          && isVerifiedAccount()
           // Zorunlu temel alanlar: uid, authProvider, createdAt, totalScore, completedCount, role
           && request.resource.data.keys().hasAll([
               'uid','authProvider','createdAt','totalScore','completedCount','role'
@@ -62,6 +84,19 @@ rules_version = '2';
         allow update: if isOwner(uid)
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['totalScore', 'completedCount', 'role', 'xp'])
+          // Anonimden yükselenlerin tag sızıntısı BURADA kapanır, create'te
+          // değil: bu kullanıcıların dökümanını Worker (Admin SDK, kuralları
+          // bypass ederek) çoktan oluşturmuştur, dolayısıyla create kuralı hiç
+          // çalışmaz. authProvider'ın 'anonymous' dışına çekilmesi
+          // onUserUpgraded'ı tetikleyip tag atattığı için, kimliği belirleyen
+          // bu üç alan yalnızca doğrulanmış hesaplarca değiştirilebilir.
+          // displayName/showcaseBadges bilerek kapısız: anonim kullanıcı da
+          // onları yazabiliyor ve doğrulanmamış hesap >= anonim olmalı.
+          && (
+               !request.resource.data.diff(resource.data).affectedKeys()
+                   .hasAny(['authProvider', 'email', 'acceptedTermsAt'])
+               || isVerifiedAccount()
+             )
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.createdAt == resource.data.createdAt
           && (!('tag' in resource.data) || request.resource.data.tag == resource.data.tag)
@@ -123,7 +158,7 @@ rules_version = '2';
         allow get: if isOwner(resource.data.submittedBy) || isAdmin();
         allow list: if isAdmin();
         // Non-anonymous users can create their own requests (status must start as 'pending')
-        allow create: if isNotAnonymous()
+        allow create: if isVerifiedAccount()
           && request.resource.data.submittedBy == request.auth.uid
           && request.resource.data.status == 'pending'
           && (!('gameNotes' in request.resource.data) || request.resource.data.gameNotes == null || request.resource.data.gameNotes is string)
@@ -151,7 +186,7 @@ rules_version = '2';
         // Client must supply a where('uid','==',uid) filter — if they omit it,
         // documents belonging to other users will cause this rule to fail for
         // those docs, making the entire query fail. This is the desired behaviour.
-        allow list: if isAdmin() || (isNotAnonymous() && resource.data.uid == request.auth.uid);
+        allow list: if isAdmin() || (isVerifiedAccount() && resource.data.uid == request.auth.uid);
 
         // Ticket creation is handled exclusively by the Cloudflare Worker via
         // Admin SDK — no client-side creation allowed.
@@ -177,7 +212,7 @@ rules_version = '2';
           // Non-anonymous ticket owner can add user messages; admin can add admin replies.
           // For user messages we validate: senderType, senderUid, required fields, body length.
           allow create: if (
-            isNotAnonymous() &&
+            isVerifiedAccount() &&
             isOwner(get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.uid) &&
             request.resource.data.senderType == 'user' &&
             request.resource.data.senderUid == request.auth.uid &&
