@@ -8,8 +8,13 @@ export const HUD_HEIGHT = 60; // px — HUD'un sabit yüksekliği (ferah, dengel
 export const COMPACT_BREAKPOINT = 850;
 /** Oda yerleşiminde odalar arası boşluk (calculateRoomLayoutOffsets 3. argümanı). */
 export const ROOM_LAYOUT_GAP = 40;
-/** Swipe'ın hamle sayılması için gereken minimum px. */
-export const SWIPE_THRESHOLD = 20;
+/**
+ * Swipe'ın hamle sayılması için gereken minimum px. Hassasiyet 0-100:
+ * 50 → ~22px (eski sabit 20'ye yakın), 100 → 8px, 0 → 36px.
+ */
+export function swipeThreshold(sensitivity: number): number {
+    return Math.round(36 - 0.28 * sensitivity);
+}
 /** "Adım ileri" çözücü limitleri (derinlik, düğüm). */
 export const STEP_SOLVER_MAX_DEPTH = 35;
 export const STEP_SOLVER_MAX_NODES = 3000;

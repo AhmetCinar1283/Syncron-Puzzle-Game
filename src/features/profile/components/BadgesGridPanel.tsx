@@ -1,7 +1,9 @@
 'use client';
 
+import React from 'react';
 import BadgeIcon from '@/components/common/BadgeIcon';
 import { GameIcon } from '@/components/icons';
+import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { Badge } from '@/services/api/badgesClient';
 
 interface Props {
@@ -12,82 +14,123 @@ interface Props {
 }
 
 export default function BadgesGridPanel({ t, loadingBadges, badgesError, badges }: Props) {
-  return (
-    <div
-      style={{
-        background: '#0a0f1a50',
-        border: '1px solid #111827',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <h3
-        style={{
-          fontSize: '11px',
-          fontWeight: 800,
-          letterSpacing: '0.15em',
-          color: '#4b5563',
-          textTransform: 'uppercase',
-          margin: '0 0 16px 0',
-        }}
-      >
-        {t('leaderboard.standing') === 'SENİN YERİN' ? 'TÜM ROZETLER' : 'ALL BADGES'}
-      </h3>
+  const { themeConfig } = useGameTheme();
 
-      {loadingBadges ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-          <div
-            style={{
-              width: '20px',
-              height: '20px',
-              border: '2px solid rgba(255,255,255,0.1)',
-              borderTopColor: '#00ff88',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }}
-          />
-        </div>
-      ) : badgesError ? (
-        <p style={{ color: '#ff2d55', fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <GameIcon name="warning" size={14} color="#ff2d55" />
-          <span>{badgesError}</span>
-        </p>
-      ) : badges.length > 0 ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))',
-            gap: '12px',
-            justifyItems: 'center',
-          }}
-        >
-          {badges.map((badge) => (
-            <div
-              key={badge.id}
+  return (
+    <div className="profile-card">
+      <div className="profile-card__scan" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--tl" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--tr" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--bl" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--br" aria-hidden="true" />
+
+      <div className="profile-card__content">
+        <div className="profile-panel-header">
+          <h3 className="profile-panel-title">
+            <GameIcon name="trophy" size={14} color={themeConfig.accentColor} />
+            <span>
+              {t('leaderboard.standing') === 'SENİN YERİN' ? 'TÜM ROZETLER' : 'ALL BADGES'}
+            </span>
+          </h3>
+
+          {badges.length > 0 && (
+            <span
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
+                fontSize: '11px',
+                fontWeight: 800,
+                color: themeConfig.accentColor,
+                background: 'rgba(255, 255, 255, 0.05)',
+                padding: '3px 8px',
+                borderRadius: '999px',
+                border: `1px solid ${themeConfig.accentColor}30`,
               }}
             >
-              <BadgeIcon
-                badgeType={badge.badgeType}
-                periodId={badge.periodId}
-                rank={badge.rank}
-                size="md"
-              />
-              <span style={{ fontSize: '8px', color: '#4b5563', marginTop: '4px', fontWeight: 700 }}>
-                {badge.periodId}
-              </span>
-            </div>
-          ))}
+              {badges.length}
+            </span>
+          )}
         </div>
-      ) : (
-        <p style={{ color: '#4b5563', fontSize: '12px', fontStyle: 'italic', margin: 0 }}>
-          {t('leaderboard.standing') === 'SENİN YERİN' ? 'Henüz kazanılmış rozet yok' : 'No badges earned yet'}
-        </p>
-      )}
+
+        {loadingBadges ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <div
+              style={{
+                width: '24px',
+                height: '24px',
+                border: '2px solid rgba(255,255,255,0.1)',
+                borderTopColor: themeConfig.accentColor,
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+          </div>
+        ) : badgesError ? (
+          <p style={{ color: '#ff2d55', fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <GameIcon name="warning" size={14} color="#ff2d55" />
+            <span>{badgesError}</span>
+          </p>
+        ) : badges.length > 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))',
+              gap: '12px',
+              justifyItems: 'center',
+              padding: '6px 0',
+            }}
+          >
+            {badges.map((badge) => (
+              <div
+                key={badge.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  background: 'rgba(10, 16, 30, 0.5)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '8px',
+                  padding: '8px 4px',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  transition: 'transform 0.2s ease, border-color 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.borderColor = `${themeConfig.accentColor}50`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+                }}
+              >
+                <BadgeIcon
+                  badgeType={badge.badgeType}
+                  periodId={badge.periodId}
+                  rank={badge.rank}
+                  size="md"
+                />
+                <span
+                  style={{
+                    fontSize: '9px',
+                    color: '#94a3b8',
+                    marginTop: '6px',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {badge.periodId}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ color: '#64748b', fontSize: '12px', fontStyle: 'italic', margin: '8px 0', textAlign: 'center' }}>
+            {t('leaderboard.standing') === 'SENİN YERİN'
+              ? 'Henüz kazanılmış bir rozet bulunmuyor.'
+              : 'No badges earned yet.'}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

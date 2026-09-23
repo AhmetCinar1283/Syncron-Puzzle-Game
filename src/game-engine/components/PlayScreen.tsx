@@ -17,6 +17,8 @@ import { usePlayScreenActions } from '../hooks/usePlayScreenActions';
 import { usePlayInput } from '../hooks/usePlayInput';
 import { usePlayScreenHint, type PlayScreenHint } from '../hooks/usePlayScreenHint';
 import { useSettings } from '@/features/settings';
+import { useTouchCapable } from '@/features/settings/hooks/useTouchCapable';
+import { TouchControlsLayout } from './play-screen/touch/TouchControls';
 import { PlayHud } from './play-screen/PlayHud';
 import { HudControls } from './play-screen/HudControls';
 import { SolutionSteps, CompactSolutionBar } from './play-screen/SolutionSteps';
@@ -93,7 +95,12 @@ export function PlayScreen({
 }: PlayScreenProps) {
     const { theme } = useGameTheme();
     const { play, muted } = useSoundManager();
-    const { isSettingsOpen } = useSettings();
+    const { isSettingsOpen, settings } = useSettings();
+    const touchCapable = useTouchCapable();
+    const { scheme, padSide, swipeSensitivity } = settings.controls;
+    const showTouchControls = touchCapable && scheme !== 'swipe';
+    // Dokunmatik cihazda "yalnızca tuşlar" seçiliyse board kaydırması kapanır.
+    const swipeEnabled = !(touchCapable && scheme === 'buttons');
 
     // Haptik eklentisini önceden yükle: ilk swipe'ın dinamik import'u
     // beklemesini engeller.
@@ -184,7 +191,7 @@ export function PlayScreen({
 
     // ── Girdi: klavye + gamepad + swipe ─────────────────────────────────────
     // "Adım ileri" çözücüyü ücretsiz çalıştırdığı için yalnızca editör test modunda açık.
-    const { handleTouchStart, handleTouchMove, handleTouchEnd } = usePlayInput({
+    const { handleTouchStart, handleTouchMove, handleTouchEnd, handleDirectionPress } = usePlayInput({
         isGameOverRef,
         inputLockedRef,
         triggerMove,
@@ -193,6 +200,8 @@ export function PlayScreen({
         handleUndo,
         handleStepForward: isTestMode ? handleStepForward : undefined,
         handleHint: playerHint ? requestHint : undefined,
+        swipeEnabled,
+        swipeSensitivity,
     });
 
     const pendingUi = uiEvents.length > 0 ? uiEvents[uiEvents.length - 1] : null;
@@ -287,6 +296,18 @@ export function PlayScreen({
 
 
             {/* ── Board alanı ───────────── */}
+            <TouchControlsLayout
+                enabled={showTouchControls}
+                padSide={padSide}
+                onDirection={handleDirectionPress}
+                onUndo={handleUndo}
+                undoDisabled={isAnimating || !canUndo}
+                onSwitchRoom={
+                    controlMode === 'selected_room' && Object.keys(rooms).length > 1
+                        ? cycleControlledRoom
+                        : undefined
+                }
+            >
             <BoardArea
                 areaRef={boardAreaRef}
                 boardPixelW={boardPixelW}
@@ -319,6 +340,7 @@ export function PlayScreen({
                     </>
                 ) : null}
             />
+            </TouchControlsLayout>
 
             {visibleHint && <style>{HINT_KEYFRAMES}</style>}
 

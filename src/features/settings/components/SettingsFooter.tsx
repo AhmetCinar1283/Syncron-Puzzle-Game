@@ -1,6 +1,6 @@
 /**
  * DOSYA AMACI: Ayarlar ekranının alt şeridi: varsayılanlara sıfırla düğmesi
- * (odaklanabilir) ve sürüm etiketi.
+ * (taktiksel tehlike stili) ve oyun sürüm etiketi.
  */
 
 'use client';
@@ -22,34 +22,60 @@ export function SettingsFooter({ focused, onFocus, onReset }: Props) {
   const t = useT();
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 }}>
+    <footer
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 8,
+        width: '100%',
+        boxSizing: 'border-box',
+        gap: 12,
+        flexWrap: 'wrap',
+      }}
+    >
       <button
         type="button"
         data-focus-id={RESET_FOCUS_ID}
         onClick={onReset}
         onMouseEnter={() => onFocus(RESET_FOCUS_ID)}
         style={{
-          background: focused ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.08)',
-          border: focused ? `1px solid ${COLORS.danger}` : '1px solid rgba(239, 68, 68, 0.3)',
-          color: COLORS.danger,
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: 'pointer',
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
           padding: '8px 14px',
-          borderRadius: 8,
-          transition: 'all 0.15s ease',
+          minHeight: 38,
+          borderRadius: 'var(--st-btn-radius, 8px)',
+          cursor: 'pointer',
+          fontSize: 11.5,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
           outline: 'none',
-          boxShadow: focused ? '0 0 14px rgba(239, 68, 68, 0.3)' : 'none',
+          transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+          background: focused ? 'rgba(239, 68, 68, 0.22)' : 'rgba(239, 68, 68, 0.08)',
+          border: focused ? `1.5px solid ${COLORS.danger}` : '1px solid rgba(239, 68, 68, 0.28)',
+          color: '#fca5a5',
+          boxShadow: focused ? '0 0 16px rgba(239, 68, 68, 0.35)' : 'none',
+          transform: focused ? 'scale(1.02)' : 'none',
         }}
       >
-        <RotateCcw size={13} />
+        <RotateCcw size={13} color="#fca5a5" />
         <span>{t('settings.reset_defaults')}</span>
       </button>
 
-      <span style={{ fontSize: 11, color: '#475569', fontWeight: 600 }}>Syncron v0.3</span>
-    </div>
+      <span
+        style={{
+          fontSize: 11,
+          color: '#64748b',
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          fontFamily: 'monospace',
+          textTransform: 'uppercase',
+        }}
+      >
+        SYNCRON // v0.3
+      </span>
+    </footer>
   );
 }

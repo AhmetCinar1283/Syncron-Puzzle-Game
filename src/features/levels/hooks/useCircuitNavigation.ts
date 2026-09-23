@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useGamepad, type GamepadDirection } from '@/hooks/useGamepad';
+import { isAnyModalOpen } from '@/components/ui';
 
 export interface UseCircuitNavigationOptions {
   totalItems: number;
@@ -33,7 +34,7 @@ export function useCircuitNavigation({
 }: UseCircuitNavigationOptions) {
   const step = useCallback(
     (delta: -1 | 1) => {
-      if (totalItems <= 0 || disabled) return;
+      if (totalItems <= 0 || disabled || isAnyModalOpen()) return;
       setSelectedIndex((prev) => {
         const current = prev ?? 0;
         const next = current + delta;
@@ -48,6 +49,7 @@ export function useCircuitNavigation({
     if (disabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (disabled || isAnyModalOpen()) return;
       const target = document.activeElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
 
@@ -134,18 +136,19 @@ export function useCircuitNavigation({
   // ── 2. Gamepad Girdileri ─────────────────────────────────────────────────
   const handleGamepadMove = useCallback(
     (direction: GamepadDirection) => {
+      if (disabled || isAnyModalOpen()) return;
       if (direction === 'down' || direction === 'right') {
         step(1);
       } else if (direction === 'up' || direction === 'left') {
         step(-1);
       }
     },
-    [step],
+    [step, disabled],
   );
 
   const handleGamepadButtonPress = useCallback(
     (buttonIndex: number, pressed: boolean) => {
-      if (!pressed || disabled) return;
+      if (!pressed || disabled || isAnyModalOpen()) return;
 
       // L1 / LB: Önceki Sektör
       if (buttonIndex === 4) {
@@ -164,7 +167,7 @@ export function useCircuitNavigation({
   );
 
   const { isConnected: isGamepadConnected } = useGamepad({
-    enabled: !disabled,
+    enabled: !disabled && !isAnyModalOpen(),
     onMove: handleGamepadMove,
     onConfirm,
     onMenu: onBack,

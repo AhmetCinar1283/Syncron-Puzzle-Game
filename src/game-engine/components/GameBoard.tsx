@@ -21,6 +21,7 @@ import { RoomTrails, RoomCables } from './board/RoomOverlays';
 import { ensureBoardKeyframes, BoardAmbientMode } from './board/boardKeyframes';
 import { useMotionTier } from '@/lib/motionTier';
 import type { JankPhase } from '../render/jankMonitor';
+import VictoryCanvas from '../render/VictoryCanvas';
 import { BoardIndex, buildBoardIndex, cellKey, isCellVisible, playersIn, playersSignature } from './board/boardIndex';
 
 const CELL_SIZE = 64;
@@ -37,6 +38,8 @@ interface GameBoardProps {
     muted?: boolean;
     /** Kasma dedektörü için oynatma evresi (yalnızca DOM + Otomatik iken verilir). */
     onPlaybackPhase?: (phase: JankPhase) => void;
+    /** Dengeli seviye: zafer koreografisi DOM yerine canvas overlay'de oynar. */
+    canvasVictory?: boolean;
 }
 
 type EdgeSide = 'top' | 'bottom' | 'left' | 'right';
@@ -159,7 +162,7 @@ function renderEdgeLabel(side: EdgeSide, behavior?: EdgeBehavior) {
     );
 }
 
-const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted, onPlaybackPhase }: GameBoardProps) => {
+const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted, onPlaybackPhase, canvasVictory }: GameBoardProps) => {
     const { themeConfig } = useGameTheme();
     const motionTier = useMotionTier();
     // Film oynatma (kare ilerletme, ses, titreşim, bitiş) ortak hook'ta:
@@ -252,6 +255,8 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
     });
 
     const roomList = Object.values(rooms) as RoomState[];
+
+    const VictoryLayer = canvasVictory ? VictoryCanvas : VictoryCelebration;
 
     // Dekoratif animasyon bütçesi (bkz. boardKeyframes.ts):
     //  - zayıf cihazda tamamen kapalı,
@@ -441,7 +446,7 @@ const GameBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, 
 
             {/* Victory Celebration Layer */}
             {isVictoryActive && finalSnapshot && (
-                <VictoryCelebration
+                <VictoryLayer
                     entities={finalSnapshot.entities}
                     roomPositions={roomPositions}
                     boardWidth={totalWidth}

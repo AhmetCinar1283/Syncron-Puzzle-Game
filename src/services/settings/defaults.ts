@@ -5,7 +5,7 @@
 
 import { LANGS, type Lang } from '@/lib/i18n';
 import { ALL_THEMES, type GameTheme } from '@/game-engine/themes/themeConfig';
-import type { MotionPreference, RendererPreference, UserSettings } from './types';
+import type { ControlScheme, MotionPreference, PadSide, RendererPreference, UserSettings } from './types';
 
 /** Güncel şema versiyonu. v1 → v2: controls / graphics / general grupları ve menü sesi eklendi. */
 export const SETTINGS_VERSION = 2;
@@ -26,8 +26,8 @@ export const DEFAULT_SETTINGS: Readonly<UserSettings> = Object.freeze({
   }),
   controls: Object.freeze({
     keyboard: true,
-    dpad: true,
-    tapToMove: false,
+    scheme: 'both',
+    padSide: 'right',
     swipeSensitivity: 50,
     haptics: true,
   }),
@@ -72,10 +72,20 @@ export function isValidTheme(value: unknown): value is GameTheme {
 
 /** Verilen değerin geçerli bir çizici tercihi olup olmadığını doğrular. */
 export function isValidRenderer(value: unknown): value is RendererPreference {
-  return value === 'auto' || value === 'dom' || value === 'canvas';
+  return value === 'auto' || value === 'dom' || value === 'hybrid' || value === 'canvas';
 }
 
 /** Verilen değerin geçerli bir hareket kademesi tercihi olup olmadığını doğrular. */
 export function isValidMotion(value: unknown): value is MotionPreference {
   return value === 'auto' || value === 'full' || value === 'lite';
+}
+
+/** Verilen değerin geçerli bir kontrol şeması olup olmadığını doğrular. */
+export function isValidScheme(value: unknown): value is ControlScheme {
+  return value === 'swipe' || value === 'buttons' || value === 'both';
+}
+
+/** Verilen değerin geçerli bir tuş tarafı olup olmadığını doğrular. */
+export function isValidPadSide(value: unknown): value is PadSide {
+  return value === 'right' || value === 'left';
 }

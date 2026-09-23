@@ -1,13 +1,12 @@
 /**
- * DOSYA AMACI: Bir ayar grubunu (başlık, açıklama, ikon ve satırları) kart
- * olarak çizer.
+ * DOSYA AMACI: Seçili ayar grubunu (başlık, açıklama, tema renkli rozet ikon ve satırları)
+ * taktiksel bir Oyun HUD kartı olarak çizer.
  */
 
 'use client';
 
 import React from 'react';
 import type { SettingsGroup } from '../lib/settingsModel';
-import { COLORS } from '../lib/styles';
 import { SettingRowView } from './rows/SettingRowView';
 
 interface Props {
@@ -22,35 +21,90 @@ export function SettingsGroupCard({ group, focusId, onFocus, compact }: Props) {
 
   return (
     <section
-      aria-labelledby={`settings-group-${group.id}`}
+      id={`settings-group-${group.id}`}
+      aria-labelledby={`settings-group-title-${group.id}`}
       style={{
-        background: COLORS.cardBg,
-        border: `1px solid ${COLORS.cardBorder}`,
-        borderRadius: 14,
+        position: 'relative',
+        background: 'rgba(10, 18, 32, 0.78)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: 'var(--st-card-radius, 16px)',
         padding: compact ? '14px 12px' : '18px 16px',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07)',
+        boxSizing: 'border-box',
+        width: '100%',
       }}
     >
-      <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 6px' }}>
-        <Icon size={18} color={COLORS.accent} />
-        <div>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '2px 6px 12px 6px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+          marginBottom: 4,
+        }}
+      >
+        {/* Tema aydınlatmalı rozet kabuğu */}
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 'var(--st-btn-radius, 10px)',
+            background: 'var(--st-accent-soft, rgba(0, 255, 136, 0.14))',
+            border: '1px solid var(--st-accent, #00ff88)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 12px var(--st-accent-glow, rgba(0, 255, 136, 0.3))',
+            flexShrink: 0,
+          }}
+        >
+          <Icon size={18} color="var(--st-accent, #00ff88)" />
+        </div>
+
+        <div style={{ minWidth: 0, flex: 1 }}>
           <h2
-            id={`settings-group-${group.id}`}
-            style={{ margin: 0, fontSize: 13, fontWeight: 700, color: COLORS.text, letterSpacing: '0.03em' }}
+            id={`settings-group-title-${group.id}`}
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 800,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase',
+              color: '#ffffff',
+            }}
           >
             {group.title}
           </h2>
           {group.description && (
-            <p style={{ margin: 0, fontSize: 11, color: COLORS.textDim }}>{group.description}</p>
+            <p
+              style={{
+                margin: '2px 0 0',
+                fontSize: 11.5,
+                color: '#94a3b8',
+                lineHeight: 1.4,
+              }}
+            >
+              {group.description}
+            </p>
           )}
         </div>
       </header>
 
-      {group.rows.map((row) => (
-        <SettingRowView key={row.id} row={row} focused={focusId === row.id} onFocus={onFocus} />
-      ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {group.rows.map((row) => (
+          <SettingRowView
+            key={row.id}
+            row={row}
+            focused={focusId === row.id}
+            onFocus={onFocus}
+          />
+        ))}
+      </div>
     </section>
   );
 }

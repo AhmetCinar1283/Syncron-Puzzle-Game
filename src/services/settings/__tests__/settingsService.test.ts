@@ -197,11 +197,11 @@ describe('SettingsService', () => {
   it('updateSettings iç içe grupları birleştirir ve geçersiz değerleri düzeltir', () => {
     const service = new SettingsService();
 
-    service.updateSettings({ controls: { tapToMove: true, swipeSensitivity: 999 } });
+    service.updateSettings({ controls: { padSide: 'left', swipeSensitivity: 999 } });
     const { controls } = service.getSettings();
-    expect(controls.tapToMove).toBe(true);
+    expect(controls.padSide).toBe('left');
     expect(controls.swipeSensitivity).toBe(100);
-    expect(controls.dpad).toBe(DEFAULT_SETTINGS.controls.dpad); // dokunulmayan alan korunur
+    expect(controls.scheme).toBe(DEFAULT_SETTINGS.controls.scheme); // dokunulmayan alan korunur
 
     service.updateSettings({ graphics: { renderer: 'bozuk' as never } });
     expect(service.getSettings().graphics.renderer).toBe('auto');

@@ -1,13 +1,25 @@
 /**
- * DOSYA AMACI: Oynanış tahtasının DOM mu canvas mı çizileceğini belirleyen geçiş
- * bayrağı, cihaz kuralı ve ayar/otomatik-geçiş anahtarları.
+ * DOSYA AMACI: Oynanış tahtasının nasıl çizileceğini belirleyen geçiş bayrağı,
+ * cihaz kuralı ve ayar/otomatik-geçiş anahtarları.
+ *
+ * ÜÇ ÇİZİM SEVİYESİ (kaliteden akıcılığa):
+ *   - `dom`    : tahta ve zafer animasyonu DOM.
+ *   - `hybrid` : tahta DOM, yalnızca zafer animasyonu canvas. DOM yolunun asıl
+ *                kasma kaynağı zafer koreografisiydi (36 parçacık, iki şok
+ *                dalgası, hayalet izler, blur/drop-shadow); oyun sırasındaki
+ *                hareket DOM'da sorunsuz.
+ *   - `canvas` : tahta ve zafer canvas.
  *
  * NEDEN: Canvas yolu DOM yolunun YANINA kuruluyor, yerine değil (00-ilkeler §9).
  * Karar sırası (Faz 09 §2.4 + Faz 11 §3.3):
- *   1. `boardRenderer` = 'dom' | 'canvas' (kullanıcı, ayarlar) → o kazanır.
- *   2. `boardRendererAuto` = 'canvas' (kasma dedektörü yazar) → 'canvas'.
- *   3. Cihaz kuralı: DOM yalnızca cihazın güçlü olduğuna dair OLUMLU kanıt varsa;
- *      belirsizlikte canvas. Kasmama garantisi görüntü sadakatinden önce gelir.
+ *   1. `graphics.renderer` = 'dom' | 'hybrid' | 'canvas' (kullanıcı) → o kazanır.
+ *   2. Otomatik: cihaz kuralının verdiği seviye, `boardRendererAuto` ile
+ *      (kasma dedektörünün yazdığı ÜST SINIR) sınırlanır; ikisinden düşük olan.
+ *   3. Cihaz kuralı (`classifyDevice`): kasmama garantisi görüntü sadakatinden
+ *      önce gelir; bir seviyeye çıkmak için OLUMLU kanıt gerekir.
+ *
+ * DEDEKTÖR MERDİVENİ: dom → (yalnızca zafer kasıyorsa) hybrid → (oyun akışı
+ * kasıyorsa) canvas. Dedektör seviyeyi yalnızca AŞAĞI çeker, hiç yükseltmez.
  *
  * İKİ ANAHTAR AYRI: dedektör kullanıcının seçimini asla ezmez. Kullanıcı ayarı
  * "Otomatik"e alırsa ikisi de silinir (dedektöre yeniden şans).
@@ -22,13 +34,23 @@ import { userStorageGet, userStorageRemove, userStorageSet } from '@/lib/userSto
 import { settingsService } from '@/services/settings';
 import { detectMotionTier } from '@/lib/motionTier';
 
-/** Kasma dedektörünün kararı; yalnızca `'canvas'` yazılır. */
+/** Kasma dedektörünün yazdığı üst sınır: `'hybrid'` veya `'canvas'` (eski kayıtlar yalnızca `'canvas'`). */
 export const BOARD_RENDERER_AUTO_KEY = 'boardRendererAuto';
 /** Ayar veya otomatik karar değişince `window`a yayılır (açık ekranlar anında uyar). */
 export const BOARD_RENDERER_EVENT = 'syncron:board-renderer';
 
-export type BoardRenderer = 'dom' | 'canvas';
+export type BoardRenderer = 'dom' | 'hybrid' | 'canvas';
 export type BoardRendererSetting = 'auto' | BoardRenderer;
+/** Dedektörün yazabileceği üst sınırlar; `null` = sınır yok. */
+export type AutoCap = 'hybrid' | 'canvas' | null;
+
+/** Kaliteden akıcılığa sıra: küçük indeks = daha kaliteli. */
+const LEVELS: readonly BoardRenderer[] = ['dom', 'hybrid', 'canvas'];
+
+/** İki seviyeden akıcı olanı (sıradaki büyük indeks). */
+function lower(a: BoardRenderer, b: BoardRenderer): BoardRenderer {
+    return LEVELS.indexOf(a) >= LEVELS.indexOf(b) ? a : b;
+}
 
 /** Cihaz kuralının girdisi; `undefined` = tarayıcı değeri vermiyor. */
 export interface DeviceSignals {
@@ -40,7 +62,7 @@ export interface DeviceSignals {
     isLiteTier: boolean;
 }
 
-/** Faz 09 §2.4: hepsi doğruysa güçlü; herhangi biri eksik/yanlışsa değil. */
+/** Faz 09 §2.4: hepsi doğruysa güçlü (tam DOM); herhangi biri eksik/yanlışsa değil. */
 export function isDeviceStrong(d: DeviceSignals): boolean {
     return !d.isNative
         && !d.coarsePointer
@@ -49,17 +71,42 @@ export function isDeviceStrong(d: DeviceSignals): boolean {
         && !d.isLiteTier;
 }
 
+/**
+ * Dengeli seviye (DOM tahta + canvas zafer) için olumlu kanıt. Oyun sırasındaki
+ * DOM hareketi orta sınıf cihazda da akıcı; bu yüzden eşik `isDeviceStrong`dan
+ * gevşek, ama yine kanıt ister:
+ *   - masaüstü/dizüstü (ince işaretleyici, yerel değil): çekirdek > 4; RAM
+ *     bilinmiyorsa (Firefox/Safari) engel değil, biliniyorsa > 4 olmalı;
+ *   - dokunmatik veya yerel uygulama (WebView): hem çekirdek > 4 hem RAM > 4
+ *     AÇIKÇA bildirilmiş olmalı. Aynı çekirdek sayısı telefonlarda çok farklı
+ *     GPU'larla gelir; RAM bilinmiyorsa (iOS Safari) canvas.
+ * Yanlış tahmini dedektör düzeltir (dom/hybrid → canvas).
+ */
+export function isDeviceCapable(d: DeviceSignals): boolean {
+    if (d.isLiteTier) return false;
+    if (d.cores === undefined || d.cores <= 4) return false;
+    if (d.isNative || d.coarsePointer) return d.memoryGb !== undefined && d.memoryGb > 4;
+    return d.memoryGb === undefined || d.memoryGb > 4;
+}
+
+/** Cihaz kuralının Otomatik'te başlangıç seviyesi (dedektörden ÖNCE). */
+export function classifyDevice(d: DeviceSignals): BoardRenderer {
+    if (isDeviceStrong(d)) return 'dom';
+    return isDeviceCapable(d) ? 'hybrid' : 'canvas';
+}
+
 export interface RendererInputs {
     setting: BoardRendererSetting;
-    autoCanvas: boolean;
+    /** Kasma dedektörünün yazdığı üst sınır. */
+    autoCap: AutoCap;
     device: DeviceSignals;
 }
 
 /** Karar sırasının saf hâli (test edilir). */
-export function resolveBoardRenderer({ setting, autoCanvas, device }: RendererInputs): BoardRenderer {
+export function resolveBoardRenderer({ setting, autoCap, device }: RendererInputs): BoardRenderer {
     if (setting !== 'auto') return setting;
-    if (autoCanvas) return 'canvas';
-    return isDeviceStrong(device) ? 'dom' : 'canvas';
+    const byDevice = classifyDevice(device);
+    return autoCap ? lower(byDevice, autoCap) : byDevice;
 }
 
 interface DeviceNavigator extends Navigator {
@@ -123,9 +170,19 @@ if (typeof window !== 'undefined') {
     settingsService.subscribe(onSettingsChanged);
 }
 
-/** Kasma dedektörünün kararı: o cihazda bir daha çalışmaz. Kullanıcı seçimine dokunmaz. */
-export function markBoardRendererAutoCanvas(): void {
-    userStorageSet(BOARD_RENDERER_AUTO_KEY, 'canvas');
+function readAutoCap(): AutoCap {
+    const stored = userStorageGet(BOARD_RENDERER_AUTO_KEY);
+    return stored === 'hybrid' || stored === 'canvas' ? stored : null;
+}
+
+/**
+ * Kasma dedektörünün kararı: üst sınırı verilen seviyeye indirir; o cihazda
+ * seviyeyi hiç yükseltmez ve kullanıcı seçimine dokunmaz. Zaten daha düşük bir
+ * sınır kayıtlıysa (ör. `canvas`) onu `hybrid` ile YUKARI çekmez.
+ */
+export function markBoardRendererAutoCap(cap: 'hybrid' | 'canvas'): void {
+    if (readAutoCap() === 'canvas') return;
+    userStorageSet(BOARD_RENDERER_AUTO_KEY, cap);
     notifyChange();
 }
 
@@ -137,20 +194,20 @@ export function detectBoardRenderer(): BoardRenderer {
     if (typeof window === 'undefined') return 'canvas';
     return resolveBoardRenderer({
         setting: readBoardRendererSetting(),
-        autoCanvas: userStorageGet(BOARD_RENDERER_AUTO_KEY) === 'canvas',
+        autoCap: readAutoCap(),
         device: readDeviceSignals(),
     });
 }
 
 interface Decision {
     renderer: BoardRenderer;
-    /** Ayar Otomatik ve karar DOM: kasma dedektörü çalışabilir. */
+    /** Ayar Otomatik ve karar canvas değil: kasma dedektörü çalışabilir. */
     jankGuard: boolean;
 }
 
 function decide(): Decision {
     const renderer = detectBoardRenderer();
-    return { renderer, jankGuard: renderer === 'dom' && readBoardRendererSetting() === 'auto' };
+    return { renderer, jankGuard: renderer !== 'canvas' && readBoardRendererSetting() === 'auto' };
 }
 
 /**
@@ -177,8 +234,8 @@ export function useBoardRenderer(isSafe: boolean): { renderer: BoardRenderer | n
     // setState: `useFilmPlayback`taki desenle aynı, efekt kaskadı yok).
     if (wanted && shown !== wanted.renderer && (shown === null || isSafe)) setShown(wanted.renderer);
 
-    // Dedektör yalnızca DOM çiziliyorken ve karar hâlâ DOM iken çalışır.
-    return { renderer: shown, jankGuard: !!wanted?.jankGuard && shown === 'dom' };
+    // Dedektör yalnızca tahta DOM çiziliyorken (dom/hybrid) ve karar hâlâ canvas değilken çalışır.
+    return { renderer: shown, jankGuard: !!wanted?.jankGuard && (shown === 'dom' || shown === 'hybrid') };
 }
 
 /** Ayarlar ekranı için: kullanıcının seçimi + değiştirici; başka ekranlardaki değişimi de izler. */

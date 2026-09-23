@@ -2,7 +2,7 @@
 
 Kullanıcı tercihlerinin (ses, kontroller, performans ve görsellik, dil, tema) **tek bir ayar sistemi** olarak sunulduğu özellik (feature) katmanıdır. Sayfa (`/settings`) ve modal aynı görünümü (`SettingsView`) kullanır; ikisi de aynı grup kaydından beslenir. Değerler `services/settings` servisinde tutulur.
 
-> Bu modül yalnızca **ayar mekanizmasından** sorumludur. Ayarların oyuna / diğer sayfalara uygulanması (ses motoru, girdi, d-pad, tap-to-move vb.) ilgili modüllerin işidir; onlar değeri `useSettings()` veya `settingsService.getSettings()` ile okur.
+> Bu modül yalnızca **ayar mekanizmasından** sorumludur. Ayarların oyuna / diğer sayfalara uygulanması (ses motoru, girdi, ekran tuşları, swipe vb.) ilgili modüllerin işidir; onlar değeri `useSettings()` veya `settingsService.getSettings()` ile okur.
 
 ## Mimari (tek sorumluluk)
 - **Model (`lib/settingsModel.ts`):** Bildirimsel satır tipleri (`toggle`, `slider`, `segment`) ve `SettingsGroup`.
@@ -17,7 +17,7 @@ Kullanıcı tercihlerinin (ses, kontroller, performans ve görsellik, dil, tema)
 | Grup | Ayarlar |
 |------|---------|
 | Ses | Oyun sesi aç/kapa + seviye, menü sesi aç/kapa + seviye |
-| Kontroller | Klavye, d-pad*, dokunarak hareket*, swipe hassasiyeti*, titreşim* (*yalnızca dokunmatik cihaz) |
+| Kontroller | Klavye, dokunmatik kontrol şeması*, tuş yeri*, swipe hassasiyeti*, titreşim* (*yalnızca dokunmatik cihaz) |
 | Performans ve Görsellik | Tahta çizicisi (Otomatik/DOM/Canvas — mevcut otomatik karar sistemi), animasyon kademesi, performans göstergesi |
 | Genel | Dil, tema, ekran açık kalsın |
 
@@ -26,7 +26,7 @@ Kullanıcı tercihlerinin (ses, kontroller, performans ve görsellik, dil, tema)
 import { useSettings } from '@/features/settings';
 
 const { settings, openSettings } = useSettings();
-settings.controls.tapToMove; // boolean
+settings.controls.scheme;      // 'swipe' | 'buttons' | 'both'
 settings.sound.menuVolume;   // 0-100
 ```
 

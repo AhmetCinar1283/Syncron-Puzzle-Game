@@ -17,7 +17,7 @@ throughout the app (see e.g. `src/app/friends/FriendsClient.tsx:386-409`).
 | `Button` | Neon outline/solid/ghost button, sizes, `loading`, `icon`, ref-forwarding | `src/app/friends/FriendsClient.tsx:386` sign-in button, `src/components/common/AuthModal.tsx` submit button |
 | `IconButton` | Round icon-only neon button | `src/app/friends/FriendsClient.tsx:266` back button, `:464` copy-tag button |
 | `Card` (alias `Panel`) | Dark gradient bordered panel | `src/app/friends/FriendsClient.tsx:418` search panel gradient |
-| `Modal` | Portal-based fixed overlay, ESC + backdrop close, title/footer slots | `src/components/common/AuthModal.tsx` backdrop/dialog structure |
+| `Modal` | Bottom-sheet/centered overlay, ESC/B + scrim close, title/footer slots. `keyboardNav` adds keyboard + d-pad focus navigation and makes the modal the sole owner of input (background handlers see no keys). Form/button styling: `.home-sheet__btn/__input/__seg/__check…` in `home.css`. Open modals are tracked in `modalStack.ts` (`isAnyModalOpen()`). | `src/components/common/AuthModal.tsx` (+ `auth/` views) |
 | `Input` / `TextArea` / `Select` | Labeled form fields with error slot | `src/app/friends/FriendsClient.tsx` search input (~line 500s) |
 | `Badge` (alias `Pill`) | Small neon chip | `src/app/profile/ProfileClient.tsx:767` `borderRadius: '999px'` pill |
 | `Tabs` | Controlled segmented tab bar | section switches in Friends/Leaderboard/Profile clients |

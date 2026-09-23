@@ -20,7 +20,7 @@
 
 import type { BoardRenderer } from '../../render/boardRenderer';
 
-const OPTIONS: BoardRenderer[] = ['dom', 'canvas'];
+const OPTIONS: BoardRenderer[] = ['dom', 'hybrid', 'canvas'];
 
 interface BoardRendererToggleProps {
     renderer: BoardRenderer;

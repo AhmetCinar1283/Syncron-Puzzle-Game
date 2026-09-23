@@ -7,6 +7,7 @@
  * level grid'leri Dexie'de zaten önbelleklenir (bkz. `services/firebase/sync`).
  */
 import { getAllParts, type LevelPart } from '../firebase/adminParts';
+import { compareParts } from '../firebase/adminTypes';
 
 const CACHE_KEY = 'campaignParts:cache:v1';
 
@@ -16,7 +17,8 @@ function readCache(): LevelPart[] | null {
     const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as LevelPart[]) : null;
+    // Eski sürümlerin yazdığı (sırasız) önbellek de doğru sırada dönsün.
+    return Array.isArray(parsed) ? (parsed as LevelPart[]).sort(compareParts) : null;
   } catch {
     return null;
   }

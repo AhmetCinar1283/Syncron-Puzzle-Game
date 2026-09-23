@@ -106,8 +106,8 @@ export function useProfileEditForms({ t, isOwner, viewUid, currentUser, currentT
       );
       setTagInput('');
       setTagSuccess(true);
-    } catch (err: any) {
-      const msg = err.message ?? '';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
       if (msg === 'TAG_INVALID_CHARS') setTagError(t('auth.err_tag_chars'));
       else if (msg.startsWith('TAG_LENGTH')) setTagError(t('auth.err_tag_length'));
       else if (msg === 'TAG_TAKEN') setTagError(t('auth.err_tag_taken'));
@@ -157,7 +157,7 @@ export function useProfileEditForms({ t, isOwner, viewUid, currentUser, currentT
           : prev
       );
       setDisplayNameSuccess(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Profile] Failed to update display name:', err);
       setDisplayNameError(t('auth.err_generic'));
     } finally {

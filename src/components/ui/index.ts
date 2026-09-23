@@ -9,6 +9,7 @@ export type { CardProps } from './Card';
 
 export { Modal, useModal, ModalContext } from './Modal';
 export type { ModalProps, ModalRef, ModalContextValue } from './Modal';
+export { isAnyModalOpen } from './modalStack';
 
 export { Input, TextArea, Select } from './Input';
 export type { InputProps, TextAreaProps, SelectProps } from './Input';

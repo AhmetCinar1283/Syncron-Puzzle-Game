@@ -28,18 +28,21 @@ export function SettingsModal({ isOpen: propIsOpen, onClose: propOnClose }: Sett
   const isOpen = propIsOpen !== undefined ? propIsOpen : contextIsOpen;
   const handleClose = propOnClose !== undefined ? propOnClose : contextCloseSettings;
 
+  const accent = themeConfig?.accentColor || '#00c4ff';
+
   return (
     <Modal
       open={isOpen}
       onClose={handleClose}
       title={t('settings.title')}
-      icon={<SettingsIcon size={20} color={themeConfig?.accentColor || '#00ff88'} />}
+      icon={<SettingsIcon size={20} color={accent} />}
+      accentColor={accent}
       hideCloseIcon={true}
       showCloseButton={false}
-      maxWidth={520}
+      maxWidth={580}
       maxHeight="90dvh"
     >
-      <div style={{ padding: '4px 2px' }}>
+      <div style={{ padding: '2px 0' }}>
         <SettingsView
           variant="modal"
           onClose={handleClose}

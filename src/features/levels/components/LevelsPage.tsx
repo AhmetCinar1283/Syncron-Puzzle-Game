@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import { useCapabilities } from '@/contexts/MonetizationContext';
-import { useLevelsPage, type LevelEntry } from '../hooks/useLevelsPage';
+import { useLevelsPage } from '../hooks/useLevelsPage';
 import { LevelsHUD } from './LevelsHUD';
 import { LevelsControlBar } from './LevelsControlBar';
 import { ChapterBar } from './chapters/ChapterBar';
@@ -58,10 +58,11 @@ function LevelsPageContent() {
     playLevel,
     isGamepadConnected,
     themeDef,
+    previewLevel,
+    setPreviewLevel,
+    previewIsPreset,
+    setPreviewIsPreset,
   } = useLevelsPage();
-
-  const [previewLevel, setPreviewLevel] = useState<LevelEntry | null>(null);
-  const [previewIsPreset, setPreviewIsPreset] = useState<boolean>(true);
 
   // Alt kontrol çubuğundaki "Oyna" butonunun hedeflediği seviye (scroll/klavye/gamepad ile seçilen)
   const activeLevel = filteredPresets[selectedIndex ?? defaultActiveIdx];
@@ -325,7 +326,8 @@ function LevelsPageContent() {
             height: previewLevel.height,
             difficulty: previewLevel.difficulty,
             creatorName: previewLevel.creatorName,
-            position: previewLevel.position,
+            position: previewLevel.position ?? (previewIsPreset ? filteredPresets.findIndex((l) => l.id === previewLevel.id) : undefined),
+            partName: activePart?.name,
             firestoreId: previewLevel.firestoreId,
             playedData: previewLevel.firestoreId ? playedMap.get(previewLevel.firestoreId) : undefined,
             isSkipped: !!previewLevel.firestoreId && skippedSet.has(previewLevel.firestoreId),

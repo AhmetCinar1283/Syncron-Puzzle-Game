@@ -7,10 +7,16 @@ import type { Lang } from '@/lib/i18n';
 import type { GameTheme } from '@/game-engine/themes/themeConfig';
 
 /** Tahta çizicisi tercihi: `auto` = mevcut otomatik karar sistemi (boardRenderer.ts). */
-export type RendererPreference = 'auto' | 'dom' | 'canvas';
+export type RendererPreference = 'auto' | 'dom' | 'hybrid' | 'canvas';
 
 /** Hareket/animasyon kademesi tercihi: `auto` = cihaza göre tespit (motionTier.ts). */
 export type MotionPreference = 'auto' | 'full' | 'lite';
+
+/** Dokunmatik kontrol şeması. */
+export type ControlScheme = 'swipe' | 'buttons' | 'both';
+
+/** Ekran tuşlarının yerleşim tarafı. */
+export type PadSide = 'right' | 'left';
 
 export interface SoundSettings {
   /** Oyun sesinin (efektler) kapalı olma durumu. */
@@ -26,10 +32,10 @@ export interface SoundSettings {
 export interface ControlSettings {
   /** Klavye girdisi açık mı. */
   keyboard: boolean;
-  /** Ekran üstü yön tuşları (d-pad) gösterilsin mi (dokunmatik cihazlar). */
-  dpad: boolean;
-  /** Dokunarak hareket (tap-to-move) açık mı (dokunmatik cihazlar). */
-  tapToMove: boolean;
+  /** Dokunmatik kontrol şeması: yalnızca kaydırma, yalnızca ekran tuşları ya da ikisi birden. */
+  scheme: ControlScheme;
+  /** Ekran tuşlarının (yön tuşları + geri al) hangi elde durduğu. */
+  padSide: PadSide;
   /** Kaydırma (swipe) hassasiyeti (0 - 100; yüksek = daha kısa kaydırma yeter). */
   swipeSensitivity: number;
   /** Titreşim (haptik) geri bildirimi açık mı. */

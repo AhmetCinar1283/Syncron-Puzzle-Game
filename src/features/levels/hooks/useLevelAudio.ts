@@ -28,11 +28,16 @@ export function useLevelAudio() {
     soundEngine.playMenu('ui.denied');
   }, []);
 
+  const playSector = useCallback(() => {
+    soundEngine.playMenu('ui.navigate');
+  }, []);
+
   return {
     playTick,
     playSelect,
     playBack,
     playWarp,
     playLock,
+    playSector,
   };
 }

@@ -1,6 +1,11 @@
 'use client';
 
+import React from 'react';
 import { LANGS, type Lang } from '@/lib/i18n';
+import { GameIcon } from '@/components/icons';
+import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
+import { useSettings } from '@/features/settings';
+import { useSoundManager } from '@/services/audio';
 
 interface Props {
   t: (key: string) => string;
@@ -10,86 +15,93 @@ interface Props {
   handleSignOut: () => void;
 }
 
-export default function SettingsPanel({ t, lang, setLang, isCurrentAnonymous, handleSignOut }: Props) {
-  return (
-    <div
-      style={{
-        background: '#0a0f1a50',
-        border: '1px solid #111827',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '20px',
-      }}
-    >
-      {/* Language Settings */}
-      <div>
-        <h3
-          style={{
-            fontSize: '11px',
-            fontWeight: 800,
-            letterSpacing: '0.15em',
-            color: '#4b5563',
-            textTransform: 'uppercase',
-            margin: '0 0 8px 0',
-          }}
-        >
-          {t('auth.language')}
-        </h3>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {LANGS.map(({ code, label: lbl }) => (
-            <button
-              key={code}
-              onClick={() => setLang(code)}
-              style={{
-                padding: '6px 14px',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                background: lang === code ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${lang === code ? 'rgba(0,255,136,0.4)' : '#1f2937'}`,
-                color: lang === code ? '#00ff88' : '#6b7280',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              {lbl}
-            </button>
-          ))}
-        </div>
-      </div>
+export default function SettingsPanel({
+  t,
+  lang,
+  setLang,
+  isCurrentAnonymous,
+  handleSignOut,
+}: Props) {
+  const { themeConfig } = useGameTheme();
+  const { openSettings } = useSettings();
+  const { play: playSound } = useSoundManager('menu');
 
-      {/* Logout button */}
-      {!isCurrentAnonymous && (
-        <button
-          onClick={handleSignOut}
-          style={{
-            width: '100%',
-            padding: '10px 0',
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.35)',
-            borderRadius: '8px',
-            color: '#ef4444',
-            fontSize: '13px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#ef4444';
-            e.currentTarget.style.color = '#030712';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
-            e.currentTarget.style.color = '#ef4444';
-          }}
-        >
-          {t('auth.sign_out')}
-        </button>
-      )}
+  const onSelectLang = (code: Lang) => {
+    playSound('ui.confirm');
+    setLang(code);
+  };
+
+  const onOpenFullSettings = () => {
+    playSound('ui.navigate');
+    openSettings();
+  };
+
+  const onSignOutClick = () => {
+    playSound('ui.confirm');
+    handleSignOut();
+  };
+
+  return (
+    <div className="profile-card">
+      <div className="profile-card__scan" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--tl" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--tr" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--bl" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--br" aria-hidden="true" />
+
+      <div className="profile-card__content" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Dil Seçimi */}
+        <div>
+          <div className="profile-panel-header" style={{ marginBottom: '10px' }}>
+            <h3 className="profile-panel-title">
+              <GameIcon name="globe" size={14} color={themeConfig.accentColor} />
+              <span>{t('auth.language')}</span>
+            </h3>
+          </div>
+
+          <div className="profile-lang-group">
+            {LANGS.map(({ code, label: lbl }) => {
+              const active = lang === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => onSelectLang(code)}
+                  className={`profile-lang-btn ${active ? 'profile-lang-btn--active' : 'profile-lang-btn--inactive'}`}
+                >
+                  {lbl}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Oyun Ayarları (Ses, Kontrol, Tema) Açma Kısayolu */}
+        <div>
+          <button
+            type="button"
+            onClick={onOpenFullSettings}
+            className="profile-link-btn"
+          >
+            <GameIcon name="settings" size={15} color={themeConfig.accentColor} />
+            <span>{t('settings.title') || 'Oyun Tercihleri & Ayarlar'}</span>
+          </button>
+        </div>
+
+        {/* Çıkış Yap Butonu */}
+        {!isCurrentAnonymous && (
+          <div style={{ paddingTop: '6px' }}>
+            <button
+              type="button"
+              onClick={onSignOutClick}
+              className="profile-danger-btn"
+            >
+              <GameIcon name="logout" size={14} color="#ef4444" />
+              <span>{t('auth.sign_out')}</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

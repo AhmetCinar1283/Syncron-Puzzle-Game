@@ -1,6 +1,6 @@
 /**
- * DOSYA AMACI: "Kontroller" grubunun satırlarını üretir: klavye, d-pad,
- * dokunarak hareket (tap-to-move), swipe hassasiyeti ve titreşim. Dokunmatik
+ * DOSYA AMACI: "Kontroller" grubunun satırlarını üretir: klavye,
+ * dokunmatik kontrol şeması, tuş yeri, swipe hassasiyeti ve titreşim. Dokunmatik
  * cihaza özel satırlar masaüstünde gizlenir. Ayarı yalnızca yazar; girdi
  * mantığı (`usePlayInput` vb.) bu değerleri ayrıca okur.
  */
@@ -12,8 +12,10 @@ import { useT } from '@/contexts/LanguageContext';
 import type { SettingRow, SettingsGroup } from '../../lib/settingsModel';
 import { useSettings } from '../useSettings';
 import { useTouchCapable } from '../useTouchCapable';
+import { PAD_SIDE_OPTIONS, SCHEME_OPTIONS } from '../../lib/options';
+import type { ControlScheme, PadSide } from '@/services/settings';
 
-type ToggleKey = 'keyboard' | 'dpad' | 'tapToMove' | 'haptics';
+type ToggleKey = 'keyboard' | 'haptics';
 
 export function useControlsGroup(): SettingsGroup {
   const t = useT();
@@ -37,10 +39,33 @@ export function useControlsGroup(): SettingsGroup {
   ];
 
   if (touch) {
-    rows.push(
-      toggle('dpad', t('settings.controls_dpad'), t('settings.controls_dpad_desc')),
-      toggle('tapToMove', t('settings.controls_tap_to_move'), t('settings.controls_tap_to_move_desc')),
-      {
+    rows.push({
+      kind: 'segment',
+      id: 'controls.scheme',
+      label: t('settings.scheme_title'),
+      description: t('settings.scheme_desc'),
+      layout: 'inline',
+      options: SCHEME_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) })),
+      value: c.scheme,
+      onChange: (v) => updateSettings({ controls: { scheme: v as ControlScheme } }),
+    });
+
+    // Tuş yeri yalnızca ekran tuşları açıkken, hassasiyet yalnızca kaydırma açıkken anlamlı.
+    if (c.scheme !== 'swipe') {
+      rows.push({
+        kind: 'segment',
+        id: 'controls.padSide',
+        label: t('settings.pad_side_title'),
+        description: t('settings.pad_side_desc'),
+        layout: 'inline',
+        options: PAD_SIDE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) })),
+        value: c.padSide,
+        onChange: (v) => updateSettings({ controls: { padSide: v as PadSide } }),
+      });
+    }
+
+    if (c.scheme !== 'buttons') {
+      rows.push({
         kind: 'slider',
         id: 'controls.swipeSensitivity',
         label: t('settings.controls_swipe'),
@@ -51,7 +76,10 @@ export function useControlsGroup(): SettingsGroup {
         step: 1,
         keyStep: 5,
         onChange: (v) => updateSettings({ controls: { swipeSensitivity: v } }),
-      },
+      });
+    }
+
+    rows.push(
       toggle('haptics', t('settings.controls_haptics'), t('settings.controls_haptics_desc')),
     );
   }

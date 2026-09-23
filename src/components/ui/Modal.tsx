@@ -17,6 +17,8 @@ import { soundEngine } from '@/services/audio';
 import { useGamepad } from '@/hooks/useGamepad';
 import { useHydrated } from '@/hooks/useHydrated';
 import { GameIcon } from '@/components/icons';
+import { pushModal, isTopModal } from './modalStack';
+import { activateFocused, focusInitial, isTextEntry, stepFocus, type NavStep } from './modalNavigation';
 
 export interface ModalRef {
   close: () => void;
@@ -91,6 +93,14 @@ export interface ModalProps {
   zIndex?: number;
   /** Özel vurgu rengi (tanımlanmazsa aktif oyun temasının rengini kullanır). */
   accentColor?: string;
+  /**
+   * Klavye + d-pad ile odak gezintisini açar ve modalı girdinin tek sahibi yapar
+   * (arka plan dinleyicileri hiçbir tuşu görmez). ↑/↓ (metin dışında W/A/S/D ve
+   * ←/→ da) odağı gezdirir, Enter/Space/A onaylar, Escape/B kapatır. Öğeyi
+   * gezintiden çıkarmak için `data-nav-skip`, açılışta odak için `data-autofocus`.
+   * Kendi gezinti mantığı olan modallar (ör. MoreMenuSheet) bunu kapalı bırakır.
+   */
+  keyboardNav?: boolean;
 }
 
 /**
@@ -125,6 +135,7 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
   playSounds = true,
   zIndex = 9999,
   accentColor,
+  keyboardNav = false,
 }: ModalProps, ref) {
   const t = useT();
   const { theme, themeConfig } = useGameTheme();
@@ -152,13 +163,17 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
 
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Modal açıkken arka planı koruma (body üzerinde data-modal-open işareti)
+  // Modal açıkken arka planı koruma: modal yığınına kaydol (body üzerinde
+  // data-modal-open işareti yığın boşalana kadar korunur).
+  const stackEntryRef = useRef<{ id: number; remove: () => void } | null>(null);
   useEffect(() => {
     if (!open) return;
     previousFocusRef.current = (typeof document !== 'undefined' ? document.activeElement : null) as HTMLElement | null;
-    document.body.setAttribute('data-modal-open', 'true');
+    const entry = pushModal();
+    stackEntryRef.current = entry;
     return () => {
-      document.body.removeAttribute('data-modal-open');
+      entry.remove();
+      stackEntryRef.current = null;
     };
   }, [open]);
 
@@ -167,13 +182,17 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
 
   const themeVars = useMemo(() => {
     const accent = accentColor || themeConfig?.accentColor || '#00ff88';
-    const glow = accentColor ? `${accentColor}40` : (themeConfig?.accentGlow || 'rgba(0, 255, 136, 0.4)');
+    const glow = themeConfig?.accentGlow || 'rgba(0, 255, 136, 0.4)';
     const isArcade = theme === 'arcade';
+    const isBlueprint = theme === 'blueprint';
+    const isLegacy = theme === 'legacy';
+    const radius = isArcade ? '0px' : isBlueprint ? '3px' : isLegacy ? '6px' : '14px';
 
     const vars: Record<string, string> = {
       '--home-accent': accent,
       '--home-accent-glow': glow,
-      '--home-radius': isArcade ? '0px' : '14px',
+      '--home-radius': radius,
+      '--home-bg': themeConfig?.board?.background || themeConfig?.bgDark || '#070e1c',
       '--home-max': effectiveMaxWidth,
     };
 
@@ -187,9 +206,7 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
   const handleClose = useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
-    if (typeof document !== 'undefined') {
-      document.body.removeAttribute('data-modal-open');
-    }
+    stackEntryRef.current?.remove();
     if (playSounds) {
       soundEngine.play('ui.confirm');
     }
@@ -238,9 +255,10 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
     prevOpenRef.current = open;
   }, [open, playSounds]);
 
-  // Klavye (Escape) desteği
+  // Klavye (Escape) desteği. `keyboardNav` modunda Escape aşağıdaki
+  // capture dinleyicisinde işlenir.
   useEffect(() => {
-    if (!open || isClosing) return;
+    if (!open || isClosing || keyboardNav) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -249,21 +267,118 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, isClosing, handleClose]);
+  }, [open, isClosing, keyboardNav, handleClose]);
 
-  // Gamepad (B/Cancel) desteği - priority: 'modal' ile arka planı engeller
+  // `keyboardNav`: modal girdiyi SAHİPLENİR. Dinleyici window capture aşamasında
+  // olduğundan arka plandaki sayfa dinleyicileri (ör. ana sayfada W/A/S/D, Enter,
+  // T) hiçbir tuşu görmez; yerel davranışlar (yazma, Enter ile form gönderme,
+  // Space ile onay kutusu) ise etkilenmez çünkü preventDefault çağrılmaz.
+  // Bedeli: bu modalın içindeki React `onKeyDown` işleyicileri çalışmaz.
+  useEffect(() => {
+    if (!open || isClosing || !keyboardNav) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const entry = stackEntryRef.current;
+      if (!entry || !isTopModal(entry.id)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      e.stopImmediatePropagation();
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClose();
+        return;
+      }
+
+      const typing = isTextEntry(document.activeElement);
+      const key = e.key;
+      let step: NavStep | null = null;
+      if (key === 'ArrowUp' || key === 'ArrowDown') {
+        step = key === 'ArrowUp' ? 'prev' : 'next';
+      } else if (!typing) {
+        if (key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'w' || key === 'W') step = 'prev';
+        else if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === 's' || key === 'S') step = 'next';
+      }
+
+      if (step) {
+        e.preventDefault();
+        if (stepFocus(panelRef.current, step)) soundEngine.play('ui.tick');
+        return;
+      }
+
+      // Native olarak etkinleşmeyen öğelerde (role="button" vb.) veya Enter ile
+      // tetiklenmeyen checkbox'larda Enter/Space tıklar.
+      if ((key === 'Enter' || key === ' ') && !typing) {
+        const el = document.activeElement as HTMLElement | null;
+        if (el && panelRef.current?.contains(el)) {
+          if (el instanceof HTMLInputElement && el.type === 'checkbox' && key === 'Enter') {
+            e.preventDefault();
+            el.click();
+            soundEngine.play('ui.confirm');
+            return;
+          }
+          if (!el.matches('button, a[href], input, select, textarea, summary')) {
+            e.preventDefault();
+            el.click();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, [open, isClosing, keyboardNav, handleClose]);
+
+  // Gamepad: B/Cancel her zaman kapatır; `keyboardNav` ile d-pad odağı gezdirir,
+  // A/Confirm odaktaki öğeyi tıklar, X/Y ise modal içindeki checkbox'ları hızlıca açıp kapatır.
   useGamepad({
     enabled: open && !isClosing,
     priority: 'modal',
     onCancel: handleClose,
+    onMove: keyboardNav
+      ? (dir) => {
+          const step: NavStep = dir === 'up' || dir === 'left' ? 'prev' : 'next';
+          if (stepFocus(panelRef.current, step)) soundEngine.play('ui.tick');
+        }
+      : undefined,
+    onConfirm: keyboardNav
+      ? () => {
+          const el = document.activeElement as HTMLElement | null;
+          if (el && panelRef.current?.contains(el) && el instanceof HTMLInputElement && el.type === 'checkbox') {
+            soundEngine.play('ui.confirm');
+          }
+          activateFocused(panelRef.current);
+        }
+      : undefined,
+    onQuickAction: keyboardNav
+      ? () => {
+          const checkbox = panelRef.current?.querySelector<HTMLInputElement>(
+            'input[type="checkbox"]:not([disabled])'
+          );
+          if (checkbox) {
+            checkbox.click();
+            soundEngine.play('ui.confirm');
+          }
+        }
+      : undefined,
+    onRestart: keyboardNav
+      ? () => {
+          const checkbox = panelRef.current?.querySelector<HTMLInputElement>(
+            'input[type="checkbox"]:not([disabled])'
+          );
+          if (checkbox) {
+            checkbox.click();
+            soundEngine.play('ui.confirm');
+          }
+        }
+      : undefined,
   });
 
-  // Açıldığında odağı panele çek
+  // Açıldığında odağı çek: `keyboardNav` ile ilk (veya data-autofocus) öğeye,
+  // aksi hâlde panele.
   useEffect(() => {
-    if (open) {
-      panelRef.current?.focus();
-    }
-  }, [open]);
+    if (!open || !mounted) return;
+    if (keyboardNav) focusInitial(panelRef.current);
+    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus();
+  }, [open, mounted, keyboardNav]);
 
   // ── Dokunmatik Aşağı Kaydırma (Swipe-Down to Close) ──
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -320,6 +435,7 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
       className={cn('home-sheet', className)}
       role="dialog"
       aria-modal="true"
+      data-game-theme={theme}
       data-closing={isClosing ? 'true' : undefined}
       style={{
         zIndex,
@@ -334,6 +450,7 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
       <div
         ref={panelRef}
         tabIndex={-1}
+        data-game-theme={theme}
         className={cn('home-sheet__panel', panelClassName)}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

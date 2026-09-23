@@ -7,12 +7,12 @@
 'use client';
 
 import type { SettingsGroup } from '../lib/settingsModel';
-import { useControlsGroup } from './groups/useControlsGroup';
 import { useGeneralGroup } from './groups/useGeneralGroup';
-import { useGraphicsGroup } from './groups/useGraphicsGroup';
 import { useSoundGroup } from './groups/useSoundGroup';
+import { useControlsGroup } from './groups/useControlsGroup';
+import { useGraphicsGroup } from './groups/useGraphicsGroup';
 
 export function useSettingsGroups(): SettingsGroup[] {
-  const groups = [useSoundGroup(), useControlsGroup(), useGraphicsGroup(), useGeneralGroup()];
+  const groups = [useGeneralGroup(), useSoundGroup(), useControlsGroup(), useGraphicsGroup()];
   return groups.filter((g) => g.rows.length > 0);
 }

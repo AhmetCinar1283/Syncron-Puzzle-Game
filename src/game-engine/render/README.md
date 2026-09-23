@@ -86,10 +86,23 @@ sabit yazılmaz. DOM'daki bir değeri tahminle taşıma: kaynak dosyadaki değer
 
 ## Bayraklar
 
-Çizici `boardRenderer.ts`'te şu sırayla seçilir: kullanıcı ayarı (`boardRenderer`:
-`'dom'`/`'canvas'`, yoksa Otomatik) → kasma dedektörünün kararı (`boardRendererAuto`)
-→ cihaz kuralı (DOM yalnızca güçlü cihazda, belirsizlikte canvas). Kullanıcı ayarı
-her zaman kazanır. Geliştirme
+Üç seviye vardır: `dom` (Kalite), `hybrid` (Dengeli: tahta DOM, zafer animasyonu
+`VictoryCanvas.tsx` ile canvas), `canvas` (Performans). Kullanıcı ayarı
+(`graphics.renderer`) her zaman kazanır. Otomatik'te `boardRenderer.ts` şunu yapar:
+cihaz kuralı (`classifyDevice`) başlangıç seviyesini verir, kasma dedektörünün
+yazdığı üst sınır (`boardRendererAuto`: `'hybrid'` | `'canvas'`) onu yalnızca
+AŞAĞI çeker.
+
+Cihaz kuralı (her seviye olumlu kanıt ister):
+- `dom`: masaüstü (ince işaretleyici, yerel değil), çekirdek > 4, RAM > 4, `lite` değil.
+- `hybrid`: çekirdek > 4 ve `lite` değil; masaüstünde RAM bilinmiyorsa (Firefox/Safari)
+  engel değil, telefon/yerel uygulamada RAM AÇIKÇA > 4 bildirilmeli.
+- `canvas`: geri kalan her şey (zayıf, belirsiz).
+
+Dedektör merdiveni (`jankMonitor.ts` + `useJankGuard.ts`): `dom`'da yalnızca zafer
+penceresi kötüyse → `hybrid`; hareket/boşta penceresi de kötüyse → `canvas`.
+`hybrid`'de zafer ölçülmez (canvas çiziyor), kötü hareket → `canvas`. Geçiş yalnızca
+güvenli anda (hareket ve ölüm/zafer karesi dışında) uygulanır. Geliştirme
 build'inde oyun ekranında DOM/CANVAS anahtarı görünür
 (`components/play-screen/BoardRendererToggle.tsx`; üretimde gizli).
 **Tahta görüntüsünü etkileyen her değişiklik iki yolda da denenir.** Konsoldan da yazılabilir:

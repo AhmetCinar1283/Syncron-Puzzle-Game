@@ -70,7 +70,7 @@ export function BoardArea({
     // bir sonraki seviye/yeniden başlatmada zaten yeni tahta kurulur).
     const isSafe = !isAnimating && !hasGameEnded(snapshots);
     const { renderer, jankGuard } = useBoardRenderer(isSafe);
-    const reportPhase = useJankGuard(jankGuard);
+    const reportPhase = useJankGuard(jankGuard, renderer);
 
     // Çizici geçişinde yeni tahta tek kareli (dinlenen) diziyle kurulur ve
     // useFilmPlayback o karenin sesini yeniden çalardı: geçiş sessiz olmalı.
@@ -131,7 +131,10 @@ export function BoardArea({
             >
                 {/* `null` iken tahta çizilmez: cihaz kararı boyamadan önce verilir. */}
                 {renderer === 'canvas' && <BoardCanvas {...boardProps} levelName={levelName} />}
-                {renderer === 'dom' && <GameBoard {...boardProps} onPlaybackPhase={reportPhase} />}
+                {/* dom ve hybrid AYNI konumda: geçişte GameBoard yeniden kurulmaz, yalnızca zafer katmanı değişir. */}
+                {(renderer === 'dom' || renderer === 'hybrid') && (
+                    <GameBoard {...boardProps} onPlaybackPhase={reportPhase} canvasVictory={renderer === 'hybrid'} />
+                )}
 
                 {boardOverlay}
 

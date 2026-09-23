@@ -11,18 +11,19 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import type { LevelPart, LevelOrderEntry } from './adminTypes';
+import { compareParts } from './adminTypes';
 import { touchLevelsState, touchLevelsStateInBatch } from './sync';
 
 export type { LevelPart, LevelOrderEntry };
 
-/** Tüm bölüm paketlerini artan partId sırasına göre getirir. */
+/** Tüm bölüm paketlerini kampanya sırasına (açılma yıldızı artan) göre getirir. */
 export async function getAllParts(): Promise<LevelPart[]> {
   const snap = await getDocs(collection(db, 'levelParts'));
   const parts = snap.docs.map((d) => ({
     partId: d.id,
     ...(d.data() as Omit<LevelPart, 'partId'>),
   }));
-  return parts.sort((a, b) => Number(a.partId) - Number(b.partId));
+  return parts.sort(compareParts);
 }
 
 /** Tek bir bölüm paketinin üst verisini ve sıralama haritasını getirir. */

@@ -3,133 +3,119 @@
 import React from 'react';
 import BadgeIcon from './BadgeIcon';
 import { useT } from '@/contexts/LanguageContext';
+import { GameIcon } from '@/components/icons';
+import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 
 export interface BadgeShowcaseProps {
-  uid: string;
+  uid?: string;
   isOwner: boolean;
   showcaseBadges?: Array<{
     id: string;
-    badgeType: string;
-    periodId: string;
+    badgeType?: string;
+    badge_type?: string;
+    periodId?: string;
+    period_id?: string;
     rank: number;
   }>;
   onEditClick?: () => void;
 }
 
 export default function BadgeShowcase({
-  uid,
   isOwner,
   showcaseBadges = [],
   onEditClick,
 }: BadgeShowcaseProps) {
   const t = useT();
+  const { themeConfig } = useGameTheme();
 
   return (
-    <div
-      style={{
-        width: '100%',
-        background: '#090d1650',
-        border: '1px solid #111827',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        boxSizing: 'border-box',
-        position: 'relative',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '11px',
-            fontWeight: 800,
-            letterSpacing: '0.15em',
-            color: '#4b5563',
-            textTransform: 'uppercase',
-          }}
-        >
-          {t('leaderboard.standing') === 'SENİN YERİN' ? 'ROZET VİTRİNİ' : 'BADGE SHOWCASE'}
-        </span>
+    <div className="profile-card">
+      <div className="profile-card__scan" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--tl" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--tr" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--bl" aria-hidden="true" />
+      <div className="profile-card__bracket profile-card__bracket--br" aria-hidden="true" />
 
-        {isOwner && (
-          <button
-            onClick={onEditClick}
-            style={{
-              background: 'transparent',
-              border: '1px solid #00ff8840',
-              borderRadius: '6px',
-              color: '#00ff88',
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(0, 255, 136, 0.1)';
-              e.currentTarget.style.borderColor = '#00ff88';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.borderColor = '#00ff8840';
-            }}
-          >
-            {t('list.edit').toUpperCase()}
-          </button>
-        )}
-      </div>
+      <div className="profile-card__content">
+        {/* Header */}
+        <div className="profile-panel-header">
+          <h3 className="profile-panel-title">
+            <GameIcon name="medal" size={14} color={themeConfig.accentColor} />
+            <span>
+              {t('leaderboard.standing') === 'SENİN YERİN' ? 'ROZET VİTRİNİ' : 'BADGE SHOWCASE'}
+            </span>
+          </h3>
 
-      {/* Grid of badges */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center',
-          justifyContent: showcaseBadges.length > 0 ? 'flex-start' : 'center',
-          minHeight: '44px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {showcaseBadges.length > 0 ? (
-          showcaseBadges.map((badge, idx) => (
-            <div
-              key={badge.id || idx}
+          {isOwner && (
+            <button
+              type="button"
+              onClick={onEditClick}
+              className="profile-action-btn"
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                animation: 'fadeIn 0.3s ease-out',
+                padding: '6px 14px',
+                fontSize: '11px',
+                minHeight: '34px',
+                borderRadius: '6px',
               }}
             >
-              <BadgeIcon
-                badgeType={badge.badgeType || (badge as any).badge_type}
-                periodId={badge.periodId || (badge as any).period_id}
-                rank={badge.rank}
-                size="md"
-              />
+              <GameIcon name="tools" size={12} color={themeConfig.accentColor} />
+              <span>{t('list.edit').toUpperCase()}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Vitrin Yuvaları */}
+        <div className="profile-showcase-slots">
+          {showcaseBadges.length > 0 ? (
+            showcaseBadges.map((badge, idx) => (
+              <div
+                key={badge.id || idx}
+                className="profile-showcase-slot"
+                style={{
+                  border: `1.5px solid ${themeConfig.accentColor}40`,
+                  boxShadow: `0 0 12px ${themeConfig.accentGlow}`,
+                }}
+              >
+                <BadgeIcon
+                  badgeType={badge.badgeType || badge.badge_type || ''}
+                  periodId={badge.periodId || badge.period_id || ''}
+                  rank={badge.rank}
+                  size="md"
+                />
+              </div>
+            ))
+          ) : (
+            <div
+              style={{
+                padding: '16px',
+                width: '100%',
+                border: '1px dashed rgba(255, 255, 255, 0.15)',
+                borderRadius: '8px',
+                textAlign: 'center',
+                boxSizing: 'border-box',
+                background: 'rgba(255, 255, 255, 0.01)',
+              }}
+            >
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  fontStyle: 'italic',
+                  margin: 0,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {isOwner
+                  ? (t('leaderboard.standing') === 'SENİN YERİN'
+                      ? 'Vitrine yerleştirmek için sağ üstteki "DÜZENLE"ye tıklayın'
+                      : 'Click "EDIT" to showcase your favorite badges')
+                  : (t('leaderboard.standing') === 'SENİN YERİN'
+                      ? 'Sergilenen rozet bulunmuyor'
+                      : 'No badges showcased yet')}
+              </p>
             </div>
-          ))
-        ) : (
-          <p
-            style={{
-              fontSize: '12px',
-              color: '#4b5563',
-              fontStyle: 'italic',
-              margin: 0,
-            }}
-          >
-            {isOwner
-              ? (t('leaderboard.standing') === 'SENİN YERİN' ? 'Sergilemek için rozet seçin' : 'Select badges to showcase')
-              : (t('leaderboard.standing') === 'SENİN YERİN' ? 'Sergilenen rozet yok' : 'No badges showcased')}
-          </p>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

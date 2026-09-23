@@ -57,6 +57,22 @@ export interface LevelPart {
 // ─── Helpers (Yardımcı Fonksiyonlar) ──────────────────────────────────────────
 
 /**
+ * Kampanya bölüm paketi (chapter) sıralaması: açılma yıldızı artan; eşitlikte adı
+ * (doğal sıra: "2" < "10"), o da eşitse id. partId artık rastgele Firestore id'si
+ * olduğundan id sırası anlamsızdır — sıra `unlockRequirement`'tan türer.
+ */
+export function compareParts(
+  a: Pick<LevelPart, 'partId' | 'name' | 'unlockRequirement'>,
+  b: Pick<LevelPart, 'partId' | 'name' | 'unlockRequirement'>,
+): number {
+  return (
+    (a.unlockRequirement ?? 0) - (b.unlockRequirement ?? 0) ||
+    (a.name ?? '').localeCompare(b.name ?? '', undefined, { numeric: true }) ||
+    a.partId.localeCompare(b.partId)
+  );
+}
+
+/**
  * Sıralama girdisinden bölüm kimliğini (id) normalize eder (eski string formatı veya yeni nesne formatı desteği).
  */
 export function entryId(e: string | LevelOrderEntry): string {

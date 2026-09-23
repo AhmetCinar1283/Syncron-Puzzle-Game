@@ -50,6 +50,8 @@ export function useLevelsPage() {
   const [isWarping, setIsWarping] = useState(false);
   const [victoryModal, setVictoryModal] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [previewLevel, setPreviewLevel] = useState<LevelEntry | null>(null);
+  const [previewIsPreset, setPreviewIsPreset] = useState<boolean>(true);
 
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
@@ -332,6 +334,19 @@ export function useLevelsPage() {
     [audio],
   );
 
+  const handleSelectPart = useCallback(
+    (action: React.SetStateAction<string>) => {
+      setSelectedPartId((prev) => {
+        const next = typeof action === 'function' ? action(prev) : action;
+        if (prev && next !== prev) {
+          audio.playSector();
+        }
+        return next;
+      });
+    },
+    [audio],
+  );
+
   const hasPortalStart = currentPartIdx > 0;
   const handleEntryPortal = useCallback(() => goToChapter(currentPartIdx - 1), [goToChapter, currentPartIdx]);
   const handleExitPortal = useCallback(() => {
@@ -362,7 +377,7 @@ export function useLevelsPage() {
     },
     onJumpToCurrent: () => setSelectedIndex(defaultActiveIdx),
     onSwitchTab: () => setActiveTab((prev) => (prev === 'campaign' ? 'custom' : 'campaign')),
-    disabled: !!deleteConfirm || victoryModal || isWarping,
+    disabled: !!deleteConfirm || victoryModal || isWarping || !!previewLevel,
   });
 
   return {
@@ -382,7 +397,7 @@ export function useLevelsPage() {
     deleting,
     parts,
     selectedPartId,
-    setSelectedPartId,
+    setSelectedPartId: handleSelectPart,
     playedMap,
     skippedSet,
     activeTab,
@@ -392,6 +407,10 @@ export function useLevelsPage() {
     setVictoryModal,
     selectedIndex,
     setSelectedIndex: handleSelectLevel,
+    previewLevel,
+    setPreviewLevel,
+    previewIsPreset,
+    setPreviewIsPreset,
     gridContainerRef,
     handleRefresh,
     move,

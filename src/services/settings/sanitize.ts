@@ -10,6 +10,8 @@ import {
   clampPercent,
   isValidLang,
   isValidMotion,
+  isValidPadSide,
+  isValidScheme,
   isValidRenderer,
   isValidTheme,
 } from './defaults';
@@ -66,8 +68,11 @@ export function sanitizeSettings(data: unknown): UserSettings {
     },
     controls: {
       keyboard: bool(controls.keyboard, d.controls.keyboard),
-      dpad: bool(controls.dpad, d.controls.dpad),
-      tapToMove: bool(controls.tapToMove, d.controls.tapToMove),
+      // Eski sürümdeki `dpad: false` ayarı yalnızca kaydırma anlamına gelir.
+      scheme: isValidScheme(controls.scheme)
+        ? controls.scheme
+        : controls.dpad === false ? 'swipe' : d.controls.scheme,
+      padSide: isValidPadSide(controls.padSide) ? controls.padSide : d.controls.padSide,
       swipeSensitivity: clampPercent(controls.swipeSensitivity, d.controls.swipeSensitivity),
       haptics: bool(controls.haptics, d.controls.haptics),
     },

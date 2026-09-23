@@ -1,5 +1,5 @@
 /**
- * DOSYA AMACI: Cihazın dokunmatik kontrol ayarları (d-pad, tap-to-move, swipe,
+ * DOSYA AMACI: Cihazın dokunmatik kontrol ayarları (ekran tuşları, swipe,
  * titreşim) için uygun olup olmadığını söyler: Capacitor native platform ya da
  * birincil işaretleyici parmak (`pointer: coarse`). SSR'da `false` döner, böylece
  * sunucu ve istemci ilk render'ı ayrışmaz.

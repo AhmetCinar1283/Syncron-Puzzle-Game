@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./cursors.css";
 @import "./home.css";
+@import "./profile.css";
 
 :root {
   --background: #030712;

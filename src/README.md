@@ -10,7 +10,7 @@ src/
 │   └── _portal/         #   Portal build'lerinin (CrazyGames/GameDistribution) tek kompozisyon kökü — PortalShell + portalRoutes (bkz. src/lib/navigation).
 ├── components/
 │   ├── ui/              # Tasarım sistemi primitifleri (Button, Modal, Card, ...).
-│   └── common/          # Uygulama genelinde kullanılan ortak bileşenler ve korumalar (AuthModal, AdminGuard, BackButtonManager, ...).
+│   └── common/          # Uygulama genelinde kullanılan ortak bileşenler ve korumalar (AuthModal, AdminGuard, BackButtonManager, LevelPreviewModal, ...).
 ├── contexts/            # React Context API ile yönetilen global durumlar (Oturum, Dil).
 ├── hooks/               # API, gamepad, arkadaşlık vb. işlevleri sarmalayan React kancaları.
 ├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls, rewarded-actions, daily, settings).
@@ -65,3 +65,4 @@ src/
 ### 5. Altyapı Bileşenleri (`components/common`)
 * **AdminGuard:** `/admin/*` yollarını koruyarak yalnızca yönetici veya moderatörlerin sayfaya erişebilmesini sağlar.
 * **BackButtonManager:** Web tarayıcısı ve Capacitor mobil platformlar için cihazın fiziksel geri tuşuna basıldığında tutarlı bir geri gitme hiyerarşisi (örn: oyundan çıkıp bölümlere dönme) sunar.
+* **LevelPreviewModal:** Seviyelerin mini harita önizlemesini, istatistiklerini, kişisel skor kayıtlarını ve gamepad/klavye kontrolleriyle başlatılmasını sağlayan modüler önizleme modalı (`LevelPreviewModal/`).

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { RefObject, TouchEvent as ReactTouchEvent } from 'react';
 import type { Direction, UIButtonType } from '../logic/types';
 import { useGamepad } from '@/hooks/useGamepad';
-import { KEY_TO_DIRECTION, SWIPE_THRESHOLD } from '../components/play-screen/constants';
+import { KEY_TO_DIRECTION, swipeThreshold } from '../components/play-screen/constants';
 import { hapticImpact } from '@/lib/haptics';
 
 interface UsePlayInputArgs {
@@ -20,6 +20,10 @@ interface UsePlayInputArgs {
     handleStepForward?: () => void;
     /** Yalnızca ipucu destekli oyuncu modunda verilir (H). */
     handleHint?: () => void;
+    /** `false` iken board üstü kaydırma hamle üretmez (yalnızca ekran tuşları şeması). */
+    swipeEnabled?: boolean;
+    /** Kaydırma hassasiyeti (0-100); yüksek = daha kısa kaydırma yeter. */
+    swipeSensitivity?: number;
 }
 
 /**
@@ -39,6 +43,8 @@ export function usePlayInput({
     handleUndo,
     handleStepForward,
     handleHint,
+    swipeEnabled = true,
+    swipeSensitivity = 50,
 }: UsePlayInputArgs) {
     // ── Klavye kontrolü ────────────────────────────────────────────────────
     const handleKey = useCallback((e: KeyboardEvent) => {
@@ -119,11 +125,12 @@ export function usePlayInput({
     const swipeFiredRef = useRef(false);
 
     /** Eşiği aşan bir delta'yı yöne çevirir; aşmıyorsa null. */
-    const resolveDirection = (dx: number, dy: number): Direction | null => {
-        if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return null;
+    const resolveDirection = useCallback((dx: number, dy: number): Direction | null => {
+        const threshold = swipeThreshold(swipeSensitivity);
+        if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return null;
         if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 'right' : 'left';
         return dy > 0 ? 'down' : 'up';
-    };
+    }, [swipeSensitivity]);
 
     const fireSwipe = useCallback((direction: Direction) => {
         // Önce dokunsal geri bildirim, sonra (senkron ve pahalı olan) simülasyon.
@@ -139,7 +146,7 @@ export function usePlayInput({
 
     const handleTouchMove = useCallback((e: ReactTouchEvent) => {
         e.preventDefault();
-        if (swipeFiredRef.current || !touchStartRef.current) return;
+        if (!swipeEnabled || swipeFiredRef.current || !touchStartRef.current) return;
         if (isGameOverRef.current || inputLockedRef?.current) return;
 
         const touch = e.touches[0];
@@ -152,14 +159,14 @@ export function usePlayInput({
 
         swipeFiredRef.current = true;
         fireSwipe(direction);
-    }, [fireSwipe, isGameOverRef, inputLockedRef]);
+    }, [fireSwipe, isGameOverRef, inputLockedRef, swipeEnabled, resolveDirection]);
 
     const handleTouchEnd = useCallback((e: ReactTouchEvent) => {
         const start = touchStartRef.current;
         touchStartRef.current = null;
 
         // touchmove'da zaten tetiklendiyse burada bir şey yapma.
-        if (swipeFiredRef.current) return;
+        if (!swipeEnabled || swipeFiredRef.current) return;
         if (!start || isGameOverRef.current || inputLockedRef?.current) return;
 
         // Yedek yol: touchmove hiç gelmeden (çok hızlı flick) parmak kalktıysa.
@@ -170,7 +177,14 @@ export function usePlayInput({
 
         swipeFiredRef.current = true;
         fireSwipe(direction);
+    }, [fireSwipe, isGameOverRef, inputLockedRef, swipeEnabled, resolveDirection]);
+
+    // ── Ekran üstü yön tuşları ─────────────────────────────────────────────
+    // Swipe ile aynı korumalar ve haptik; hamle tuş basıldığı anda tetiklenir.
+    const handleDirectionPress = useCallback((direction: Direction) => {
+        if (isGameOverRef.current || inputLockedRef?.current) return;
+        fireSwipe(direction);
     }, [fireSwipe, isGameOverRef, inputLockedRef]);
 
-    return { handleTouchStart, handleTouchMove, handleTouchEnd };
+    return { handleTouchStart, handleTouchMove, handleTouchEnd, handleDirectionPress };
 }

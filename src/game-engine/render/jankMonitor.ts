@@ -1,5 +1,5 @@
 /**
- * DOSYA AMACI: DOM yolunda kasmayı oyun sırasında yakalayan dedektör. Güçlü
+ * DOSYA AMACI: DOM tahtada (dom/hybrid) kasmayı oyun sırasında yakalayan dedektör. Güçlü
  * görünen ama DOM'da kasan cihazı (8 çekirdek, zayıf GPU) bulur; karar verirse
  * `onDecision` çağrılır ve dedektör durur (Faz 11 §3.1).
  *
@@ -67,8 +67,24 @@ export interface JankMonitor {
     dispose(): void;
 }
 
-export function createJankMonitor({ onDecision }: { onDecision: () => void }): JankMonitor {
+/** Karar: `victory` = yalnızca zafer kasıyor (oyun akışı sağlam), `move` = oyun akışı kasıyor. */
+export type JankVerdict = 'victory' | 'move';
+type JankKind = 'move' | 'victory' | 'idle';
+
+interface JankMonitorOptions {
+    onDecision: (verdict: JankVerdict) => void;
+    /**
+     * `false`: zafer penceresi örneklenmez ve değerlendirilmez. Zaferi canvas
+     * çizdiği (dengeli mod) yolda DOM'un zafer maliyeti ölçüm konusu değildir.
+     */
+    watchVictory?: boolean;
+}
+
+export function createJankMonitor({ onDecision, watchVictory = true }: JankMonitorOptions): JankMonitor {
     const record = createBadStreak();
+    // Seriyi oluşturan kötü pencerelerin türleri: karar, oyun akışı da bozuk mu
+    // yoksa yalnızca zafer mi kasıyor sorusunu buradan yanıtlar.
+    let badKinds: JankKind[] = [];
     const startedAt = performance.now();
     const buckets: Record<'move' | 'victory' | 'idle', number[]> = { move: [], victory: [], idle: [] };
 
@@ -82,7 +98,7 @@ export function createJankMonitor({ onDecision }: { onDecision: () => void }): J
     let idleEndTimer: ReturnType<typeof setTimeout> | null = null;
 
     const activeBucket = (): 'move' | 'victory' | 'idle' | null =>
-        phase === 'move' ? 'move' : phase === 'victory' ? 'victory' : idleOpen ? 'idle' : null;
+        phase === 'move' ? 'move' : phase === 'victory' ? (watchVictory ? 'victory' : null) : idleOpen ? 'idle' : null;
 
     /** `carry`: kare azsa örnek atılmaz, sonraki segmente birikir (yalnızca hareket). */
     const judge = (kind: 'move' | 'victory' | 'idle', carry: boolean) => {
@@ -93,9 +109,13 @@ export function createJankMonitor({ onDecision }: { onDecision: () => void }): J
             return;
         }
         buckets[kind] = [];
-        if (record(isBadWindow(deltas)) && !disposed) {
+        const bad = isBadWindow(deltas);
+        badKinds = bad ? [...badKinds, kind].slice(-BAD_WINDOWS_TO_SWITCH) : [];
+        if (record(bad) && !disposed) {
             dispose();
-            onDecision();
+            // Yalnızca zafer pencereleri kötüyse karar 'victory', biri bile
+            // hareket/boşta ise 'move': oyun akışının kendisi kasıyor.
+            onDecision(badKinds.every(k => k === 'victory') ? 'victory' : 'move');
         }
     };
 
