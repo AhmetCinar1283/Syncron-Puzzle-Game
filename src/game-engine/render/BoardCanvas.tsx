@@ -279,6 +279,17 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
         };
         window.addEventListener('resize', onResize);
 
+        // Sayfa/uygulama arka plana alınıp geri gelince (reklam izleme, uygulama
+        // değiştirme): mobil WebView'ler arka plandaki tuvalin GPU belleğini geri
+        // alabilir/temizleyebilir. Sahne değişmediği sürece `static`/`ambient`
+        // kendiliğinden yeniden çizilmez (yalnızca sahne imzası değişince
+        // kirlenirler), bu yüzden görünürlük dönüşünde TÜM katmanlar elle
+        // kirletilir — yoksa tahta bir sonraki hamleye kadar boş kalır.
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') invalidateAll();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+
         // İkonlar asenkron gelir: eksik ikonlu sprite önbelleğe yazılmadı, hazır
         // olunca ilgili katmanlar yeniden çizilir.
         const offIcons = onIconsReady(invalidateAll);
@@ -297,6 +308,7 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
         return () => {
             offIcons();
             window.removeEventListener('resize', onResize);
+            document.removeEventListener('visibilitychange', onVisibility);
             scheduler.stop();
             dispose(surfaces);
             surfacesRef.current = null;
