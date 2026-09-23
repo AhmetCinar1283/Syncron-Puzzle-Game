@@ -203,18 +203,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       if (isNativePlatform()) {
-        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-        try {
-          await GoogleAuth.initialize({
-            clientId: process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1041986277726-9otkut2eqcl61rs3rokmgcqn184g42pu.apps.googleusercontent.com',
-            scopes: ['profile', 'email'],
-            grantOfflineAccess: true,
-          });
-        } catch { /* ignore if already initialized */ }
-
-        const googleUser = await GoogleAuth.signIn();
-        const idToken = googleUser.authentication.idToken;
-        if (!idToken) throw new Error('Google Sign-in failed: No ID Token returned.');
+        // Native giriş penceresi ve eklenti detayları services/auth'ta kapsüllendi.
+        const { signInWithGoogleNative } = await import('@/services/auth/nativeGoogleSignIn');
+        const idToken = await signInWithGoogleNative();
 
         credential = GoogleAuthProvider.credential(idToken);
 

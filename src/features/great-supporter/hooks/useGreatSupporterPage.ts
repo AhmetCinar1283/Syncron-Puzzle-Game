@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { workerFetch } from '@/services/api/workerClient';
+import { useNativePlatform } from '@/hooks/useNativePlatform';
 import { LOCAL_T, type DonorProfile } from '../lib/i18n';
 
 export function useGreatSupporterPage() {
@@ -12,14 +13,9 @@ export function useGreatSupporterPage() {
   const t = lang === 'tr' ? LOCAL_T.tr : LOCAL_T.en;
 
   const [state, setState] = useState<'loading' | 'reveal' | 'timeout'>('loading');
-  const [isCapacitor, setIsCapacitor] = useState(false);
-
-  useEffect(() => {
-    const cap = (window as any).Capacitor;
-    if (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) {
-      setIsCapacitor(true);
-    }
-  }, []);
+  // Native kabuk tespiti artık efektte state set etmiyor; SSR-güvenli tek bir
+  // kaynaktan (`useNativePlatform`) okunuyor. Görünen davranış aynı.
+  const isCapacitor = useNativePlatform();
   const [loadingMsg, setLoadingMsg] = useState(t.verifying);
   const [progress, setProgress] = useState(0);
   const [donorProfile, setDonorProfile] = useState<DonorProfile | null>(null);

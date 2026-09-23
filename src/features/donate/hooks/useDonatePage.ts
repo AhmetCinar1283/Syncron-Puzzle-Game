@@ -4,21 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { workerFetch } from '@/services/api/workerClient';
+import { useNativePlatform } from '@/hooks/useNativePlatform';
 import { LOCAL_T, type DonorProfile } from '../lib/i18n';
 
 export function useDonatePage() {
   const { lang } = useLanguage();
   const { user, isAnonymous: isGuest, loading: authLoading } = useAuth();
-  const [isCapacitor, setIsCapacitor] = useState(false);
+  // Native kabuk tespiti artık efektte state set etmiyor; SSR-güvenli tek bir
+  // kaynaktan (`useNativePlatform`) okunuyor. Görünen davranış aynı: sunucuda ve
+  // hidrasyonda `false`, tarayıcıda gerçek değer.
+  const isCapacitor = useNativePlatform();
 
   const t = lang === 'tr' ? LOCAL_T.tr : LOCAL_T.en;
-
-  useEffect(() => {
-    const cap = (window as any).Capacitor;
-    if (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) {
-      setIsCapacitor(true);
-    }
-  }, []);
 
   const formatCurrency = useCallback((cents: number, curr: string, showDecimals = true) => {
     const amount = cents / 100;
@@ -43,46 +40,65 @@ export function useDonatePage() {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Set default donor name once auth user is loaded
-  useEffect(() => {
+  // Bağışçı adının varsayılanı oturum değişince tazelenir. Bu, "girdi alanının
+  // varsayılanını prop değişimine göre ayarla" işidir; efekt yerine değişimi fark
+  // ettiğimiz render'da yapılır (React'in önerdiği örüntü). Böylece kullanıcı bir
+  // kare boyunca boş alan görmez ve fazladan render turu oluşmaz.
+  const [seenIdentity, setSeenIdentity] = useState<{ user: typeof user; isGuest: boolean } | null>(null);
+  if (!seenIdentity || seenIdentity.user !== user || seenIdentity.isGuest !== isGuest) {
+    setSeenIdentity({ user, isGuest });
     if (user && !isGuest && user.displayName) {
       setDonorName(user.displayName);
     }
-  }, [user, isGuest]);
+  }
+
+  // İstekler doğrudan efektin içinde başlatılır (eskiden `useCallback` sarmalı
+  // vardı; dışarıdan hiç çağrılmıyordu). Böylece state yalnızca `await`'ten SONRA,
+  // yani asenkron yanıtla set edilir ve efektin gövdesi senkron state yazmaz.
+  // `active` bayrağı, bileşen söküldükten veya kullanıcı değiştikten sonra gelen
+  // gecikmiş yanıtın ekrana yazılmasını engeller.
 
   // Fetch current user donor profile
-  const fetchUserProfile = useCallback(async () => {
+  useEffect(() => {
     if (!user || isGuest) return;
-    try {
-      const res = await workerFetch<{ success: boolean; profile?: DonorProfile }>(
-        `/donors/${user.uid}`
-      );
-      if (res.success && res.profile) {
-        setUserProfile(res.profile);
+    let active = true;
+    const uid = user.uid;
+    (async () => {
+      try {
+        const res = await workerFetch<{ success: boolean; profile?: DonorProfile }>(
+          `/donors/${uid}`
+        );
+        if (active && res.success && res.profile) {
+          setUserProfile(res.profile);
+        }
+      } catch (err) {
+        console.error('Error fetching user donor profile:', err);
       }
-    } catch (err) {
-      console.error('Error fetching user donor profile:', err);
-    }
+    })();
+    return () => {
+      active = false;
+    };
   }, [user, isGuest]);
 
   // Fetch top donors list
-  const fetchTopDonors = useCallback(async () => {
-    try {
-      const res = await workerFetch<{ success: boolean; donors?: DonorProfile[] }>(
-        '/donors/top'
-      );
-      if (res.success && res.donors) {
-        setTopDonors(res.donors);
-      }
-    } catch (err) {
-      console.error('Error fetching top donors list:', err);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchUserProfile();
-    fetchTopDonors();
-  }, [fetchUserProfile, fetchTopDonors]);
+    let active = true;
+    (async () => {
+      try {
+        const res = await workerFetch<{ success: boolean; donors?: DonorProfile[] }>(
+          '/donors/top'
+        );
+        if (active && res.success && res.donors) {
+          setTopDonors(res.donors);
+        }
+      } catch (err) {
+        console.error('Error fetching top donors list:', err);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleAmountChange = (amount: number) => {
     setSelectedAmount(amount);

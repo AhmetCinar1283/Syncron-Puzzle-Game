@@ -15,6 +15,7 @@ import { useT } from '@/contexts/LanguageContext';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { soundEngine } from '@/services/audio';
 import { useGamepad } from '@/hooks/useGamepad';
+import { useHydrated } from '@/hooks/useHydrated';
 import { GameIcon } from '@/components/icons';
 
 export interface ModalRef {
@@ -127,8 +128,20 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
 }: ModalProps, ref) {
   const t = useT();
   const { theme, themeConfig } = useGameTheme();
-  const [mounted, setMounted] = useState(false);
+  // Portal yalnızca hidrasyondan sonra açılabilir (sunucuda `document` yok).
+  // Bu bilgi artık efektte set edilen bir state değil, `useHydrated` türevi.
+  const mounted = useHydrated();
   const [isClosing, setIsClosing] = useState(false);
+
+  // Modal kapandığında kapanma animasyonu bayrağı sıfırlanır. Bu, `open`
+  // prop'unun DEĞİŞİMİNE verilen bir yanıt olduğu için efektte değil, değişimi
+  // fark ettiğimiz render'da yapılır (React'in "prop değişince state'i ayarla"
+  // örüntüsü); efektte kalsaydı bir kare fazladan "kapanıyor" hâli görünebilirdi.
+  const [openAtLastRender, setOpenAtLastRender] = useState(open);
+  if (open !== openAtLastRender) {
+    setOpenAtLastRender(open);
+    if (!open) setIsClosing(false);
+  }
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -136,10 +149,6 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
   // Dokunmatik aşağı kaydırma (swipe-down to close) durumları
   const touchStartYRef = useRef(0);
   const isPullingRef = useRef(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -225,7 +234,6 @@ export const Modal = React.forwardRef<ModalRef, ModalProps>(function Modal({
       }
     } else {
       hasPlayedOpenRef.current = false;
-      setIsClosing(false);
     }
     prevOpenRef.current = open;
   }, [open, playSounds]);

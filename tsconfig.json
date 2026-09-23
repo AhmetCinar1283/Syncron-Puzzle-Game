@@ -32,7 +32,7 @@
   ],
   "exclude": [
     "node_modules",
-    "firebase-functions",
+    "functions",
     "syncron-worker",
     ".archive",
     "android",

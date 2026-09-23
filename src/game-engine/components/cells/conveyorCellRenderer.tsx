@@ -1,7 +1,7 @@
 import { Cell } from '../../logic/cellTypes';
 import { Direction } from '../../logic/types';
 import { Entity } from '../../logic/entityTypes';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameTheme } from '../../contexts/GameThemeContext';
 
 const ROTATION: Record<Direction, string> = {
@@ -19,25 +19,29 @@ export const ConveyorCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: C
     const direction = (cell.customData.direction as Direction) ?? 'up';
     const isPowered = cell.isElectrified;
     
-    const [isActiveWorking, setIsActiveWorking] = useState(false);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    // Çalışma parıltısı 800 ms'lik bir MANDAL: tetikleyici prop değişiminde yanar,
+    // sonraki prop değişimlerinden bağımsız olarak süre dolunca söner.
+    // Mandalı efektte değil, prop değişimi fark edildiği anda (render sırasında,
+    // React'in "prop değişince state'i ayarla" örüntüsü) kuruyoruz; efekte yalnızca
+    // zamanlayıcı kalıyor. Böylece fazladan bir render turu ve yarış durumu oluşmuyor.
+    const triggerKey = `${entityOnCell?.id ?? '-'}|${prevEntityOnCell?.id ?? '-'}|${isPowered}`;
+    const [seenTriggerKey, setSeenTriggerKey] = useState<string | null>(null);
+    const [activationId, setActivationId] = useState(0);
+    const [expiredActivationId, setExpiredActivationId] = useState(0);
 
-    useEffect(() => {
+    if (triggerKey !== seenTriggerKey) {
+        setSeenTriggerKey(triggerKey);
         const hasEntity = entityOnCell !== null || prevEntityOnCell !== null;
-        if (isPowered && hasEntity) {
-            setIsActiveWorking(true);
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => {
-                setIsActiveWorking(false);
-            }, 800);
-        }
-    }, [entityOnCell?.id, prevEntityOnCell?.id, isPowered]);
+        if (isPowered && hasEntity) setActivationId((id) => id + 1);
+    }
+
+    const isActiveWorking = activationId !== expiredActivationId;
 
     useEffect(() => {
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, []);
+        if (activationId === expiredActivationId) return;
+        const timer = setTimeout(() => setExpiredActivationId(activationId), 800);
+        return () => clearTimeout(timer);
+    }, [activationId, expiredActivationId]);
 
     const dimmed = !isPowered;
     const accent = themeConfig.accentColor;

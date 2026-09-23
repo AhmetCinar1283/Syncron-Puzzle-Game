@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 /**
@@ -11,25 +11,16 @@ export function useWinAuthPrompt() {
     const { user, isAnonymous } = useAuthContext();
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authAttempted, setAuthAttempted] = useState(false);
-    const [loginFailed, setLoginFailed] = useState(false);
 
     const isUserAnonymous = !user || isAnonymous;
 
-    // Check auth status after AuthModal is closed
-    useEffect(() => {
-        if (authAttempted && !showAuthModal) {
-            if (!user || isAnonymous) {
-                setLoginFailed(true);
-            } else {
-                setLoginFailed(false);
-                setAuthAttempted(false);
-            }
-        }
-    }, [showAuthModal, user, isAnonymous, authAttempted]);
+    // `loginFailed` ayrı bir state DEĞİL, üç bilinen değerin türevi: denendi mi,
+    // modal kapandı mı, kullanıcı hâlâ anonim mi. Efektte set edilmesi hem fazladan
+    // bir render turu hem de "bir kare doğru sonra yanlış" yanıp sönmesi demekti.
+    const loginFailed = authAttempted && !showAuthModal && isUserAnonymous;
 
     const handleOpenAuth = () => {
         setAuthAttempted(true);
-        setLoginFailed(false);
         setShowAuthModal(true);
     };
 

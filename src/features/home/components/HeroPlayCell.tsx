@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo, useState, useEffect, useRef } from 'react';
+import React, { memo, useMemo, useState, useEffect } from 'react';
 import { PlayerGraphic } from '@/game-engine/components/entities/PlayerGraphic';
 import { Entity } from '@/game-engine/logic/entityTypes';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
@@ -37,21 +37,24 @@ function HeroPlayCellBase({
   const isBusy = phase !== 'idle';
 
   // Seçim giriş/çıkış animasyonu: Play'den ayrılınca ani kesilmemesi için 'exiting' geçişi kullanılır
-  const [animMode, setAnimMode] = useState<'idle' | 'active' | 'exiting'>('idle');
-  const wasActiveRef = useRef(isActive);
+  // Mod değişimi `isActive` prop'unun DEĞİŞİMİNE bağlıdır; bunu efektte değil,
+  // değişimi fark ettiğimiz render'da yapıyoruz (React'in "prop değişince state'i
+  // ayarla" örüntüsü). Efektte yalnızca 'exiting' -> 'idle' zamanlayıcısı kalıyor.
+  const [animMode, setAnimMode] = useState<'idle' | 'active' | 'exiting'>(isActive ? 'active' : 'idle');
+  const [wasActive, setWasActive] = useState(isActive);
+
+  if (isActive !== wasActive) {
+    setWasActive(isActive);
+    setAnimMode(isActive ? 'active' : 'exiting');
+  }
 
   useEffect(() => {
-    if (isActive) {
-      setAnimMode('active');
-    } else if (wasActiveRef.current) {
-      setAnimMode('exiting');
-      const timer = setTimeout(() => {
-        setAnimMode('idle');
-      }, 360);
-      return () => clearTimeout(timer);
-    }
-    wasActiveRef.current = isActive;
-  }, [isActive]);
+    if (animMode !== 'exiting') return;
+    const timer = setTimeout(() => {
+      setAnimMode('idle');
+    }, 360);
+    return () => clearTimeout(timer);
+  }, [animMode]);
 
   // Karakter grafiği gerçek oyun varlığını kullanır — menü ile oyun aynı dili konuşur.
   const playerEntity: Entity = useMemo(

@@ -37,6 +37,53 @@ if (!resolvedAdmobAppId?.trim()) {
  * Kurulum: android/keystore.properties.example dosyasını android/keystore.properties olarak
  * kopyalayıp kendi değerlerinizi girin. Bkz. docs/release/anahtar-yonetimi.md
  */
+/**
+ * SÜRÜM TEK KAYNAKTAN TÜRETİLİR: repo kökündeki `package.json` -> "version".
+ * Burada literal `versionCode` / `versionName` YAZILMAZ; elle artırmayı unutmak
+ * Play'in yüklemeyi reddetmesine yol açıyordu.
+ *
+ *   versionName = package.json sürümü, olduğu gibi (ör. "0.3.0", "1.2.0-rc.1")
+ *   versionCode = major * 1000000 + minor * 1000 + patch   (ör. 0.3.0 -> 3000)
+ *
+ * Bu formül semver artışıyla MONOTON artar: minor/patch 0..999 aralığında
+ * sınırlandığı için bir üst bileşenin artışı her zaman daha büyük bir sayı üretir.
+ * Üst sınır 2100999999 < Play'in 2100000000 sınırı olduğundan major 2099'a kadar
+ * güvenlidir (aşağıda kontrol ediliyor). Ön-sürüm eki (-rc.1) versionCode'u
+ * ETKİLEMEZ; aynı x.y.z için tek bir kod üretilir.
+ *
+ * Sürüm çıkarırken tek yapılacak: package.json içindeki "version" alanını artırmak.
+ *
+ * Hata durumunda build SESSİZCE düşük bir sürüme düşmez, GradleException atar —
+ * yanlış versionCode ile imzalı AAB üretmek geri alınamaz bir hatadır.
+ */
+def packageJsonFile = rootProject.file('../package.json')
+if (!packageJsonFile.exists()) {
+    throw new GradleException("[version] package.json bulunamadi: " + packageJsonFile.absolutePath +
+        " -- versionCode/versionName bu dosyadan turetiliyor.")
+}
+def rawAppVersion = new groovy.json.JsonSlurper().parse(packageJsonFile)?.version?.toString()?.trim()
+def semverMatcher = (rawAppVersion ?: '') =~ /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/
+if (!semverMatcher.matches()) {
+    throw new GradleException("[version] package.json icindeki \"version\" alani semver degil: '" +
+        rawAppVersion + "'. Beklenen bicim: MAJOR.MINOR.PATCH (ornek: 0.3.0).")
+}
+def versionMajor = semverMatcher[0][1] as int
+def versionMinor = semverMatcher[0][2] as int
+def versionPatch = semverMatcher[0][3] as int
+if (versionMinor > 999 || versionPatch > 999) {
+    throw new GradleException("[version] minor ve patch 999'u asamaz (versionCode monotonlugu bozulur): " + rawAppVersion)
+}
+if (versionMajor > 2099) {
+    throw new GradleException("[version] major 2099'u asamaz (Play versionCode ust siniri 2100000000): " + rawAppVersion)
+}
+def appVersionName = rawAppVersion
+def appVersionCode = versionMajor * 1000000 + versionMinor * 1000 + versionPatch
+if (appVersionCode < 1) {
+    throw new GradleException("[version] versionCode en az 1 olmali; package.json surumu '" + rawAppVersion +
+        "' 0 uretiyor. Surumu en az 0.0.1 yapin.")
+}
+logger.lifecycle("[version] package.json -> versionName=" + appVersionName + ", versionCode=" + appVersionCode)
+
 def keystorePropsFile = rootProject.file('keystore.properties')
 def keystoreProps = new Properties()
 def keystoreFile = null
@@ -75,8 +122,8 @@ android {
         applicationId "com.polimelo.syncroncap"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders = [admobAppId: resolvedAdmobAppId]
         aaptOptions {

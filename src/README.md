@@ -16,7 +16,7 @@ src/
 ├── features/            # Sayfa bazlı özellik modülleri (admin/*, editor, friends, leaderboard, profile, levels, play, home, support, donate, great-supporter, controls, rewarded-actions, daily, settings).
 │   └── <isim>/          #   components/ (sunum), hooks/ (state+efekt), lib/ (saf yardımcılar), index.ts (public API).
 ├── game-engine/         # Oyun motoru (eski app/src/game2) + level-format/ (persisted veri tipleri, CellType/EdgeBehavior string literalleri sabit) + solver/ (çözücü, prosedürel üretici, par.ts — günlük bulmaca par'ı) + components/LevelMiniPreview (küçük level önizlemesi) + hint/ (sunucudan gelen ipucunun gösterimi; hesaplama worker'da).
-├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı), levels/ (kampanya bölüm listesi önbelleği), share/ (yerel paylaşım → navigator.share → pano), settings/ (tercih ve ayarlar kalıcılık motoru) — eski app/src/lib/{api,firebase,db,sync}.
+├── services/            # api/ (worker istemcileri), firebase/, db/ (Dexie), sync/, monetization/ (reklam adaptör katmanı), levels/ (kampanya bölüm listesi önbelleği), share/ (yerel paylaşım → navigator.share → pano), settings/ (tercih ve ayarlar kalıcılık motoru), auth/ (native Google giriş eklentisi sarmalayıcısı) — eski app/src/lib/{api,firebase,db,sync}.
 ├── lib/                 # i18n/, userStorage.ts, navigation/ (next/navigation adaptörü — portal'da bellek içi router), assetUrl.ts, dailyDraftHandoff.ts (takvim → editör aktarımı), saf yardımcı fonksiyonlar.
 └── store/               # Redux durum yönetimi (User state, Store yapılandırması).
 ```

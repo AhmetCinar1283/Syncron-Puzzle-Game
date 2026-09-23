@@ -21,7 +21,11 @@ export function MyTicketsPage() {
   const { user, isAnonymous, loading } = useAuth();
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // "Yükleniyor" ayrı bir state değil, TÜREV: hangi kullanıcı için veri geldiğini
+  // tutuyoruz; henüz gelmediyse yükleniyoruz. Böylece efektin gövdesinde senkron
+  // `setDataLoading(true)` gerekmiyor. Görünen davranış aynı.
+  const [loadedUid, setLoadedUid] = useState<string | null>(null);
+  const dataLoading = !user || loadedUid !== user.uid;
 
   const isTr = lang === 'tr';
 
@@ -36,10 +40,10 @@ export function MyTicketsPage() {
   useEffect(() => {
     if (loading || !user || isAnonymous) return;
 
-    setDataLoading(true);
-    const unsubscribe = subscribeToUserTickets(user.uid, (fetchedTickets) => {
+    const uid = user.uid;
+    const unsubscribe = subscribeToUserTickets(uid, (fetchedTickets) => {
       setTickets(fetchedTickets);
-      setDataLoading(false);
+      setLoadedUid(uid);
     });
 
     return () => unsubscribe();

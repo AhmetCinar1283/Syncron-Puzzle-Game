@@ -1,7 +1,7 @@
 // components/PhysicsWrapper.tsx
 // KOZMETİK SARMALAYICI — fiziksel konum ve Z yüksekliğini CSS'e çevirir.
 
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Entity } from '../logic/entityTypes';
 import { CellTypes } from '../logic/cellTypes';
 import { Direction } from '../logic/types';
@@ -42,17 +42,26 @@ export const PhysicsWrapper = ({ entity, prevEntity, currentCellType, frameMs, r
     const isTeleporting = xDiff > CELL_SIZE || yDiff > CELL_SIZE || prevRoomId !== roomId;
 
     // 2. Yere İniş Anında Ezilme (Landing Squash) Tespiti
-    const prevZRef = useRef(z);
-    const [isLanded, setIsLanded] = useState(false);
+    // İniş ezilmesi 220 ms'lik bir MANDAL. "z > 0 iken z === 0'a düştü" geçişi
+    // render sırasında (React'in "prop değişince state'i ayarla" örüntüsü) yakalanır;
+    // efektte yalnızca söndürme zamanlayıcısı kalır. Aynı mandal içinde yeni bir iniş
+    // olursa sayaç arttığı için zamanlayıcı baştan kurulur (eski davranışla aynı).
+    const [seenZ, setSeenZ] = useState(z);
+    const [landingId, setLandingId] = useState(0);
+    const [expiredLandingId, setExpiredLandingId] = useState(0);
+
+    if (z !== seenZ) {
+        if (seenZ > 0 && z === 0) setLandingId((id) => id + 1);
+        setSeenZ(z);
+    }
+
+    const isLanded = landingId !== expiredLandingId;
 
     useEffect(() => {
-        if (prevZRef.current > 0 && z === 0) {
-            setIsLanded(true);
-            const timer = setTimeout(() => setIsLanded(false), 220);
-            return () => clearTimeout(timer);
-        }
-        prevZRef.current = z;
-    }, [z]);
+        if (landingId === expiredLandingId) return;
+        const timer = setTimeout(() => setExpiredLandingId(landingId), 220);
+        return () => clearTimeout(timer);
+    }, [landingId, expiredLandingId]);
 
     const zOffset = -(z * 14); // Zıplama yüksekliği Y ekseninde yukarı kaydırma
 

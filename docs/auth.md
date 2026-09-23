@@ -39,7 +39,12 @@ On Capacitor (Android/iOS), `getRedirectResult(auth)` is called on mount to capt
 ### `linkWithGoogle()`
 
 - **Web / Electron:** `linkWithPopup(user, GoogleAuthProvider)`
-- **Capacitor:** `linkWithRedirect(user, GoogleAuthProvider)` — page reloads, redirect result is captured on next open via `getRedirectResult`
+- **Capacitor (Android):** native sign-in via `services/auth/nativeGoogleSignIn.ts`
+  (`@capgo/capacitor-social-login`, Android Credential Manager) → returns a Google **ID token** →
+  `GoogleAuthProvider.credential(idToken)` → `linkWithCredential` when anonymous, otherwise
+  `signInWithCredential`. No page reload, no `getRedirectResult` round-trip.
+  (Previously `@codetrix-studio/capacitor-google-auth`, dropped — abandoned and Capacitor 6 only;
+  see `.plans/yayin-hazirlik/raporlar/13-google-auth-uyumluluk.md`.)
 - **Error `auth/credential-already-in-use`:** Google account already registered to a different UID → automatically calls `signInWithCredential` to switch to that account
 
 ### `linkWithEmail(email, password, mode)`

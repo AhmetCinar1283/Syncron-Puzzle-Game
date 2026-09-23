@@ -28,13 +28,13 @@ export function useLeaderboardPage() {
   const activeCategory = CATEGORIES[catIndex];
   const activePeriod = activeCategory.periods[Math.min(periodIndex, activeCategory.periods.length - 1)] as PeriodId;
 
-  // Clamping periodIndex when switching categories with different periods
-  useEffect(() => {
-    const maxPeriodIdx = activeCategory.periods.length - 1;
-    if (periodIndex > maxPeriodIdx) {
-      setPeriodIndex(0);
-    }
-  }, [catIndex, activeCategory.periods.length, periodIndex]);
+  // Kategori değişince periyot indeksi taşabilir. Bu düzeltme render sırasında
+  // yapılır (React'in "prop/state değişince state'i ayarla" örüntüsü): koşul kendi
+  // kendini kapattığı için döngü oluşmaz ve kullanıcı geçersiz indeksle çizilmiş
+  // bir kare görmez. Efektte yapılması fazladan bir render turu demekti.
+  if (periodIndex > activeCategory.periods.length - 1) {
+    setPeriodIndex(0);
+  }
 
   // Main leaderboard query (Top 50)
   const isFriendsCategory = activeCategory.id === 'friends';

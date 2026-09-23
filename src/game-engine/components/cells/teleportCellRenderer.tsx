@@ -1,6 +1,6 @@
 import { Cell } from '../../logic/cellTypes';
 import { Entity } from '../../logic/entityTypes';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameTheme } from '../../contexts/GameThemeContext';
 
 type TeleportGroup = 'A' | 'B' | 'C';
@@ -24,27 +24,29 @@ export const TeleportCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }: T
     const color = GROUP_COLOR[group];
     const rgb = hexToRgb(color);
 
-    const [isActivelyTeleporting, setIsActivelyTeleporting] = useState(false);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    // Işınlanma parıltısı 600 ms'lik bir MANDAL: giriş/çıkış anında yanar, süre
+    // dolunca söner. Mandal, prop değişimi fark edildiği anda (render sırasında,
+    // React'in "prop değişince state'i ayarla" örüntüsü) kuruluyor; efektte yalnızca
+    // zamanlayıcı kalıyor.
+    const triggerKey = `${entityOnCell?.id ?? '-'}|${prevEntityOnCell?.id ?? '-'}`;
+    const [seenTriggerKey, setSeenTriggerKey] = useState<string | null>(null);
+    const [activationId, setActivationId] = useState(0);
+    const [expiredActivationId, setExpiredActivationId] = useState(0);
 
-    useEffect(() => {
+    if (triggerKey !== seenTriggerKey) {
+        setSeenTriggerKey(triggerKey);
         const justArrived = entityOnCell !== null && prevEntityOnCell === null;
         const justLeft = entityOnCell === null && prevEntityOnCell !== null;
+        if (justArrived || justLeft) setActivationId((id) => id + 1);
+    }
 
-        if (justArrived || justLeft) {
-            setIsActivelyTeleporting(true);
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => {
-                setIsActivelyTeleporting(false);
-            }, 600);
-        }
-    }, [entityOnCell?.id, prevEntityOnCell?.id]);
+    const isActivelyTeleporting = activationId !== expiredActivationId;
 
     useEffect(() => {
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, []);
+        if (activationId === expiredActivationId) return;
+        const timer = setTimeout(() => setExpiredActivationId(activationId), 600);
+        return () => clearTimeout(timer);
+    }, [activationId, expiredActivationId]);
 
     if (theme === 'legacy') {
         return (

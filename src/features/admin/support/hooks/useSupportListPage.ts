@@ -15,7 +15,11 @@ export function useSupportListPage() {
   const { role, loading } = useAuth();
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // "Yükleniyor" ayrı bir state değil, TÜREV: hangi abonelik anahtarı için veri
+  // geldiğini tutuyoruz; henüz gelmediyse yükleniyoruz. Böylece efektin gövdesinde
+  // senkron `setDataLoading(true)` gerekmiyor (fazladan render turu ve yarış yok);
+  // filtre değişince gösterge yine anında "yükleniyor"a döner.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   // Filters state
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
@@ -32,10 +36,11 @@ export function useSupportListPage() {
   // Subscribe to all support tickets
   // In order to perform category filtering client-side as designed, we retrieve
   // tickets with status filtering if enabled, then filter categories locally in the callback/render.
+  const subscriptionKey = `${role ?? ''}|${statusFilter}`;
+  const dataLoading = loadedKey !== subscriptionKey;
+
   useEffect(() => {
     if (loading || (role !== 'admin' && role !== 'moderator')) return;
-
-    setDataLoading(true);
 
     // We pass statusFilter to subscribeToAllTickets if it's not 'all' to leverage Firestore status indexes.
     const activeStatus = statusFilter === 'all' ? undefined : { status: statusFilter, category: 'all' as any };
@@ -43,7 +48,7 @@ export function useSupportListPage() {
     const unsubscribe = subscribeToAllTickets(
       (fetchedTickets) => {
         setTickets(fetchedTickets);
-        setDataLoading(false);
+        setLoadedKey(`${role ?? ''}|${statusFilter}`);
       },
       activeStatus
     );

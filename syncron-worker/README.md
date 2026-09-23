@@ -12,7 +12,7 @@ syncron-worker/
 │   ├── routes/         # HTTP API rotalarını yöneten dosyalar.
 │   │   ├── adminApi.ts     # Admin/Moderatör işlemleri (kullanıcı detayı, loglar, banlama).
 │   │   ├── game.ts         # Seviye bitirme ve çözüm doğrulama (/complete-level).
-│   │   ├── friends.ts      # Arkadaşlık istekleri, engelleme ve arama.
+│   │   ├── friends.ts      # Arkadaşlık istekleri, engelleme ve arama (ince; mantık services/friends altında).
 │   │   ├── store.ts        # Lemon Squeezy webhook entegrasyonu (bağış işleme).
 │   │   ├── playedLevels.ts # Seviye ilerleme senkronizasyonu ve seviye silme.
 │   │   ├── rewards.ts      # Ödüllü aksiyonlar: /rewards/prepare → /rewards/claim (+ /rewards/cancel).
@@ -35,6 +35,7 @@ syncron-worker/
 │   │   ├── rateLimit/      # Paylaşılan hız limiti (yayin-hazirlik/03): kademe tablosu (veri), saf pencere, mekanizma arayüzü (bkz. services/rateLimit/README.md).
 │   │   ├── securityEvents/ # Adli iz (yayin-hazirlik/05): olay katalogu (veri), karmalanmış IP + UA, 30 gün saklama (bkz. services/securityEvents/README.md).
 │   │   ├── levelTelemetry/ # Telemetri yazımının görünürlüğü (yayin-hazirlik/08): yazma doğrulaması, hata sınıflandırması, sessiz kopukluğa karşı audit_logs izi (bkz. services/levelTelemetry/README.md).
+│   │   ├── friends/        # Arkadaşlık iş mantığı: kurallar ve satır dönüşümleri (lib), D1 erişimi (friendshipStore), Firestore profil köprüsü (profileCacheSync) (bkz. services/friends/README.md).
 │   │   ├── securitySignals.ts # Kötüye kullanım sinyalleri → audit_logs (category: 'security'). Yalnızca yazar, ban vermez.
 │   │   └── ...
 │   ├── scheduled/      # Zamanlanmış görevlerin (Cron) kodları.

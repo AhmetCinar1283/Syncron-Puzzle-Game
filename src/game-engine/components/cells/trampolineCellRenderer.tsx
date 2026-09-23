@@ -1,7 +1,7 @@
 import { Cell } from '../../logic/cellTypes';
 import { Direction } from '../../logic/types';
 import { Entity } from '../../logic/entityTypes';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameTheme } from '../../contexts/GameThemeContext';
 
 const ROTATION: Record<Direction, string> = {
@@ -18,25 +18,27 @@ export const TrampolineCellRenderer = ({ cell, entityOnCell, prevEntityOnCell }:
     const { theme, themeConfig } = useGameTheme();
     const direction = (cell.customData.direction as Direction) ?? 'up';
     
-    const [isActivelyBouncing, setIsActivelyBouncing] = useState(false);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    // Zıplama parıltısı 500 ms'lik bir MANDAL: varlık hücreye girdiği anda yanar,
+    // süre dolunca söner. Mandal render sırasında (React'in "prop değişince state'i
+    // ayarla" örüntüsü) kuruluyor; efektte yalnızca zamanlayıcı kalıyor.
+    const triggerKey = `${entityOnCell?.id ?? '-'}|${prevEntityOnCell?.id ?? '-'}`;
+    const [seenTriggerKey, setSeenTriggerKey] = useState<string | null>(null);
+    const [activationId, setActivationId] = useState(0);
+    const [expiredActivationId, setExpiredActivationId] = useState(0);
 
-    useEffect(() => {
+    if (triggerKey !== seenTriggerKey) {
+        setSeenTriggerKey(triggerKey);
         const justArrived = entityOnCell !== null && prevEntityOnCell === null;
-        if (justArrived) {
-            setIsActivelyBouncing(true);
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => {
-                setIsActivelyBouncing(false);
-            }, 500);
-        }
-    }, [entityOnCell?.id, prevEntityOnCell?.id]);
+        if (justArrived) setActivationId((id) => id + 1);
+    }
+
+    const isActivelyBouncing = activationId !== expiredActivationId;
 
     useEffect(() => {
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, []);
+        if (activationId === expiredActivationId) return;
+        const timer = setTimeout(() => setExpiredActivationId(activationId), 500);
+        return () => clearTimeout(timer);
+    }, [activationId, expiredActivationId]);
 
     const bounceColor = theme === 'arcade' ? '#facc15' : theme === 'cosmic' ? '#a78bfa' : theme === 'blueprint' ? '#38bdf8' : '#22d3ee';
     const borderRadius = theme === 'arcade' ? 0 : theme === 'blueprint' ? 2 : 6;

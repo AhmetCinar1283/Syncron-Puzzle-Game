@@ -6,7 +6,7 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 interface AdminGuardProps {
   children: ReactNode;
@@ -19,7 +19,10 @@ interface AdminGuardProps {
 export function AdminGuard({ children }: { children: ReactNode }) {
   const { user, role, loading } = useAuth();
   const router = useRouter();
-  const [isValidated, setIsValidated] = useState<boolean>(false);
+  // Doğrulama bir STATE değil, mevcut oturumun TÜREVİ: ayrı state'te tutulup
+  // efektte set edilmesi fazladan bir render turu ve yetkinin bir kare gecikmeli
+  // görünmesi demekti. Yönlendirme (gerçek yan etki) efektte kalır.
+  const isValidated = !loading && !!user && (role === 'admin' || role === 'moderator');
 
   // Rol kontrolü ve yetkilendirme doğrulama süreci
   useEffect(() => {
@@ -37,8 +40,6 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     if (!isAdmin && !isMod) {
       console.warn('[AdminGuard] Access Denied: Role invalid.', { uid: user.uid, role });
       router.replace('/403');
-    } else {
-      setIsValidated(true);
     }
   }, [user, role, loading, router]);
 

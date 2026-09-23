@@ -25,14 +25,19 @@ export default function BadgePicker({
   saving,
 }: BadgePickerProps) {
   const t = useT();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(isOpen ? initialShowcaseIds : []);
 
-  // Initialize selected badges on open
-  useEffect(() => {
+  // Seçim, "açılış" prop'larının bir TÜREVİ olarak tazelenir. Bu bir yan etki
+  // değil, prop değişimine verilen yanıt olduğu için efektte değil, değişimi fark
+  // ettiğimiz render'da yapılır (React'in "prop değişince state'i ayarla"
+  // örüntüsü); eski kurulumda kullanıcı bir kare boyunca eski seçimi görebiliyordu.
+  const [seenOpenState, setSeenOpenState] = useState({ isOpen, initialShowcaseIds });
+  if (seenOpenState.isOpen !== isOpen || seenOpenState.initialShowcaseIds !== initialShowcaseIds) {
+    setSeenOpenState({ isOpen, initialShowcaseIds });
     if (isOpen) {
       setSelectedIds(initialShowcaseIds);
     }
-  }, [isOpen, initialShowcaseIds]);
+  }
 
   // Keyboard Escape listener
   useEffect(() => {

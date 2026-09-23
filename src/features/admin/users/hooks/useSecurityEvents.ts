@@ -10,6 +10,9 @@
 import { useEffect, useState } from 'react';
 import { getUserSecurityEvents, type SecurityEventRecord } from '@/services/api/adminClient';
 
+/** Boş liste için sabit kimlik — her render'da yeni dizi üretip tüketicileri boşuna tetiklemeyelim. */
+const NO_EVENTS: SecurityEventRecord[] = [];
+
 export interface SecurityEventsState {
   events: SecurityEventRecord[];
   loading: boolean;
@@ -28,40 +31,38 @@ export interface SecurityEventsState {
  *   atılmaz; hata durumunda liste boş kalır ve sayfanın kalanı çalışmaya devam eder.
  */
 export function useSecurityEvents(uid: string | null | undefined, role: string | null | undefined): SecurityEventsState {
-  const [events, setEvents] = useState<SecurityEventRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [forbidden, setForbidden] = useState(false);
+  // Tek state: "hangi kullanıcı için hangi sonuç geldi". `loading` ve `forbidden`
+  // bundan TÜREVdir — efektin gövdesinde senkron state yazmak gerekmez, dolayısıyla
+  // fazladan render turu ve "eski kullanıcının olayları bir kare görünür" yarışı da
+  // olmaz. Sonuç yalnızca istek döndüğünde (asenkron) yazılır.
+  const [loaded, setLoaded] = useState<{ key: string; events: SecurityEventRecord[] } | null>(null);
+
+  const requestKey = uid && role === 'admin' ? uid : null;
+  const loadedEvents = loaded !== null && requestKey !== null && loaded.key === requestKey ? loaded.events : null;
+
+  const events = loadedEvents ?? NO_EVENTS;
+  const loading = requestKey !== null && loadedEvents === null;
+  const forbidden = role !== 'admin';
 
   useEffect(() => {
+    if (!requestKey) return;
     let active = true;
 
-    if (!uid || role !== 'admin') {
-      setEvents([]);
-      setForbidden(role !== 'admin');
-      return;
-    }
-
-    setLoading(true);
-    setForbidden(false);
-
-    getUserSecurityEvents(uid)
+    getUserSecurityEvents(requestKey)
       .then((res) => {
         if (!active) return;
-        setEvents(res.success ? res.events : []);
+        setLoaded({ key: requestKey, events: res.success ? res.events : [] });
       })
       .catch((err) => {
         if (!active) return;
         console.error('[AdminSecurityEvents] load failed:', err);
-        setEvents([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        setLoaded({ key: requestKey, events: [] });
       });
 
     return () => {
       active = false;
     };
-  }, [uid, role]);
+  }, [requestKey]);
 
   return { events, loading, forbidden };
 }
