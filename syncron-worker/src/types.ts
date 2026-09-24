@@ -29,6 +29,13 @@ export interface Env {
    */
   SECURITY_IP_SALT?: string;
   /**
+   * Liderlik tablosunun OKUMA yüzeyi: `GET /leaderboard/*` ve rozet dağıtım cron'u.
+   * Yalnızca `'true'` ise açıktır; tanımsızsa uç nokta var olmayan bir rota gibi
+   * 404 döner ve rozet dağıtılmaz. Skor YAZIMI (complete-level) bu bayraktan
+   * bağımsızdır — veri toplanmaya devam eder. Bkz. `isLeaderboardEnabled`.
+   */
+  LEADERBOARD_ENABLED?: string;
+  /**
    * Cloudflare Rate Limiting binding'leri. Ad sözleşmesi `RL_<limit>_PER_<saniye>S`
    * ve tanımları `wrangler.jsonc` → `ratelimits` bölümündedir; kod adı kuralın
    * sayılarından türetir (services/rateLimit/lib/bindingName.ts).

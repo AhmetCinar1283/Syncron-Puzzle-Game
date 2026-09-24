@@ -14,12 +14,17 @@ export interface UseCircuitNavigationOptions {
   onChapterNext?: () => void;
   onJumpToCurrent?: () => void;
   onSwitchTab?: () => void;
+  /**
+   * Sağ/sol (ok, A/D, d-pad) ne yapsın: `chapter` = sektör değiştir (kampanya),
+   * `step` = yukarı/aşağı gibi bir önceki/sonraki öğe (yatay sektör kavramı olmayan listeler).
+   */
+  horizontal?: 'chapter' | 'step';
   disabled?: boolean;
 }
 
 /**
  * DOSYA AMACI: Kozmik Rota boyunca Klavye ve Gamepad girdilerini
- * 1D rota akışı (ileri / geri) ve bölüm geçişleriyle bağlayan gezinme hook'u.
+ * 1D rota akışı (yukarı/aşağı = seviye) ve sektör geçişleriyle (sağ/sol) bağlayan gezinme hook'u.
  */
 export function useCircuitNavigation({
   totalItems,
@@ -30,6 +35,7 @@ export function useCircuitNavigation({
   onChapterNext,
   onJumpToCurrent,
   onSwitchTab,
+  horizontal = 'chapter',
   disabled = false,
 }: UseCircuitNavigationOptions) {
   const step = useCallback(
@@ -65,26 +71,37 @@ export function useCircuitNavigation({
           onConfirm();
           break;
 
-        // İleri (Sonraki Düğüm)
+        // Sonraki seviye
         case 'ArrowDown':
-        case 'ArrowRight':
         case 's':
         case 'S':
-        case 'd':
-        case 'D':
           e.preventDefault();
           step(1);
           break;
 
-        // Geri (Önceki Düğüm)
+        // Önceki seviye
         case 'ArrowUp':
-        case 'ArrowLeft':
         case 'w':
         case 'W':
+          e.preventDefault();
+          step(-1);
+          break;
+
+        // Sağ / sol: sektör değişimi (yatay sektör kavramı olmayan listelerde seviye adımı)
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          if (horizontal === 'chapter') onChapterNext?.();
+          else step(1);
+          break;
+
+        case 'ArrowLeft':
         case 'a':
         case 'A':
           e.preventDefault();
-          step(-1);
+          if (horizontal === 'chapter') onChapterPrev?.();
+          else step(-1);
           break;
 
         // Bölüm (Chapter) Değişimi
@@ -124,6 +141,7 @@ export function useCircuitNavigation({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     disabled,
+    horizontal,
     step,
     onBack,
     onConfirm,
@@ -137,13 +155,17 @@ export function useCircuitNavigation({
   const handleGamepadMove = useCallback(
     (direction: GamepadDirection) => {
       if (disabled || isAnyModalOpen()) return;
-      if (direction === 'down' || direction === 'right') {
-        step(1);
-      } else if (direction === 'up' || direction === 'left') {
-        step(-1);
+      if (direction === 'down') step(1);
+      else if (direction === 'up') step(-1);
+      else if (direction === 'right') {
+        if (horizontal === 'chapter') onChapterNext?.();
+        else step(1);
+      } else if (direction === 'left') {
+        if (horizontal === 'chapter') onChapterPrev?.();
+        else step(-1);
       }
     },
-    [step, disabled],
+    [step, disabled, horizontal, onChapterPrev, onChapterNext],
   );
 
   const handleGamepadButtonPress = useCallback(

@@ -3,14 +3,7 @@
  * anahtarları. Değerler `services/settings` tiplerinden gelir.
  */
 
-import type { ControlScheme, MotionPreference, PadSide, RendererPreference } from '@/services/settings';
-
-export const RENDERER_OPTIONS: { value: RendererPreference; labelKey: string }[] = [
-  { value: 'auto', labelKey: 'settings.renderer_auto' },
-  { value: 'dom', labelKey: 'settings.renderer_dom' },
-  { value: 'hybrid', labelKey: 'settings.renderer_hybrid' },
-  { value: 'canvas', labelKey: 'settings.renderer_canvas' },
-];
+import type { ControlScheme, MotionPreference, PadSide } from '@/services/settings';
 
 export const MOTION_OPTIONS: { value: MotionPreference; labelKey: string }[] = [
   { value: 'auto', labelKey: 'settings.motion_auto' },

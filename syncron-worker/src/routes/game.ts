@@ -267,6 +267,7 @@ gameRouter.post('/complete-level', firebaseAuth, rateLimit('complete-level'), as
       createdBy,
       starsGained: bestStars,
       xpDelta,
+      isVerified: c.get('emailVerified') === true,
     }).catch((err) => console.error('[Leaderboard] leaderboard update failed:', err)),
   );
 

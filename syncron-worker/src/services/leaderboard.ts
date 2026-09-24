@@ -16,6 +16,29 @@ export interface LeaderboardUpdateParams {
   createdBy: string | null;
   starsGained: number; // The stars won in this completion
   xpDelta: number; // The XP earned in this completion
+  /** Token'daki doğrulanmış e-posta. `false` → oyuncu sıralamalarda listelenmez. */
+  isVerified: boolean;
+}
+
+/**
+ * Herkese açık sıralamalarda listelenebilen oyuncular (anonim olmayanlar).
+ * `uidColumn` çağıranın sorgusundaki uid sütunudur (örn. `s.uid`). Liderlik
+ * tablosunu, rozet dağıtımını ve günlük sıralamayı tek kuralda toplar.
+ */
+export function rankedUidClause(uidColumn: string): string {
+  return `${uidColumn} IN (SELECT uid FROM user_profiles WHERE is_ranked = 1)`;
+}
+
+/**
+ * Doğrulanmış oyuncuyu sıralamalara dahil eder (yalnızca 0 → 1; geri alınmaz).
+ * Satır yoksa dokunmaz — profil satırı zaten skor yazımında oluşur.
+ */
+// Doğrulanmış e-postası olan oyuncunun profilini herkese açık sıralamalar için işaretler.
+export async function markRanked(db: D1Database, uid: string): Promise<void> {
+  await db
+    .prepare(`UPDATE user_profiles SET is_ranked = 1 WHERE uid = ?1 AND is_ranked = 0`)
+    .bind(uid)
+    .run();
 }
 
 /**
@@ -119,13 +142,14 @@ export async function upsertUserProfile(
   displayName: string,
   tag: string | null,
   xpDelta?: number,
+  isVerified = false,
 ): Promise<void> {
   const { cleanName, cleanTag } = cleanProfileData(displayName, tag);
   const xp = xpDelta !== undefined ? xpDelta : 0;
 
   const query = `
-    INSERT INTO user_profiles (uid, display_name, tag, xp, updated_at)
-    VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    INSERT INTO user_profiles (uid, display_name, tag, xp, is_ranked, updated_at)
+    VALUES (?1, ?2, ?3, ?4, ?5, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     ON CONFLICT(uid)
     DO UPDATE SET
       display_name = excluded.display_name,
@@ -135,10 +159,12 @@ export async function upsertUserProfile(
       -- and the cleanup cron incorrectly targeting them.
       tag = COALESCE(excluded.tag, user_profiles.tag),
       xp = user_profiles.xp + excluded.xp,
+      -- Yalnızca 0 → 1: doğrulanmış oyuncu bir kez listelenmeye başlayınca bayrak geri inmez.
+      is_ranked = MAX(user_profiles.is_ranked, excluded.is_ranked),
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
   `;
 
-  await db.prepare(query).bind(uid, cleanName, cleanTag, xp).run();
+  await db.prepare(query).bind(uid, cleanName, cleanTag, xp, isVerified ? 1 : 0).run();
 }
 
 /**
@@ -259,7 +285,7 @@ export async function updateLeaderboardData(
 
   // Faz 3: User Profile Cache
   tasks.push(
-    upsertUserProfile(db, uid, params.displayName, params.tag, params.xpDelta)
+    upsertUserProfile(db, uid, params.displayName, params.tag, params.xpDelta, params.isVerified)
       .catch((err) => console.error('[Leaderboard] upsertUserProfile failed:', err))
   );
 

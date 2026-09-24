@@ -17,6 +17,7 @@ const SCHEMA_STATEMENTS = [
     tag          TEXT UNIQUE CHECK (tag IS NULL OR length(tag) BETWEEN 2 AND 20),
     showcase_badges TEXT DEFAULT NULL,
     xp           INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
+    is_ranked    INTEGER NOT NULL DEFAULT 0,
     updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_period_scores (

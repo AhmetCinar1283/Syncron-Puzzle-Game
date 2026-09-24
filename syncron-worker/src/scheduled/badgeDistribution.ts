@@ -3,7 +3,7 @@
  * rekor kırma vb.) ilk 3'e giren oyunculara otomatik olarak başarı rozeti (badge) dağıtan zamanlanmış görevi içerir.
  */
 
-import { getCurrentPeriodIds } from '../services/leaderboard';
+import { getCurrentPeriodIds, rankedUidClause } from '../services/leaderboard';
 import type { Env } from '../types';
 
 /**
@@ -43,7 +43,7 @@ export async function runBadgeDistribution(
         name: 'stars',
         query: `
           SELECT uid FROM user_period_scores
-          WHERE period_type = 'weekly' AND period_id = ?1
+          WHERE period_type = 'weekly' AND period_id = ?1 AND ${rankedUidClause('uid')}
           ORDER BY stars_gained DESC, updated_at ASC
           LIMIT 3
         `,
@@ -52,7 +52,7 @@ export async function runBadgeDistribution(
         name: 'levels',
         query: `
           SELECT uid FROM user_period_scores
-          WHERE period_type = 'weekly' AND period_id = ?1
+          WHERE period_type = 'weekly' AND period_id = ?1 AND ${rankedUidClause('uid')}
           ORDER BY levels_done DESC, updated_at ASC
           LIMIT 3
         `,
@@ -61,7 +61,7 @@ export async function runBadgeDistribution(
         name: 'records',
         query: `
           SELECT uid FROM user_world_records
-          WHERE period_type = 'weekly' AND period_id = ?1
+          WHERE period_type = 'weekly' AND period_id = ?1 AND ${rankedUidClause('uid')}
           ORDER BY records_count DESC, updated_at ASC
           LIMIT 3
         `,
@@ -104,7 +104,7 @@ export async function runBadgeDistribution(
 
     const creatorQuery = `
       SELECT uid FROM creator_scores
-      WHERE period_type = 'monthly' AND period_id = ?1
+      WHERE period_type = 'monthly' AND period_id = ?1 AND ${rankedUidClause('uid')}
       ORDER BY plays_gained DESC, stars_gained DESC, updated_at ASC
       LIMIT 3
     `;

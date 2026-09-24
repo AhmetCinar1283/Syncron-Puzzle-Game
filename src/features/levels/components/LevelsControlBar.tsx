@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Crosshair, Lock } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
 import type { LevelThemeDefinition } from '../themes/types';
 
@@ -14,6 +14,9 @@ export interface LevelsControlBarProps {
   onPlay: () => void;
   playDisabled: boolean;
   playLabel: string;
+  /** Kaldığın seviyeye dön. */
+  onJumpToCurrent?: () => void;
+  jumpLabel?: string;
 }
 
 /**
@@ -31,6 +34,8 @@ export function LevelsControlBar({
   onPlay,
   playDisabled,
   playLabel,
+  onJumpToCurrent,
+  jumpLabel,
 }: LevelsControlBarProps) {
   const t = useT();
 
@@ -49,6 +54,19 @@ export function LevelsControlBar({
         <ChevronLeft size={16} />
         {!isMobile && <span>{t('levels.portal_prev')}</span>}
       </button>
+
+      {onJumpToCurrent && (
+        <button
+          type="button"
+          onClick={onJumpToCurrent}
+          title={jumpLabel}
+          aria-label={jumpLabel}
+          className="flex shrink-0 items-center justify-center rounded-lg border bg-white/[0.05] p-2 transition-all active:scale-90 hover:bg-white/[0.1]"
+          style={{ borderColor: themeDef.accentColor, color: themeDef.accentColor }}
+        >
+          <Crosshair size={16} />
+        </button>
+      )}
 
       <button
         type="button"

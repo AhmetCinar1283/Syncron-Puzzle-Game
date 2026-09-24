@@ -27,6 +27,8 @@ export interface LeaderboardResponse {
   entries: LeaderboardEntry[];
   myRank: number | null;
   myValue: number | null;
+  /** Oyuncu herkese açık listelerde yer alıyor mu? Anonim oyuncu için `false` (sırasını görür ama listelenmez). */
+  myRanked?: boolean | null;
   totalPlayers: number;
 }
 

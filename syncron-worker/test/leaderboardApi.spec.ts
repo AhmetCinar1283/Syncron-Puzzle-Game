@@ -31,6 +31,7 @@ const SCHEMA_STATEMENTS = [
     display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
     tag          TEXT UNIQUE CHECK (tag IS NULL OR length(tag) BETWEEN 2 AND 20),
     showcase_badges TEXT DEFAULT NULL,
+    is_ranked    INTEGER NOT NULL DEFAULT 1,
     updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_period_scores (
@@ -231,6 +232,64 @@ describe('Leaderboard HTTP API', () => {
     expect(json.myValue).toBe(0);
   });
 
+  describe('anonymous (unranked) players', () => {
+    beforeEach(async () => {
+      // user-3 (50 yıldız, en erken) anonim: hiçbir listede görünmemeli.
+      await db.prepare(`UPDATE user_profiles SET is_ranked = 0 WHERE uid = 'user-3'`).run();
+    });
+
+    it('is hidden from the list, the count and every other player rank', async () => {
+      const ctx = createExecutionContext();
+      const res = await worker.fetch(new IncomingRequest('http://localhost/leaderboard/stars/weekly?periodId=2026-W23'), env, ctx);
+      const json = await res.json<any>();
+      expect(json.totalPlayers).toBe(2);
+      expect(json.entries.map((e: any) => [e.uid, e.rank])).toEqual([['user-1', 1], ['user-2', 2]]);
+    });
+
+    it('still sees their own rank measured against ranked players', async () => {
+      const ctx = createExecutionContext();
+      const res = await worker.fetch(new IncomingRequest('http://localhost/leaderboard/stars/weekly?periodId=2026-W23', {
+        headers: { Authorization: 'Bearer valid-token-user-3' },
+      }), env, ctx);
+      const json = await res.json<any>();
+      // user-1 (50 yıldız) ile eşit ama user-3 daha erken ulaştı → 1. sıra.
+      expect(json.myRank).toBe(1);
+      expect(json.myValue).toBe(50);
+      expect(json.myRanked).toBe(false);
+      // Üst listede kendisi bile yok.
+      expect(json.entries.map((e: any) => e.uid)).toEqual(['user-1', 'user-2']);
+    });
+
+    it('around_me shows the anonymous viewer only in their own response, with shifted ranks below', async () => {
+      const ctx = createExecutionContext();
+      const res = await worker.fetch(new IncomingRequest('http://localhost/leaderboard/stars/weekly?periodId=2026-W23&around_me=true', {
+        headers: { Authorization: 'Bearer valid-token-user-3' },
+      }), env, ctx);
+      const json = await res.json<any>();
+      expect(json.entries.map((e: any) => [e.uid, e.rank])).toEqual([['user-3', 1], ['user-1', 2], ['user-2', 3]]);
+
+      // Başka bir oyuncunun around_me yanıtında anonim yok.
+      const ctx2 = createExecutionContext();
+      const other = await worker.fetch(new IncomingRequest('http://localhost/leaderboard/stars/weekly?periodId=2026-W23&around_me=true', {
+        headers: { Authorization: 'Bearer valid-token-user-2' },
+      }), env, ctx2);
+      const otherJson = await other.json<any>();
+      expect(otherJson.entries.map((e: any) => e.uid)).toEqual(['user-1', 'user-2']);
+      expect(otherJson.myRank).toBe(2);
+    });
+
+    it('hides anonymous players in every category', async () => {
+      await db.prepare(`UPDATE user_profiles SET is_ranked = 0 WHERE uid = 'user-1'`).run();
+      for (const path of ['records/daily?periodId=2026-06-07', 'creators/monthly?periodId=2026-06', 'levels/weekly?periodId=2026-W23']) {
+        const ctx = createExecutionContext();
+        const res = await worker.fetch(new IncomingRequest(`http://localhost/leaderboard/${path}`), env, ctx);
+        const json = await res.json<any>();
+        expect(json.entries.map((e: any) => e.uid)).not.toContain('user-1');
+        expect(json.entries.map((e: any) => e.uid)).not.toContain('user-3');
+      }
+    });
+  });
+
   it('fails with 401 when around_me=true is requested anonymously', async () => {
     const ctx = createExecutionContext();
     const req = new IncomingRequest('http://localhost/leaderboard/stars/weekly?periodId=2026-W23&around_me=true');
@@ -285,5 +344,20 @@ describe('Leaderboard HTTP API', () => {
     const json = await res.json<any>();
     expect(json.success).toBe(false);
     expect(json.error).toBe('Invalid or expired token');
+  });
+
+  // Üretimde LEADERBOARD_ENABLED tanımsız: okuma yüzeyi var olmayan bir rota gibi davranmalı.
+  it('returns plain 404 (like an unknown route) when LEADERBOARD_ENABLED is not "true"', async () => {
+    const ctx = createExecutionContext();
+    const disabledEnv = { ...env, LEADERBOARD_ENABLED: undefined };
+    const res = await worker.fetch(
+      new IncomingRequest('http://localhost/leaderboard/stars/weekly?periodId=2026-W23', {
+        headers: { Authorization: 'Bearer valid-token-user-1' },
+      }),
+      disabledEnv,
+      ctx,
+    );
+    expect(res.status).toBe(404);
+    expect(await res.text()).toBe('Not Found');
   });
 });

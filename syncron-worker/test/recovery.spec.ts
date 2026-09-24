@@ -269,6 +269,7 @@ describe('recomputeCreatorScores', () => {
 
 describe('recomputeBadges', () => {
   it('geçmiş bir haftanın rozetlerini yeniden dağıtır ve tekrarında çoğaltmaz', async () => {
+    await db().prepare(`INSERT INTO user_profiles (uid, display_name) VALUES ('u1','Ada')`).run();
     await db().prepare(`INSERT INTO user_period_scores (uid, period_type, period_id, stars_gained, levels_done)
                         VALUES ('u1','weekly','2026-W23', 30, 10)`).run();
 

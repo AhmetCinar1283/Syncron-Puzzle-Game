@@ -8,6 +8,7 @@ const SCHEMA_STATEMENTS = [
     display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
     tag          TEXT UNIQUE CHECK (tag IS NULL OR length(tag) BETWEEN 2 AND 20),
     xp           INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
+    is_ranked    INTEGER NOT NULL DEFAULT 1,
     updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_period_scores (
@@ -76,6 +77,10 @@ describe('Badge Distribution Cron', () => {
     await db.prepare('DELETE FROM user_world_records').run();
     await db.prepare('DELETE FROM creator_scores').run();
     await db.prepare('DELETE FROM badges').run();
+    await db.prepare('DELETE FROM user_profiles').run();
+    for (const uid of ['user-1', 'user-2', 'user-3', 'user-4', 'user-5', 'creator-1', 'creator-2', 'creator-3']) {
+      await db.prepare(`INSERT INTO user_profiles (uid, display_name) VALUES (?1, ?1)`).bind(uid).run();
+    }
   });
 
   it('correctly distributes weekly badges for stars, levels and records', async () => {
@@ -172,6 +177,22 @@ describe('Badge Distribution Cron', () => {
     expect(creatorBadges.results[0]).toEqual({ uid: 'creator-2', badge_type: 'monthly_creator_1st', rank: 1 });
     expect(creatorBadges.results[1]).toEqual({ uid: 'creator-1', badge_type: 'monthly_creator_top3', rank: 2 });
     expect(creatorBadges.results[2]).toEqual({ uid: 'creator-3', badge_type: 'monthly_creator_top3', rank: 3 });
+  });
+
+  it('never awards badges to anonymous (unranked) players', async () => {
+    await db.prepare(`UPDATE user_profiles SET is_ranked = 0 WHERE uid = 'user-1'`).run();
+    await db.prepare(`
+      INSERT INTO user_period_scores (uid, period_type, period_id, stars_gained, levels_done, updated_at)
+      VALUES
+        ('user-1', 'weekly', '2026-W23', 99, 9, '2026-06-07T10:00:00Z'),
+        ('user-2', 'weekly', '2026-W23', 10, 1, '2026-06-07T10:00:00Z')
+    `).run();
+
+    await runBadgeDistribution(env, 'weekly', new Date(Date.UTC(2026, 5, 8, 0, 5, 0)));
+
+    const winners = await db.prepare(`SELECT uid, rank FROM badges WHERE badge_type LIKE 'weekly_stars%'`)
+      .all<{ uid: string; rank: number }>();
+    expect(winners.results).toEqual([{ uid: 'user-2', rank: 1 }]);
   });
 
   it('guarantees idempotence by not creating duplicate badges if run twice', async () => {

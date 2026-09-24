@@ -101,3 +101,10 @@ kullanılacak. **Yüz TEK yerde tanımlı ve TEK yerde çizilir, kod tekrarı yo
 - Maskot `pose={sampleEmote(compiledEmote(ad), frameMs)}` ile deterministik çizilir.
 - Sahneler: gülen maskota zoom, hızlı kamera kaydırma, ekran geçişleri; 30 sn Play Store,
   15 sn portal, dikey versiyon.
+
+## Sayfalara maskot (2026-09-24)
+- Ortak parçalar: `mascot/scenes.ts` (sahne kataloğu + `pickShow`), `components/ui/useMascotShow.ts` (ara sıra senaryo),
+  `components/ui/MascotCompanion.tsx` (bir noktayı takip eden, süzülen/zıplayan maskot; `lite` kademesinde sakin).
+  Ana sayfa `HeroPlayCell` da `useMascotShow` kullanır. Statik yerleşim için eskisi gibi `MascotBuddy`.
+- Seviyeler sayfası: `levels/components/circuit/LevelsMascot.tsx` seçili düğümü takip eder, tepki mantığı `levels/lib/levelMascot.ts`.
+- Gerçek cihazda (Android dahil) gözle DOĞRULANMADI.

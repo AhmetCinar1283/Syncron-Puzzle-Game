@@ -20,6 +20,7 @@ import { completeDaily } from '../services/daily/completeDaily';
 import { getArchiveView, getDailyPuzzleView, getStreakView } from '../services/daily/dailyView';
 import { getDailyLeaderboard, getDailyRank, getOfficialResult } from '../services/daily/dailyResults';
 import { grantDailyXp } from '../services/daily/dailyXp';
+import { markRanked } from '../services/leaderboard';
 import { rateLimit } from '../middleware/rateLimiter';
 import { trackSecurityEvent } from '../middleware/securityTrail';
 
@@ -119,7 +120,13 @@ dailyRouter.post('/daily/complete', firebaseAuth, rateLimit('daily-complete'), a
     if (xpDelta > 0) {
       // XP yazımı başarısız olursa resmî sonuç ve seri yine geçerlidir (loglanır).
       c.executionCtx.waitUntil(
-        grantDailyXp(c.env, uid, xpDelta).catch((err) => console.error('[Daily] XP grant failed:', err)),
+        grantDailyXp(c.env, uid, xpDelta, c.get('emailVerified') === true).catch((err) => console.error('[Daily] XP grant failed:', err)),
+      );
+    }
+    if (c.get('emailVerified') === true) {
+      // XP 0 olsa da (tekrar oynama) doğrulanmış oyuncu günlük sıralamada listelenmeli.
+      c.executionCtx.waitUntil(
+        markRanked(c.env.AUDIT_DB, uid).catch((err) => console.error('[Daily] markRanked failed:', err)),
       );
     }
     c.executionCtx.waitUntil(

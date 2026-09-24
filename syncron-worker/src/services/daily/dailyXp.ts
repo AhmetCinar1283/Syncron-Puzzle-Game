@@ -9,7 +9,7 @@ import { getAdminAccessToken } from '../serviceAccount';
 import { docPath, fromDoc, fsCommit, fsGet, nowTimestamp } from '../firestore';
 import { upsertUserProfile } from '../leaderboard';
 
-export async function grantDailyXp(env: Env, uid: string, xpDelta: number): Promise<void> {
+export async function grantDailyXp(env: Env, uid: string, xpDelta: number, isVerified = false): Promise<void> {
   if (xpDelta <= 0) return;
   const projectId = env.FIREBASE_PROJECT_ID;
   const token = await getAdminAccessToken(env.GOOGLE_SERVICE_ACCOUNT);
@@ -49,5 +49,5 @@ export async function grantDailyXp(env: Env, uid: string, xpDelta: number): Prom
   });
 
   await fsCommit(projectId, writes, token);
-  await upsertUserProfile(env.AUDIT_DB, uid, displayName, tag, xpDelta);
+  await upsertUserProfile(env.AUDIT_DB, uid, displayName, tag, xpDelta, isVerified);
 }

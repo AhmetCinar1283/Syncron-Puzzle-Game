@@ -1,18 +1,17 @@
 /**
  * DOSYA AMACI: Birleşik ayar şemasından önce dağınık tutulan eski localStorage
- * anahtarlarını (dil, tema, ses, renderer, haptik, hareket kademesi) okuyup
+ * anahtarlarını (dil, tema, ses, haptik, hareket kademesi) okuyup
  * kısmi bir ayar nesnesine çeviren tek noktadır. Yalnızca ilk açılış / v1 → v2
  * geçişinde kullanılır; yazma tarafı `storageAdapter.ts`'tedir.
  */
 
 import { userStorageGet } from '@/lib/userStorage';
-import { isValidLang, isValidMotion, isValidRenderer, isValidTheme } from './defaults';
+import { isValidLang, isValidMotion, isValidTheme } from './defaults';
 import type { SettingsUpdatePayload } from './types';
 
 export const LEGACY_KEY_LANG = 'lang';
 export const LEGACY_KEY_THEME = 'know_and_conquer_game_theme';
 export const LEGACY_KEY_SOUND_MUTED = 'soundMuted';
-const LEGACY_KEY_RENDERER = 'boardRenderer';
 const LEGACY_KEY_HAPTICS = 'hapticsEnabled';
 const LEGACY_KEY_MOTION = 'motionTier';
 
@@ -30,11 +29,9 @@ export function readLegacyPreferences(): SettingsUpdatePayload {
     const muted = userStorageGet(LEGACY_KEY_SOUND_MUTED) ?? localStorage.getItem(LEGACY_KEY_SOUND_MUTED);
     if (muted !== null) result.sound = { muted: muted === 'true' };
 
-    const renderer = userStorageGet(LEGACY_KEY_RENDERER);
     // Eski şemada 'auto' = anahtar yok; yalnızca açık seçimler taşınır.
     const motion = userStorageGet(LEGACY_KEY_MOTION);
     result.graphics = {
-      ...(isValidRenderer(renderer) ? { renderer } : {}),
       ...(isValidMotion(motion) ? { motion } : {}),
     };
 

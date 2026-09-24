@@ -5,7 +5,7 @@
 
 import { LANGS, type Lang } from '@/lib/i18n';
 import { ALL_THEMES, type GameTheme } from '@/game-engine/themes/themeConfig';
-import type { ControlScheme, MotionPreference, PadSide, RendererPreference, UserSettings } from './types';
+import type { ControlScheme, MotionPreference, PadSide, UserSettings } from './types';
 
 /** Güncel şema versiyonu. v1 → v2: controls / graphics / general grupları ve menü sesi eklendi. */
 export const SETTINGS_VERSION = 2;
@@ -32,7 +32,6 @@ export const DEFAULT_SETTINGS: Readonly<UserSettings> = Object.freeze({
     haptics: true,
   }),
   graphics: Object.freeze({
-    renderer: 'auto',
     motion: 'auto',
     profiler: false,
   }),
@@ -68,11 +67,6 @@ export function isValidLang(value: unknown): value is Lang {
 export function isValidTheme(value: unknown): value is GameTheme {
   if (typeof value !== 'string') return false;
   return ALL_THEMES.some((t) => t.id === value);
-}
-
-/** Verilen değerin geçerli bir çizici tercihi olup olmadığını doğrular. */
-export function isValidRenderer(value: unknown): value is RendererPreference {
-  return value === 'auto' || value === 'dom' || value === 'hybrid' || value === 'canvas';
 }
 
 /** Verilen değerin geçerli bir hareket kademesi tercihi olup olmadığını doğrular. */

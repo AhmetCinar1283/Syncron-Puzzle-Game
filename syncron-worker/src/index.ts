@@ -11,7 +11,7 @@ import { gameRouter } from './routes/game';
 import { ticketsRouter } from './routes/tickets';
 import { internalLogRouter } from './routes/internalLog';
 import { adminApiRouter } from './routes/adminApi';
-import { leaderboardRouter } from './routes/leaderboard';
+import { leaderboardRouter, isLeaderboardEnabled } from './routes/leaderboard';
 import { badgesRouter } from './routes/badges';
 import { friendsRouter } from './routes/friends';
 import { playedLevelsRouter } from './routes/playedLevels';
@@ -110,10 +110,13 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     if (event.cron === '0 3 * * SUN') {
       ctx.waitUntil(runLogRetention(env));
-    } else if (event.cron === '5 0 * * MON') {
-      ctx.waitUntil(runBadgeDistribution(env, 'weekly'));
-    } else if (event.cron === '5 0 1 * *') {
-      ctx.waitUntil(runBadgeDistribution(env, 'monthly'));
+    } else if (event.cron === '5 0 * * MON' || event.cron === '5 0 1 * *') {
+      // Rozetler liderlik sıralamasından türer; okuma yüzeyi kapalıyken dağıtılmaz.
+      if (!isLeaderboardEnabled(env)) {
+        console.log('[BadgeDistribution] Skipped: LEADERBOARD_ENABLED is not "true"');
+        return;
+      }
+      ctx.waitUntil(runBadgeDistribution(env, event.cron === '5 0 * * MON' ? 'weekly' : 'monthly'));
     } else if (event.cron === '0 2 * * SAT') {
       // Haftalık soğuk dışa aktarım: kaynak D1 tablolarını R2'ye KOPYALAR.
       // D1'den hiçbir şey silinmez (bkz. scheduled/dataExport.ts).

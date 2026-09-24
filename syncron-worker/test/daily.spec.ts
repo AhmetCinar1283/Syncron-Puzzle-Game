@@ -46,7 +46,7 @@ const SCHEMA = [
     delivered_at TEXT, cancelled_at TEXT, consumed_at TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS user_profiles (
-    uid TEXT NOT NULL PRIMARY KEY, display_name TEXT NOT NULL, tag TEXT UNIQUE, showcase_badges TEXT, xp INTEGER NOT NULL DEFAULT 0,
+    uid TEXT NOT NULL PRIMARY KEY, display_name TEXT NOT NULL, tag TEXT UNIQUE, showcase_badges TEXT, xp INTEGER NOT NULL DEFAULT 0, is_ranked INTEGER NOT NULL DEFAULT 1,
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
 ];
@@ -92,6 +92,9 @@ async function createPuzzle(opts: { id?: string; status?: 'draft' | 'approved'; 
 beforeEach(async () => {
   for (const sql of SCHEMA) await db().prepare(sql).run();
   for (const table of TABLES) await db().prepare(`DELETE FROM ${table}`).run();
+  for (const uid of ['u1', 'u2', 'u3']) {
+    await db().prepare(`INSERT INTO user_profiles (uid, display_name) VALUES (?1, ?1)`).bind(uid).run();
+  }
 });
 
 describe('daily date + policy (pure)', () => {
@@ -280,6 +283,18 @@ describe('completeDaily', () => {
     expect(board.entries.map((e) => [e.uid, e.hinted])).toEqual([['u2', false], ['u1', true]]);
     const grant = await db().prepare(`SELECT consumed_at FROM reward_grants WHERE id = 'g1'`).first<{ consumed_at: string | null }>();
     expect(grant?.consumed_at).not.toBeNull();
+  });
+
+  it('keeps anonymous (unranked) players off the daily leaderboard', async () => {
+    const id = await createPuzzle({ assignDate: TODAY });
+    await db().prepare(`UPDATE user_profiles SET is_ranked = 0 WHERE uid = 'u3'`).run();
+    await completeDaily(db(), { uid: 'u3', date: TODAY, moves: ['r', 'r'], timeSpent: 1, hintsUsed: 0 }, NOW);
+    await completeDaily(db(), { uid: 'u1', date: TODAY, moves: ['l', 'r', 'r'], timeSpent: 50, hintsUsed: 0 }, NOW);
+
+    const board = await getDailyLeaderboard(db(), TODAY, 10);
+    expect(board.entries.map((e) => e.uid)).toEqual(['u1']);
+    expect(board.total).toBe(1);
+    expect(id).toBeTruthy();
   });
 
   it('continues the streak across consecutive days', async () => {

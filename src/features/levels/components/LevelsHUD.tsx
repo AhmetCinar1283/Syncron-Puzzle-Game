@@ -17,6 +17,8 @@ export interface LevelsHUDProps {
   labels: { back: string; campaign: string; custom: string; newLevel: string };
   /** Editör (dolayısıyla "özel leveller" sekmesi ve "yeni level") portal build'lerinde kapalıdır. */
   showCustomTab?: boolean;
+  /** Ortadaki alan (kampanyada sektör seçici). Verilmezse sekmeler ortada durur. */
+  center?: React.ReactNode;
 }
 
 /**
@@ -37,37 +39,47 @@ export function LevelsHUD({
   isGamepadConnected,
   labels,
   showCustomTab = true,
+  center,
 }: LevelsHUDProps) {
   const t = useT();
 
+  const tabs = (
+    <div className="relative flex rounded-lg border border-white/5 bg-black/30 p-0.5">
+      <TabButton active={activeTab === 'campaign'} color="#00ff88" onClick={() => onChangeTab('campaign')}>
+        {labels.campaign}
+      </TabButton>
+      <TabButton active={activeTab === 'custom'} color="#00c4ff" onClick={() => onChangeTab('custom')}>
+        {labels.custom}
+      </TabButton>
+    </div>
+  );
+
   return (
     <div
-      className="absolute inset-0 z-30 flex items-center justify-between gap-2 border-b border-white/[0.08] bg-[#080c1c]/80 px-3 backdrop-blur-md"
+      className="absolute inset-0 z-30 flex items-center gap-2 border-b border-white/[0.08] bg-[#080c1c]/80 px-3 backdrop-blur-md"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] font-bold tracking-wide text-slate-400 transition-colors hover:text-slate-200"
-      >
-        <span>←</span>
-        {!isMobile && <span>{labels.back}</span>}
-        {isGamepadConnected && <GamepadBadge letter="B" color="#ef4444" />}
-      </button>
+      <div className="flex min-w-[64px] flex-1 basis-0 items-center justify-start">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2 text-[12px] font-bold tracking-wide text-slate-400 transition-colors hover:text-slate-200"
+        >
+          <span>←</span>
+          {!isMobile && <span>{labels.back}</span>}
+          {isGamepadConnected && <GamepadBadge letter="B" color="#ef4444" />}
+        </button>
+      </div>
 
-      {showCustomTab ? (
-        <div className="relative flex rounded-lg border border-white/5 bg-black/30 p-0.5">
-          <TabButton active={activeTab === 'campaign'} color="#00ff88" onClick={() => onChangeTab('campaign')}>
-            {labels.campaign}
-          </TabButton>
-          <TabButton active={activeTab === 'custom'} color="#00c4ff" onClick={() => onChangeTab('custom')}>
-            {labels.custom}
-          </TabButton>
-        </div>
+      {center ? (
+        <div className="flex min-w-0 flex-[0_1_420px] justify-center">{center}</div>
+      ) : showCustomTab ? (
+        <div className="flex flex-[0_1_420px] justify-center">{tabs}</div>
       ) : (
-        <div />
+        <div className="flex-[0_1_0px]" />
       )}
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex min-w-[64px] flex-1 basis-0 items-center justify-end gap-1.5">
+        {center && showCustomTab && tabs}
         {(totalStars !== undefined ? totalStars > 0 : false) && (
           <div className="flex items-center gap-1 rounded-lg border border-yellow-400/30 bg-yellow-400/[0.08] px-2 py-1 text-[11px] font-black text-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.2)]">
             <GameIcon name="star" size={13} color="#facc15" />
@@ -84,7 +96,7 @@ export function LevelsHUD({
           onClick={onRefresh}
           disabled={syncing}
           title={t('levels.refresh_tooltip')}
-          className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-400 disabled:cursor-not-allowed disabled:text-slate-700"
+          className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-400 disabled:cursor-not-allowed disabled:text-slate-700"
         >
           <span className={syncing ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
         </button>
@@ -105,7 +117,7 @@ function TabButton({ active, color, onClick, children }: { active: boolean; colo
   return (
     <button
       onClick={onClick}
-      className="rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
+      className="rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors"
       style={{ background: active ? `${color}14` : 'transparent', color: active ? color : '#64748b' }}
     >
       {children}

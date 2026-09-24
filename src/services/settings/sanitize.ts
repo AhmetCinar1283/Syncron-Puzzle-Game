@@ -12,7 +12,6 @@ import {
   isValidMotion,
   isValidPadSide,
   isValidScheme,
-  isValidRenderer,
   isValidTheme,
 } from './defaults';
 import type { UserSettings } from './types';
@@ -77,7 +76,6 @@ export function sanitizeSettings(data: unknown): UserSettings {
       haptics: bool(controls.haptics, d.controls.haptics),
     },
     graphics: {
-      renderer: isValidRenderer(graphics.renderer) ? graphics.renderer : d.graphics.renderer,
       motion: isValidMotion(graphics.motion) ? graphics.motion : d.graphics.motion,
       profiler: bool(graphics.profiler, d.graphics.profiler),
     },

@@ -4,7 +4,7 @@ import React, { memo, useMemo, useState, useEffect, useRef } from 'react';
 import { PlayerGraphic } from '@/game-engine/components/entities/PlayerGraphic';
 import type { MascotHandle } from '@/game-engine/components/entities/MascotView';
 import { useMotionTier } from '@/lib/motionTier';
-import { pickHeroShow } from '../lib/heroScenes';
+import { useMascotShow } from '@/components/ui/useMascotShow';
 import { Entity } from '@/game-engine/logic/entityTypes';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { PuzzleWinBurst } from './PuzzleWinBurst';
@@ -65,39 +65,21 @@ function HeroPlayCellBase({
   const lively = useMotionTier() === 'full';
   const showing = isActive && phase === 'idle' && lively;
 
+  // firstDelay: açılış "happy" ifadesi (aşağıdaki efekt) bitsin.
+  useMascotShow(mascotRef, { enabled: showing, firstDelay: 2400 });
+
+  // Play seçili değilken maskot uyur (sleepy döngüsel); seçilince happy ile uyanır.
+  // Bildirim sırası önemli: yukarıdaki efektin temizliği `stop()` çağırır, bu efekt ondan sonra çalışır.
   useEffect(() => {
-    if (!showing) return;
     const handle = mascotRef.current;
-    const timers = new Set<ReturnType<typeof setTimeout>>();
-    let alive = true;
-    let lastId: string | null = null;
-    const later = (ms: number, fn: () => void) => {
-      const t = setTimeout(() => { timers.delete(t); if (alive) fn(); }, ms);
-      timers.add(t);
-    };
-    const nextShow = (delay: number) => later(delay, () => {
-      const pick = pickHeroShow(Math.random, lastId);
-      if (pick.kind === 'single') {
-        mascotRef.current?.emote(pick.emote);
-        nextShow(pick.duration + 3500 + Math.random() * 4000);
-        return;
-      }
-      lastId = pick.scene.id;
-      for (const step of pick.scene.steps) {
-        later(step.at, () => {
-          if (step.stop) mascotRef.current?.stop(step.stop);
-          if (step.emote) mascotRef.current?.emote(step.emote, { force: true });
-        });
-      }
-      nextShow(pick.scene.duration + 3500 + Math.random() * 4000);
-    });
-    nextShow(700);
-    return () => {
-      alive = false;
-      timers.forEach(clearTimeout);
-      handle?.stop();
-    };
-  }, [showing]);
+    if (!handle) return;
+    if (isActive) {
+      handle.stop('sleepy');
+      handle.emote('happy', { force: true });
+    } else {
+      handle.emote('sleepy', { force: true });
+    }
+  }, [isActive]);
 
   // Karakter grafiği gerçek oyun varlığını kullanır — menü ile oyun aynı dili konuşur.
   const playerEntity: Entity = useMemo(

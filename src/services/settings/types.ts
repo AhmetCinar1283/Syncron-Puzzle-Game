@@ -6,9 +6,6 @@
 import type { Lang } from '@/lib/i18n';
 import type { GameTheme } from '@/game-engine/themes/themeConfig';
 
-/** Tahta çizicisi tercihi: `auto` = mevcut otomatik karar sistemi (boardRenderer.ts). */
-export type RendererPreference = 'auto' | 'dom' | 'hybrid' | 'canvas';
-
 /** Hareket/animasyon kademesi tercihi: `auto` = cihaza göre tespit (motionTier.ts). */
 export type MotionPreference = 'auto' | 'full' | 'lite';
 
@@ -43,8 +40,6 @@ export interface ControlSettings {
 }
 
 export interface GraphicsSettings {
-  /** Tahta çizici tercihi (DOM / Canvas / Otomatik). */
-  renderer: RendererPreference;
   /** Hareket/animasyon kademesi tercihi. */
   motion: MotionPreference;
   /** Performans profiler katmanı gösterilsin mi. */

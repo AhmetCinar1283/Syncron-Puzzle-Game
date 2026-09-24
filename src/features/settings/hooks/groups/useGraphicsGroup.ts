@@ -1,17 +1,14 @@
 /**
- * DOSYA AMACI: "Performans ve Görsellik" grubunun satırlarını üretir: tahta
- * çizicisi (Otomatik / DOM / Canvas), hareket kademesi ve profiler katmanı.
- * Otomatik karar sistemi `game-engine/render/boardRenderer.ts` içindedir; burası
- * yalnızca kullanıcının tercihini yazar.
+ * DOSYA AMACI: "Performans ve Görsellik" grubunun satırlarını üretir: hareket
+ * kademesi ve profiler katmanı.
  */
 
 'use client';
 
 import { Gauge } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
-import { setBoardRendererSetting } from '@/game-engine/render/boardRenderer';
-import type { MotionPreference, RendererPreference } from '@/services/settings';
-import { MOTION_OPTIONS, RENDERER_OPTIONS } from '../../lib/options';
+import type { MotionPreference } from '@/services/settings';
+import { MOTION_OPTIONS } from '../../lib/options';
 import type { SettingsGroup } from '../../lib/settingsModel';
 import { useSettings } from '../useSettings';
 
@@ -26,17 +23,6 @@ export function useGraphicsGroup(): SettingsGroup {
     description: t('settings.graphics_desc'),
     icon: Gauge,
     rows: [
-      {
-        kind: 'segment',
-        id: 'graphics.renderer',
-        label: t('settings.renderer_title'),
-        description: t('settings.renderer_desc'),
-        layout: 'inline',
-        options: RENDERER_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) })),
-        value: g.renderer,
-        // Adaptör: seçim 'auto' olunca kasma dedektörü kararı da temizlenir.
-        onChange: (v) => setBoardRendererSetting(v as RendererPreference),
-      },
       {
         kind: 'segment',
         id: 'graphics.motion',

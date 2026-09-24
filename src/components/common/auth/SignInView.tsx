@@ -10,9 +10,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Cloud,
-  Trophy,
-  Award,
 } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
@@ -157,45 +154,6 @@ export function SignInView({
   if (mode === 'choose') {
     return (
       <div className="home-sheet__stack">
-        {/* Oyun Kahramanı & Tema Kartı (Game Hero Header) */}
-        <div className="home-sheet__game-hero">
-          <div className="home-sheet__game-hero-top">
-            <div className="home-sheet__theme-pill">
-              <span className="home-sheet__theme-pill-dot" />
-              <span>{themeConfig?.defaultName || 'Syncron'}</span>
-            </div>
-
-            <div className="home-sheet__sync-cubes" aria-hidden="true" title="Syncron Core">
-              <div className="home-sheet__sync-cube home-sheet__sync-cube--p1" />
-              <div className="home-sheet__sync-beam" />
-              <div className="home-sheet__sync-cube home-sheet__sync-cube--p2" />
-            </div>
-          </div>
-
-          <h3 className="home-sheet__game-hero-title">
-            {t('auth.game_hero_title')}
-          </h3>
-          <p className="home-sheet__game-hero-desc">
-            {t('auth.game_hero_subtitle')}
-          </p>
-
-          {/* Oyuncu Avantajları Şeridi (Perks) */}
-          <div className="home-sheet__perks-strip">
-            <div className="home-sheet__perk-badge">
-              <Cloud size={13} className="home-sheet__perk-icon" />
-              <span>{t('auth.perk_cloud')}</span>
-            </div>
-            <div className="home-sheet__perk-badge">
-              <Trophy size={13} className="home-sheet__perk-icon" />
-              <span>{t('auth.perk_leaderboard')}</span>
-            </div>
-            <div className="home-sheet__perk-badge">
-              <Award size={13} className="home-sheet__perk-icon" />
-              <span>{t('auth.perk_badges')}</span>
-            </div>
-          </div>
-        </div>
-
         {/* Google ile Hızlı Giriş (Önerilen) */}
         <div className="home-sheet__auth-hero">
           <div className="home-sheet__auth-badge">

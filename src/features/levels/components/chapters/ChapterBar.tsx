@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
-import { Lock, Crosshair } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Lock } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
 import { GameIcon } from '@/components/icons';
 import type { LevelThemeDefinition } from '../../themes/types';
@@ -22,127 +22,118 @@ export interface ChapterBarProps {
   selectedChapterId: string;
   onSelectChapter: (id: string) => void;
   themeDef: LevelThemeDefinition;
-  isGamepadConnected: boolean;
-  onJumpToCurrent?: () => void;
 }
 
-export function ChapterBar({
-  chapters,
-  selectedChapterId,
-  onSelectChapter,
-  themeDef,
-  isGamepadConnected,
-  onJumpToCurrent,
-}: ChapterBarProps) {
+
+/** İlerleme halkalı numara jetonu (sektör rotası boncuğu). */
+function SectorRing({
+  index, ch, size, active, themeDef,
+}: { index: number; ch: ChapterItemData; size: number; active: boolean; themeDef: LevelThemeDefinition }) {
+  const accent = themeDef.accentColor;
+  const done = ch.maxStars > 0 && ch.earnedStars >= ch.maxStars;
+  const ring = ch.maxStars > 0 ? (ch.earnedStars / ch.maxStars) * 100 : 0;
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background: ch.isLocked
+          ? 'rgba(255,255,255,0.08)'
+          : `conic-gradient(${done ? '#facc15' : accent} ${ring}%, rgba(255,255,255,0.14) 0)`,
+      }}
+    >
+      <span
+        className="flex items-center justify-center rounded-full font-black tabular-nums"
+        style={{
+          width: size - 6,
+          height: size - 6,
+          fontSize: 12,
+          background: active ? accent : themeDef.bgDark,
+          color: active ? '#030712' : ch.isLocked ? '#64748b' : '#e2e8f0',
+        }}
+      >
+        {ch.isLocked ? <Lock size={12} strokeWidth={2.8} /> : index + 1}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Sektör seçici (üst çubuğun ortası): iki satır — aktif sektörün adı + yıldızı, altında
+ * yan yana "1 2 3 …" jetonları (her biri ilerleme halkalı, dokununca o sektöre geçer).
+ * Sağ/sol ok, klavye ve d-pad aynı geçişi `useCircuitNavigation` üzerinden yapar.
+ */
+export function ChapterBar({ chapters, selectedChapterId, onSelectChapter, themeDef }: ChapterBarProps) {
   const t = useT();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeBtnRef = useRef<HTMLButtonElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
 
-  // Aktif chapter değiştiğinde görünür alana ortala
+  const activeIdx = chapters.findIndex((c) => c.id === selectedChapterId);
+  const active = chapters[activeIdx];
+
+  // Aktif jetonu şeridin ortasına getir (sayfayı değil, yalnızca şeridi kaydırır)
   useEffect(() => {
-    activeBtnRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center',
-    });
-  }, [selectedChapterId]);
+    const strip = stripRef.current;
+    const chip = activeRef.current;
+    if (!strip || !chip) return;
+    strip.scrollTo({ left: chip.offsetLeft - (strip.clientWidth - chip.offsetWidth) / 2, behavior: 'smooth' });
+  }, [selectedChapterId, chapters.length]);
 
-  if (chapters.length === 0) return null;
+  if (chapters.length === 0 || !active) return null;
 
-  const pillStyles = themeDef.chapterPill;
+  const pill = themeDef.chapterPill;
+  const accent = themeDef.accentColor;
 
   return (
-    <div className="relative z-20 flex w-full items-center justify-between gap-2 px-3 py-2 border-b border-white/[0.06] bg-black/40 backdrop-blur-md">
-      {/* Gamepad L1 ipucu */}
-      {isGamepadConnected && (
-        <span className="hidden sm:flex shrink-0 items-center justify-center px-1.5 py-0.5 rounded border border-white/20 bg-white/5 text-[9px] font-black text-slate-300">
-          LB / L1
+    <div className="flex w-full min-w-0 flex-col items-center gap-1">
+      <div className="flex max-w-full items-center gap-2">
+        <span className={`min-w-0 truncate text-[13px] font-black tracking-wide text-white sm:text-[15px] ${themeDef.fontClass ?? ''}`}>
+          {active.name}
         </span>
-      )}
-
-      {/* Yatay Kaydırılabilir Chapter Kapsülleri */}
-      <div
-        ref={containerRef}
-        className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {chapters.map((ch, idx) => {
-          const isActive = ch.id === selectedChapterId;
-          const pct = ch.maxStars > 0 ? (ch.earnedStars / ch.maxStars) * 100 : 0;
-
-          return (
-            <button
-              key={ch.id}
-              ref={isActive ? activeBtnRef : null}
-              onClick={() => onSelectChapter(ch.id)}
-              className="group relative flex shrink-0 flex-col gap-0.5 rounded-xl px-3 py-1.5 text-left transition-all duration-200 outline-none select-none"
-              style={{
-                background: isActive ? pillStyles.activeBg : pillStyles.inactiveBg,
-                border: `1px solid ${isActive ? pillStyles.activeBorder : pillStyles.inactiveBorder}`,
-                color: isActive ? pillStyles.activeText : pillStyles.inactiveText,
-                minWidth: 120,
-              }}
-            >
-              {/* Bölüm Başlığı & Kilit Durumu */}
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-extrabold uppercase tracking-wider opacity-80">
-                  {t('levels.sector_n', { n: idx + 1 })}
-                </span>
-                {ch.isLocked ? (
-                  <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-400">
-                    <Lock size={10} strokeWidth={2.5} />
-                    {ch.unlockRequirement} ⭐
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-0.5 text-[9px] font-bold tabular-nums">
-                    <GameIcon name="star" size={9} color={isActive ? pillStyles.activeText : '#64748b'} />
-                    {ch.earnedStars}/{ch.maxStars}
-                  </span>
-                )}
-              </div>
-
-              {/* Bölüm Adı */}
-              <span className="truncate text-xs font-black tracking-wide text-white">
-                {ch.name}
-              </span>
-
-              {/* Alt İlerleme Çizgisi */}
-              {!ch.isLocked && ch.maxStars > 0 && (
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${pct}%`,
-                      background: pillStyles.progressBar,
-                    }}
-                  />
-                </div>
-              )}
-            </button>
-          );
-        })}
+        {active.isLocked ? (
+          <span className="flex shrink-0 items-center gap-0.5 text-[11px] font-black text-amber-400">
+            <Lock size={11} strokeWidth={2.6} />
+            {active.unlockRequirement}
+            <GameIcon name="star" size={11} color="#fbbf24" />
+          </span>
+        ) : (
+          <span className="flex shrink-0 items-center gap-1 text-[11px] font-black tabular-nums" style={{ color: pill.activeText }}>
+            <GameIcon name="star" size={11} color={accent} />
+            {active.earnedStars}/{active.maxStars}
+          </span>
+        )}
       </div>
 
-      {/* Gamepad R1 ipucu */}
-      {isGamepadConnected && (
-        <span className="hidden sm:flex shrink-0 items-center justify-center px-1.5 py-0.5 rounded border border-white/20 bg-white/5 text-[9px] font-black text-slate-300">
-          RB / R1
-        </span>
-      )}
-
-      {/* Kaldığın Seviyeye Odaklan Butonu */}
-      {onJumpToCurrent && (
-        <button
-          onClick={onJumpToCurrent}
-          title={t('levels.focus_current_hint')}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.05] text-white hover:bg-white/[0.1] active:scale-95 transition-all outline-none"
-          style={{
-            borderColor: themeDef.accentColor,
-            color: themeDef.accentColor,
-          }}
-        >
-          <Crosshair size={16} />
-        </button>
-      )}
+      <div
+        ref={stripRef}
+        className="w-full overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="mx-auto flex w-max items-center gap-1.5 px-1">
+          {chapters.map((ch, idx) => {
+            const isActive = ch.id === selectedChapterId;
+            return (
+              <button
+                key={ch.id}
+                ref={isActive ? activeRef : null}
+                type="button"
+                title={ch.name}
+                aria-label={`${t('levels.sector_n', { n: idx + 1 })}: ${ch.name}`}
+                aria-current={isActive}
+                onClick={() => onSelectChapter(ch.id)}
+                className="shrink-0 rounded-full outline-none transition-transform duration-200 active:scale-90"
+                style={{
+                  transform: isActive ? 'scale(1.12)' : undefined,
+                  opacity: ch.isLocked && !isActive ? 0.65 : 1,
+                  boxShadow: isActive ? `0 0 12px ${themeDef.accentGlow}` : undefined,
+                }}
+              >
+                <SectorRing index={idx} ch={ch} size={28} active={isActive} themeDef={themeDef} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

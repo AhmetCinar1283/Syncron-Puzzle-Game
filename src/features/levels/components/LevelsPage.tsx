@@ -75,7 +75,7 @@ function LevelsPageContent() {
       {/* Yükseklik = bar içeriği + çentik/status bar payı (safe-area). HUD bu kutuyu inset-0 ile doldurur. */}
       <div
         className="relative z-30 shrink-0"
-        style={{ height: `calc(${isMobile ? 52 : 60}px + env(safe-area-inset-top))` }}
+        style={{ height: `calc(${isMobile ? 62 : 66}px + env(safe-area-inset-top))` }}
       >
         <LevelsHUD
           isMobile={isMobile}
@@ -89,6 +89,16 @@ function LevelsPageContent() {
           onNewLevel={() => router.push('/editor')}
           isGamepadConnected={isGamepadConnected}
           showCustomTab={devTools}
+          center={
+            activeTab === 'campaign' && !loading ? (
+              <ChapterBar
+                chapters={chapters}
+                selectedChapterId={selectedPartId}
+                onSelectChapter={setSelectedPartId}
+                themeDef={themeDef}
+              />
+            ) : undefined
+          }
           labels={{
             back: t('common.back_menu'),
             campaign: t('levels.campaign'),
@@ -115,16 +125,6 @@ function LevelsPageContent() {
           </div>
         ) : activeTab === 'campaign' ? (
           <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Chapter Seçici Çubuk */}
-            <ChapterBar
-              chapters={chapters}
-              selectedChapterId={selectedPartId}
-              onSelectChapter={setSelectedPartId}
-              themeDef={themeDef}
-              isGamepadConnected={isGamepadConnected}
-              onJumpToCurrent={() => setSelectedIndex(defaultActiveIdx)}
-            />
-
             {/* Sektör Kilitliyse Kalkanı Göster, Değilse Izgarayı Göster */}
             {isCurrentChapterLocked ? (
               <div className="flex flex-1 items-center justify-center p-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -167,6 +167,8 @@ function LevelsPageContent() {
                 canGoNextSector={isSessionCompleted}
                 onPrevSector={handleEntryPortal}
                 onNextSector={handleExitPortal}
+                onJumpToCurrent={() => setSelectedIndex(defaultActiveIdx)}
+                jumpLabel={t('levels.focus_current_hint')}
                 onPlay={() => {
                   const idx = selectedIndex ?? defaultActiveIdx;
                   const lv = filteredPresets[idx];

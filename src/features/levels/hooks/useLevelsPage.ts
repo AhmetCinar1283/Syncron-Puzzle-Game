@@ -377,6 +377,7 @@ export function useLevelsPage() {
     },
     onJumpToCurrent: () => setSelectedIndex(defaultActiveIdx),
     onSwitchTab: () => setActiveTab((prev) => (prev === 'campaign' ? 'custom' : 'campaign')),
+    horizontal: activeTab === 'campaign' ? 'chapter' : 'step',
     disabled: !!deleteConfirm || victoryModal || isWarping || !!previewLevel,
   });
 

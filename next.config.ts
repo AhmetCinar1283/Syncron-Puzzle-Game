@@ -6,8 +6,16 @@ import type { NextConfig } from "next";
 const IS_PORTAL_BUILD =
   process.env.NEXT_PUBLIC_PLATFORM === 'crazygames' || process.env.NEXT_PUBLIC_PLATFORM === 'gamedistribution';
 
+// Liderlik tablosu yayında kapalı: `src/app/leaderboard/*.leaderboard.tsx` dosyaları
+// yalnızca bu bayrakla route sayılır. Bayraksız build'de rota hiç üretilmez ve
+// `/leaderboard` var olmayan bir sayfa gibi 404 verir. Açmak için:
+// `cross-env ENABLE_LEADERBOARD=true npm run dev`. Worker tarafındaki karşılığı
+// `LEADERBOARD_ENABLED` (syncron-worker/src/types.ts).
+const ENABLE_LEADERBOARD = process.env.ENABLE_LEADERBOARD === 'true';
+
 const nextConfig: NextConfig = {
   output: 'export',
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js', ...(ENABLE_LEADERBOARD ? ['leaderboard.tsx'] : [])],
   // trailingSlash: routes generate as /route/index.html — required for Capacitor WebView routing
   trailingSlash: true,
   ...(IS_PORTAL_BUILD ? { assetPrefix: './' } : {}),

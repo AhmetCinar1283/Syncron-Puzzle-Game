@@ -57,7 +57,7 @@ export const RECOVERY_SCHEMA = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_badges_unique ON badges(uid, badge_type, period_id)`,
   `CREATE TABLE IF NOT EXISTS user_profiles (
     uid TEXT NOT NULL PRIMARY KEY, display_name TEXT NOT NULL, tag TEXT UNIQUE,
-    xp INTEGER NOT NULL DEFAULT 0, showcase_badges TEXT,
+    xp INTEGER NOT NULL DEFAULT 0, showcase_badges TEXT, is_ranked INTEGER NOT NULL DEFAULT 1,
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
 ];

@@ -163,12 +163,11 @@ describe('SettingsService', () => {
     expect(settings.sound.muted).toBe(DEFAULT_SETTINGS.sound.muted);
   });
 
-  it('v1 şemalı kaydı v2 şemasına yükseltir ve eski renderer, haptik, hareket anahtarlarını taşır', () => {
+  it('v1 şemalı kaydı v2 şemasına yükseltir ve eski haptik, hareket anahtarlarını taşır', () => {
     mockLocalStorage.setItem(
       SETTINGS_STORAGE_KEY,
       JSON.stringify({ version: 1, language: 'tr', theme: 'neon', sound: { muted: true, volume: 30 } }),
     );
-    mockLocalStorage.setItem('anon:boardRenderer', 'canvas');
     mockLocalStorage.setItem('anon:hapticsEnabled', 'false');
     mockLocalStorage.setItem('anon:motionTier', 'lite');
 
@@ -178,7 +177,6 @@ describe('SettingsService', () => {
     expect(settings.language).toBe('tr');
     expect(settings.sound.muted).toBe(true);
     expect(settings.sound.volume).toBe(30);
-    expect(settings.graphics.renderer).toBe('canvas');
     expect(settings.graphics.motion).toBe('lite');
     expect(settings.controls.haptics).toBe(false);
     expect(JSON.parse(mockStorage[SETTINGS_STORAGE_KEY]).version).toBe(2);
@@ -187,11 +185,11 @@ describe('SettingsService', () => {
   it('v2 kayıttaki değerler eski anahtarlardan üstündür', () => {
     mockLocalStorage.setItem(
       SETTINGS_STORAGE_KEY,
-      JSON.stringify({ version: 2, graphics: { renderer: 'dom' } }),
+      JSON.stringify({ version: 2, graphics: { motion: 'full' } }),
     );
-    mockLocalStorage.setItem('anon:boardRenderer', 'canvas');
+    mockLocalStorage.setItem('anon:motionTier', 'lite');
 
-    expect(new SettingsService().getSettings().graphics.renderer).toBe('dom');
+    expect(new SettingsService().getSettings().graphics.motion).toBe('full');
   });
 
   it('updateSettings iç içe grupları birleştirir ve geçersiz değerleri düzeltir', () => {
@@ -203,8 +201,8 @@ describe('SettingsService', () => {
     expect(controls.swipeSensitivity).toBe(100);
     expect(controls.scheme).toBe(DEFAULT_SETTINGS.controls.scheme); // dokunulmayan alan korunur
 
-    service.updateSettings({ graphics: { renderer: 'bozuk' as never } });
-    expect(service.getSettings().graphics.renderer).toBe('auto');
+    service.updateSettings({ graphics: { motion: 'bozuk' as never } });
+    expect(service.getSettings().graphics.motion).toBe('auto');
 
     service.updateSettings({ sound: { menuVolume: -5 } });
     expect(service.getSettings().sound.menuVolume).toBe(0);

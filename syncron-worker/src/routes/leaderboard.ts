@@ -1,15 +1,32 @@
 /**
- * DOSYA AMACI: Bu dosya, oyuncuların yıldız sayısı, seviye sayısı, rekor sayısı 
+ * DOSYA AMACI: Bu dosya, oyuncuların yıldız sayısı, seviye sayısı, rekor sayısı
  * ve seviye tasarımcısı gibi kategorilerde günlük, haftalık, aylık ve tüm zamanlar liderlik tablolarını getiren API ucunu tanımlar.
+ *
+ * Anonim oyuncular (`user_profiles.is_ranked = 0`) hiçbir listede, sayımda ya da
+ * sıra hesabında yer almaz; yalnızca kendi sıralarını, listelenen oyunculara
+ * göre görürler.
  */
 
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
 import { optionalFirebaseAuth } from '../middleware/auth';
 import { leaderboardQuerySchema } from '../schemas/leaderboard';
-import { getCurrentPeriodIds } from '../services/leaderboard';
+import { getCurrentPeriodIds, markRanked, rankedUidClause } from '../services/leaderboard';
 
 export const leaderboardRouter = new Hono<AppContext>();
+
+/**
+ * Okuma yüzeyi kapalıyken (bkz. `Env.LEADERBOARD_ENABLED`) rota hiç yokmuş gibi
+ * davranır: `app.notFound` ile birebir aynı yanıt. Skorlar yazılmaya devam eder.
+ */
+export function isLeaderboardEnabled(env: { LEADERBOARD_ENABLED?: string }): boolean {
+  return env.LEADERBOARD_ENABLED === 'true';
+}
+
+leaderboardRouter.use('/leaderboard/*', async (c, next) => {
+  if (!isLeaderboardEnabled(c.env)) return c.text('Not Found', 404);
+  await next();
+});
 
 const VALID_COMBINATIONS: Record<string, string[]> = {
   stars: ['daily', 'weekly', 'all_time'],
@@ -27,10 +44,37 @@ interface DbEntryRow {
   rank?: number;
 }
 
+interface ViewerRow {
+  displayName: string | null;
+  tag: string | null;
+  showcaseBadges: string | null;
+  isRanked: number;
+}
+
+interface LeaderboardEntry {
+  rank: number;
+  uid: string;
+  displayName: string;
+  tag: string | null;
+  showcaseBadges: unknown[];
+  value: number;
+}
+
 interface UserScoreRow {
   score_val: number;
   secondary_val?: number;
   updated_at: string;
+}
+
+// Önbellekteki rozet JSON'unu çözer; bozuksa boş liste döner.
+function parseShowcaseBadges(raw: string | null | undefined): unknown[] {
+  if (typeof raw !== 'string') return [];
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to parse showcaseBadges JSON:', e);
+    return [];
+  }
 }
 
 // İlgili kategori ve periyottaki liderlik tablosunu, giriş yapan kullanıcının sırası ve arkadaş filtreleriyle birlikte getirir.
@@ -120,8 +164,28 @@ leaderboardRouter.get('/leaderboard/:category/:period', optionalFirebaseAuth, as
   }
 
   const db = c.env.AUDIT_DB;
+  const isCreators = category === 'creators';
+  const ranked = rankedUidClause('s.uid');
+  // Sıralama ölçütü: skor (azalan), eşitlikte önce ulaşan üstte.
+  const orderBy = isCreators
+    ? 's.plays_gained DESC, s.stars_gained DESC, s.updated_at ASC'
+    : `s.${valueCol} DESC, s.updated_at ASC`;
 
   try {
+    // Anonim oyuncu hiçbir listede yer almaz ama kendi sırasını görebilir.
+    // Doğrulanmış oyuncunun bayrağı burada da tazelenir (eski satırlar için).
+    let viewer: ViewerRow | null = null;
+    if (uid) {
+      if (c.get('emailVerified') === true) {
+        await markRanked(db, uid).catch((err) => console.error('[LeaderboardAPI] markRanked failed:', err));
+      }
+      viewer = await db
+        .prepare('SELECT display_name AS displayName, tag, showcase_badges AS showcaseBadges, is_ranked AS isRanked FROM user_profiles WHERE uid = ?1')
+        .bind(uid)
+        .first<ViewerRow>();
+    }
+    const viewerRanked = viewer?.isRanked === 1;
+
     // Fetch friends list if friends_only=true
     let allowedUids: string[] = [];
     if (friends_only && uid) {
@@ -138,19 +202,15 @@ leaderboardRouter.get('/leaderboard/:category/:period', optionalFirebaseAuth, as
         return c.json({ success: false, error: 'Database error' }, 500);
       }
     }
+    // Arkadaş kapsamı: `firstIdx`, çağıran sorgudaki ilk boş `?N` numarasıdır.
+    const friendClause = (firstIdx: number) =>
+      friends_only ? ` AND s.uid IN (${allowedUids.map((_, i) => `?${firstIdx + i}`).join(', ')})` : '';
+    const friendParams = friends_only ? allowedUids : [];
 
-    // 6. Query Total Players
-    let countResult;
-    if (friends_only) {
-      const placeholders = allowedUids.map((_, i) => `?${i + 3}`).join(', ');
-      countResult = await db.prepare(
-        `SELECT COUNT(*) as total FROM ${tableName} WHERE period_type = ?1 AND period_id = ?2 AND uid IN (${placeholders})`
-      ).bind(period, periodId, ...allowedUids).first<{ total: number }>();
-    } else {
-      countResult = await db.prepare(
-        `SELECT COUNT(*) as total FROM ${tableName} WHERE period_type = ?1 AND period_id = ?2`
-      ).bind(period, periodId).first<{ total: number }>();
-    }
+    // 6. Query Total Players (yalnızca listelenebilir oyuncular)
+    const countResult = await db.prepare(
+      `SELECT COUNT(*) as total FROM ${tableName} s WHERE s.period_type = ?1 AND s.period_id = ?2 AND ${ranked}${friendClause(3)}`
+    ).bind(period, periodId, ...friendParams).first<{ total: number }>();
     const totalPlayers = countResult?.total ?? 0;
 
     let myRank: number | null = null;
@@ -160,270 +220,93 @@ leaderboardRouter.get('/leaderboard/:category/:period', optionalFirebaseAuth, as
 
     // 7. Get logged-in user's stats
     if (uid) {
-      let scoreQuery = '';
-      if (category === 'creators') {
-        scoreQuery = `SELECT plays_gained AS score_val, stars_gained AS secondary_val, updated_at FROM creator_scores WHERE uid = ?1 AND period_type = ?2 AND period_id = ?3`;
-      } else {
-        scoreQuery = `SELECT ${valueCol} AS score_val, updated_at FROM ${tableName} WHERE uid = ?1 AND period_type = ?2 AND period_id = ?3`;
-      }
-
+      const scoreQuery = `SELECT ${valueCol} AS score_val, ${isCreators ? 'stars_gained AS secondary_val, ' : ''}updated_at FROM ${tableName} WHERE uid = ?1 AND period_type = ?2 AND period_id = ?3`;
       const userRow = await db.prepare(scoreQuery).bind(uid, period, periodId).first<UserScoreRow>();
       if (userRow) {
         userScoreRow = userRow;
         myValue = userRow.score_val;
 
-        // Calculate rank
-        let rankQuery = '';
-        let rankStmt: D1PreparedStatement;
-        if (category === 'creators') {
-          if (friends_only) {
-            const placeholders = allowedUids.map((_, i) => `?${i + 6}`).join(', ');
-            rankQuery = `
-              SELECT COUNT(*) + 1 AS rank
-              FROM creator_scores
-              WHERE period_type = ?1 AND period_id = ?2
-                AND (
-                  plays_gained > ?3
-                  OR (plays_gained = ?3 AND stars_gained > ?4)
-                  OR (plays_gained = ?3 AND stars_gained = ?4 AND updated_at < ?5)
-                )
-                AND uid IN (${placeholders})
-            `;
-            rankStmt = db.prepare(rankQuery).bind(period, periodId, userRow.score_val, userRow.secondary_val ?? 0, userRow.updated_at, ...allowedUids);
-          } else {
-            rankQuery = `
-              SELECT COUNT(*) + 1 AS rank
-              FROM creator_scores
-              WHERE period_type = ?1 AND period_id = ?2
-                AND (
-                  plays_gained > ?3
-                  OR (plays_gained = ?3 AND stars_gained > ?4)
-                  OR (plays_gained = ?3 AND stars_gained = ?4 AND updated_at < ?5)
-                )
-            `;
-            rankStmt = db.prepare(rankQuery).bind(period, periodId, userRow.score_val, userRow.secondary_val ?? 0, userRow.updated_at);
-          }
-        } else {
-          if (friends_only) {
-            const placeholders = allowedUids.map((_, i) => `?${i + 5}`).join(', ');
-            rankQuery = `
-              SELECT COUNT(*) + 1 AS rank
-              FROM ${tableName}
-              WHERE period_type = ?1 AND period_id = ?2
-                AND (${valueCol} > ?3 OR (${valueCol} = ?3 AND updated_at < ?4))
-                AND uid IN (${placeholders})
-            `;
-            rankStmt = db.prepare(rankQuery).bind(period, periodId, userRow.score_val, userRow.updated_at, ...allowedUids);
-          } else {
-            rankQuery = `
-              SELECT COUNT(*) + 1 AS rank
-              FROM ${tableName}
-              WHERE period_type = ?1 AND period_id = ?2
-                AND (${valueCol} > ?3 OR (${valueCol} = ?3 AND updated_at < ?4))
-            `;
-            rankStmt = db.prepare(rankQuery).bind(period, periodId, userRow.score_val, userRow.updated_at);
-          }
-        }
-
-        const rankResult = await rankStmt.first<{ rank: number }>();
+        // Sıra = kendinden iyi olan LİSTELENEBİLİR oyuncu sayısı + 1. Kendi satırı
+        // katı eşitsizliklerle zaten sayılmaz; anonim de bu sayede gerçek sırasını görür.
+        const better = isCreators
+          ? {
+              cond: '(s.plays_gained > ?3 OR (s.plays_gained = ?3 AND s.stars_gained > ?4) OR (s.plays_gained = ?3 AND s.stars_gained = ?4 AND s.updated_at < ?5))',
+              params: [userRow.score_val, userRow.secondary_val ?? 0, userRow.updated_at],
+            }
+          : {
+              cond: `(s.${valueCol} > ?3 OR (s.${valueCol} = ?3 AND s.updated_at < ?4))`,
+              params: [userRow.score_val, userRow.updated_at],
+            };
+        const rankResult = await db.prepare(`
+          SELECT COUNT(*) + 1 AS rank
+          FROM ${tableName} s
+          WHERE s.period_type = ?1 AND s.period_id = ?2
+            AND ${better.cond}
+            AND ${ranked}${friendClause(3 + better.params.length)}
+        `).bind(period, periodId, ...better.params, ...friendParams).first<{ rank: number }>();
         myRank = rankResult?.rank ?? null;
       }
     }
 
-    let entries: Array<{ rank: number; uid: string; displayName: string; tag: string | null; value: number }> = [];
+    const select = `
+      s.uid, p.display_name AS displayName, p.tag, p.showcase_badges AS showcaseBadges,
+      s.${valueCol} AS value`;
+    const from = `${tableName} s LEFT JOIN user_profiles p ON s.uid = p.uid`;
+    const toEntry = (row: DbEntryRow, rank: number): LeaderboardEntry => ({
+      rank,
+      uid: row.uid,
+      displayName: row.displayName ?? 'Player',
+      tag: row.tag,
+      showcaseBadges: parseShowcaseBadges(row.showcaseBadges),
+      value: row.value,
+    });
+
+    let entries: LeaderboardEntry[] = [];
 
     // 8. Fetch Entries
     if (around_me && uid && myRank !== null && userScoreRow) {
-      // Fetch ±5 around user using window function CTE
-      let cteQuery = '';
-      let cteStmt: D1PreparedStatement;
-      const minRank = Math.max(1, myRank - 5);
-      const maxRank = myRank + 5;
-
-      if (category === 'creators') {
-        if (friends_only) {
-          const placeholders = allowedUids.map((_, i) => `?${i + 5}`).join(', ');
-          cteQuery = `
-            WITH Ranked AS (
-              SELECT
-                c.uid,
-                p.display_name AS displayName,
-                p.tag,
-                p.showcase_badges AS showcaseBadges,
-                c.plays_gained AS value,
-                ROW_NUMBER() OVER (
-                  ORDER BY c.plays_gained DESC, c.stars_gained DESC, c.updated_at ASC
-                ) as rank
-              FROM creator_scores c
-              LEFT JOIN user_profiles p ON c.uid = p.uid
-              WHERE c.period_type = ?1 AND c.period_id = ?2 AND c.uid IN (${placeholders})
-            )
-            SELECT uid, displayName, tag, showcaseBadges, value, rank
-            FROM Ranked
-            WHERE rank BETWEEN ?3 AND ?4
-          `;
-          cteStmt = db.prepare(cteQuery).bind(period, periodId, minRank, maxRank, ...allowedUids);
-        } else {
-          cteQuery = `
-            WITH Ranked AS (
-              SELECT
-                c.uid,
-                p.display_name AS displayName,
-                p.tag,
-                p.showcase_badges AS showcaseBadges,
-                c.plays_gained AS value,
-                ROW_NUMBER() OVER (
-                  ORDER BY c.plays_gained DESC, c.stars_gained DESC, c.updated_at ASC
-                ) as rank
-              FROM creator_scores c
-              LEFT JOIN user_profiles p ON c.uid = p.uid
-              WHERE c.period_type = ?1 AND c.period_id = ?2
-            )
-            SELECT uid, displayName, tag, showcaseBadges, value, rank
-            FROM Ranked
-            WHERE rank BETWEEN ?3 AND ?4
-          `;
-          cteStmt = db.prepare(cteQuery).bind(period, periodId, minRank, maxRank);
-        }
-      } else {
-        if (friends_only) {
-          const placeholders = allowedUids.map((_, i) => `?${i + 5}`).join(', ');
-          cteQuery = `
-            WITH Ranked AS (
-              SELECT
-                s.uid,
-                p.display_name AS displayName,
-                p.tag,
-                p.showcase_badges AS showcaseBadges,
-                s.${valueCol} AS value,
-                ROW_NUMBER() OVER (
-                  ORDER BY s.${valueCol} DESC, s.updated_at ASC
-                ) as rank
-              FROM ${tableName} s
-              LEFT JOIN user_profiles p ON s.uid = p.uid
-              WHERE s.period_type = ?1 AND s.period_id = ?2 AND s.uid IN (${placeholders})
-            )
-            SELECT uid, displayName, tag, showcaseBadges, value, rank
-            FROM Ranked
-            WHERE rank BETWEEN ?3 AND ?4
-          `;
-          cteStmt = db.prepare(cteQuery).bind(period, periodId, minRank, maxRank, ...allowedUids);
-        } else {
-          cteQuery = `
-            WITH Ranked AS (
-              SELECT
-                s.uid,
-                p.display_name AS displayName,
-                p.tag,
-                p.showcase_badges AS showcaseBadges,
-                s.${valueCol} AS value,
-                ROW_NUMBER() OVER (
-                  ORDER BY s.${valueCol} DESC, s.updated_at ASC
-                ) as rank
-              FROM ${tableName} s
-              LEFT JOIN user_profiles p ON s.uid = p.uid
-              WHERE s.period_type = ?1 AND s.period_id = ?2
-            )
-            SELECT uid, displayName, tag, showcaseBadges, value, rank
-            FROM Ranked
-            WHERE rank BETWEEN ?3 AND ?4
-          `;
-          cteStmt = db.prepare(cteQuery).bind(period, periodId, minRank, maxRank);
-        }
-      }
-
-      const { results } = await cteStmt.all<DbEntryRow>();
+      // Fetch ±5 around user using window function CTE. Anonim izleyici listede
+      // olmadığı için altındaki satırlar bir basamak kayar; kendisi ayrıca eklenir.
+      const rankAtMe = myRank;
+      const minRank = Math.max(1, rankAtMe - 5);
+      const maxRank = viewerRanked ? rankAtMe + 5 : rankAtMe + 4;
+      const { results } = await db.prepare(`
+        WITH Ranked AS (
+          SELECT ${select}, ROW_NUMBER() OVER (ORDER BY ${orderBy}) AS rank
+          FROM ${from}
+          WHERE s.period_type = ?1 AND s.period_id = ?2 AND ${ranked}${friendClause(5)}
+        )
+        SELECT uid, displayName, tag, showcaseBadges, value, rank
+        FROM Ranked
+        WHERE rank BETWEEN ?3 AND ?4
+      `).bind(period, periodId, minRank, maxRank, ...friendParams).all<DbEntryRow>();
 
       entries = results.map((row) => {
-        let showcaseBadges = [];
-        if (typeof row.showcaseBadges === 'string') {
-          try {
-            showcaseBadges = JSON.parse(row.showcaseBadges);
-          } catch (e) {
-            console.error('Failed to parse showcaseBadges JSON:', e);
-          }
-        }
-        return {
-          rank: row.rank ?? 0,
-          uid: row.uid,
-          displayName: row.displayName ?? 'Player',
-          tag: row.tag,
-          showcaseBadges,
-          value: row.value,
-        };
+        const r = row.rank ?? 0;
+        return toEntry(row, viewerRanked || r < rankAtMe ? r : r + 1);
       });
+      if (!viewerRanked) {
+        // Yalnızca kendi yanıtında, kendi satırı: hiçbir listede görünmez.
+        entries.push(toEntry({
+          uid,
+          displayName: viewer?.displayName ?? null,
+          tag: viewer?.tag ?? null,
+          showcaseBadges: viewer?.showcaseBadges ?? null,
+          value: userScoreRow.score_val,
+        }, rankAtMe));
+        entries.sort((a, b) => a.rank - b.rank);
+      }
     } else {
       // Standard top list query
-      let selectQuery = '';
-      let selectStmt: D1PreparedStatement;
-      if (category === 'creators') {
-        if (friends_only) {
-          const placeholders = allowedUids.map((_, i) => `?${i + 4}`).join(', ');
-          selectQuery = `
-            SELECT c.uid, p.display_name AS displayName, p.tag, p.showcase_badges AS showcaseBadges, c.plays_gained AS value
-            FROM creator_scores c
-            LEFT JOIN user_profiles p ON c.uid = p.uid
-            WHERE c.period_type = ?1 AND c.period_id = ?2 AND c.uid IN (${placeholders})
-            ORDER BY c.plays_gained DESC, c.stars_gained DESC, c.updated_at ASC
-            LIMIT ?3
-          `;
-          selectStmt = db.prepare(selectQuery).bind(period, periodId, limit, ...allowedUids);
-        } else {
-          selectQuery = `
-            SELECT c.uid, p.display_name AS displayName, p.tag, p.showcase_badges AS showcaseBadges, c.plays_gained AS value
-            FROM creator_scores c
-            LEFT JOIN user_profiles p ON c.uid = p.uid
-            WHERE c.period_type = ?1 AND c.period_id = ?2
-            ORDER BY c.plays_gained DESC, c.stars_gained DESC, c.updated_at ASC
-            LIMIT ?3
-          `;
-          selectStmt = db.prepare(selectQuery).bind(period, periodId, limit);
-        }
-      } else {
-        if (friends_only) {
-          const placeholders = allowedUids.map((_, i) => `?${i + 4}`).join(', ');
-          selectQuery = `
-            SELECT s.uid, p.display_name AS displayName, p.tag, p.showcase_badges AS showcaseBadges, s.${valueCol} AS value
-            FROM ${tableName} s
-            LEFT JOIN user_profiles p ON s.uid = p.uid
-            WHERE s.period_type = ?1 AND s.period_id = ?2 AND s.uid IN (${placeholders})
-            ORDER BY s.${valueCol} DESC, s.updated_at ASC
-            LIMIT ?3
-          `;
-          selectStmt = db.prepare(selectQuery).bind(period, periodId, limit, ...allowedUids);
-        } else {
-          selectQuery = `
-            SELECT s.uid, p.display_name AS displayName, p.tag, p.showcase_badges AS showcaseBadges, s.${valueCol} AS value
-            FROM ${tableName} s
-            LEFT JOIN user_profiles p ON s.uid = p.uid
-            WHERE s.period_type = ?1 AND s.period_id = ?2
-            ORDER BY s.${valueCol} DESC, s.updated_at ASC
-            LIMIT ?3
-          `;
-          selectStmt = db.prepare(selectQuery).bind(period, periodId, limit);
-        }
-      }
+      const { results } = await db.prepare(`
+        SELECT ${select}
+        FROM ${from}
+        WHERE s.period_type = ?1 AND s.period_id = ?2 AND ${ranked}${friendClause(4)}
+        ORDER BY ${orderBy}
+        LIMIT ?3
+      `).bind(period, periodId, limit, ...friendParams).all<DbEntryRow>();
 
-      const { results } = await selectStmt.all<DbEntryRow>();
-
-      entries = results.map((row, idx) => {
-        let showcaseBadges = [];
-        if (typeof row.showcaseBadges === 'string') {
-          try {
-            showcaseBadges = JSON.parse(row.showcaseBadges);
-          } catch (e) {
-            console.error('Failed to parse showcaseBadges JSON:', e);
-          }
-        }
-        return {
-          rank: idx + 1,
-          uid: row.uid,
-          displayName: row.displayName ?? 'Player',
-          tag: row.tag,
-          showcaseBadges,
-          value: row.value,
-        };
-      });
+      entries = results.map((row, idx) => toEntry(row, idx + 1));
     }
 
     return c.json({
@@ -434,6 +317,7 @@ leaderboardRouter.get('/leaderboard/:category/:period', optionalFirebaseAuth, as
       entries,
       myRank,
       myValue,
+      myRanked: uid ? viewerRanked : null,
       totalPlayers,
     });
   } catch (err) {

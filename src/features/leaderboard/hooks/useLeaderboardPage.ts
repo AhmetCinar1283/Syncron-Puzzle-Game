@@ -49,8 +49,9 @@ export function useLeaderboardPage() {
     { friendsOnly: isFriendsCategory }
   );
 
-  // Fetch around me data for standing section if logged in
-  const shouldFetchAroundMe = !!user && !isAnonymous && !isFriendsCategory;
+  // Anonim oyuncu listelerde görünmez ama kendi sırasını görebilir: around_me yanıtı
+  // onun satırını yalnızca kendi yanıtına ekler.
+  const shouldFetchAroundMe = !!user && !isFriendsCategory;
   const { data: aroundMeData, loading: aroundMeLoading } = useLeaderboard(
     apiCategory as Exclude<CategoryId, 'friends'>,
     apiPeriod,
@@ -138,7 +139,7 @@ export function useLeaderboardPage() {
 
   // Standing calculation (+/- 2 around user)
   const standingSection: StandingSection = useMemo(() => {
-    if (!user || isAnonymous) {
+    if (!user) {
       return { status: 'unauthenticated' };
     }
 
@@ -169,7 +170,7 @@ export function useLeaderboardPage() {
     // Slice +/- 2 around the user
     const slice = aroundEntries.slice(Math.max(0, myIndex - 2), myIndex + 3);
     return { status: 'ranked', entries: slice };
-  }, [user, isAnonymous, loading, aroundMeLoading, data, aroundMeData, entries]);
+  }, [user, loading, shouldFetchAroundMe, aroundMeLoading, data, aroundMeData, entries]);
 
   const handlePlayClick = useCallback(() => {
     router.push('/levels');

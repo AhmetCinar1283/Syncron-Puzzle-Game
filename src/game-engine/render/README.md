@@ -84,32 +84,12 @@ Renk ve ölçüler elden geldiğince `themes/themeConfig`'ten okunur, canvas kod
 sabit yazılmaz. DOM'daki bir değeri tahminle taşıma: kaynak dosyadaki değeri oku.
 İki yolu yan yana görmek için `npm run dev` + `/dev-cell-compare`.
 
-## Bayraklar
+## Çizici
 
-Üç seviye vardır: `dom` (Kalite), `hybrid` (Dengeli: tahta DOM, zafer animasyonu
-`VictoryCanvas.tsx` ile canvas), `canvas` (Performans). Kullanıcı ayarı
-(`graphics.renderer`) her zaman kazanır. Otomatik'te `boardRenderer.ts` şunu yapar:
-cihaz kuralı (`classifyDevice`) başlangıç seviyesini verir, kasma dedektörünün
-yazdığı üst sınır (`boardRendererAuto`: `'hybrid'` | `'canvas'`) onu yalnızca
-AŞAĞI çeker.
-
-Cihaz kuralı (her seviye olumlu kanıt ister):
-- `dom`: masaüstü (ince işaretleyici, yerel değil), çekirdek > 4, RAM > 4, `lite` değil.
-- `hybrid`: çekirdek > 4 ve `lite` değil; masaüstünde RAM bilinmiyorsa (Firefox/Safari)
-  engel değil, telefon/yerel uygulamada RAM AÇIKÇA > 4 bildirilmeli.
-- `canvas`: geri kalan her şey (zayıf, belirsiz).
-
-Dedektör merdiveni (`jankMonitor.ts` + `useJankGuard.ts`): `dom`'da yalnızca zafer
-penceresi kötüyse → `hybrid`; hareket/boşta penceresi de kötüyse → `canvas`.
-`hybrid`'de zafer ölçülmez (canvas çiziyor), kötü hareket → `canvas`. Geçiş yalnızca
-güvenli anda (hareket ve ölüm/zafer karesi dışında) uygulanır. Geliştirme
-build'inde oyun ekranında DOM/CANVAS anahtarı görünür
-(`components/play-screen/BoardRendererToggle.tsx`; üretimde gizli).
-**Tahta görüntüsünü etkileyen her değişiklik iki yolda da denenir.** Konsoldan da yazılabilir:
-
-```js
-localStorage.setItem(`${localStorage.getItem('activeUserId') ?? 'anon'}:boardRenderer`, 'canvas'); location.reload();
-```
+Oyun ve test ekranları tahtayı her zaman canvas ile çizer (`BoardArea` → `BoardCanvas`);
+kullanıcıya dönük DOM/Canvas seçeneği yoktur. `getContext('2d')` alınamazsa
+`BoardCanvas` sessizce DOM `GameBoard`'a düşer; bu yedek yol ve `/dev-cell-compare`
+için DOM çizimi korunur, tahta görüntüsünü etkileyen değişiklik ikisinde de denenir.
 
 Profiler (katman başına ortalama/p95 kare süresi, çizim/sn, sprite ve tuval belleği):
 

@@ -3,6 +3,8 @@
  * idempotent kaydı, oyuncunun kendi sonucu ve günlük liderlik sorguları.
  */
 
+import { rankedUidClause } from '../leaderboard';
+
 export interface DailyResultRow {
   uid: string;
   date: string;
@@ -67,13 +69,13 @@ export async function getDailyLeaderboard(
       .prepare(
         `SELECT r.uid, p.display_name, p.tag, r.move_count, r.time_spent, r.stars, r.hinted
          FROM daily_results AS r LEFT JOIN user_profiles AS p ON p.uid = r.uid
-         WHERE r.date = ?1
+         WHERE r.date = ?1 AND ${rankedUidClause('r.uid')}
          ORDER BY ${RANK_ORDER.split(', ').map((c) => `r.${c}`).join(', ')}
          LIMIT ?2`,
       )
       .bind(date, limit)
       .all<{ uid: string; display_name: string | null; tag: string | null; move_count: number; time_spent: number; stars: number; hinted: number }>(),
-    db.prepare('SELECT COUNT(*) AS n FROM daily_results WHERE date = ?1').bind(date).first<{ n: number }>(),
+    db.prepare(`SELECT COUNT(*) AS n FROM daily_results WHERE date = ?1 AND ${rankedUidClause('uid')}`).bind(date).first<{ n: number }>(),
   ]);
   const entries = (results ?? []).map((row, i) => ({
     rank: i + 1,
@@ -95,7 +97,7 @@ export async function getDailyRank(db: D1Database, uid: string, date: string): P
   const row = await db
     .prepare(
       `SELECT COUNT(*) + 1 AS rank FROM daily_results
-       WHERE date = ?1 AND (
+       WHERE date = ?1 AND ${rankedUidClause('uid')} AND (
          hinted < ?2
          OR (hinted = ?2 AND move_count < ?3)
          OR (hinted = ?2 AND move_count = ?3 AND time_spent < ?4)

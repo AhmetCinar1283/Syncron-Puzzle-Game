@@ -13,7 +13,6 @@ export type {
   ControlSettings,
   GraphicsSettings,
   GeneralSettings,
-  RendererPreference,
   MotionPreference,
   ControlScheme,
   PadSide,

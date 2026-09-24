@@ -8,6 +8,7 @@ import { calculateCircuitLayout, type CircuitPoint } from '../../lib/circuitCalc
 import { ConstellationNode } from './ConstellationNode';
 import { EnergyPathSvg } from './EnergyPathSvg';
 import { CircuitPortalNode } from './CircuitPortalNode';
+import { LevelsMascot } from './LevelsMascot';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -244,6 +245,24 @@ export function ConstellationCircuit({
     return pts;
   }, [hasPortalStart, layout]);
 
+  // Maskotun takip ettiği seviye ve durumu (ConstellationNode ile aynı türetme)
+  const followIdx = levels.length > 0 ? (selectedIndex ?? defaultActiveIndex) : -1;
+  const followLevel = levels[followIdx];
+  const followMood = useMemo(() => {
+    const fid = followLevel?.firestoreId;
+    const played = fid ? playedMap.get(fid) : undefined;
+    const isLocked = fid ? lockedSet.has(fid) : false;
+    const isCompleted = !!played;
+    const isSkipped = !isCompleted && !!fid && skippedSet.has(fid);
+    return {
+      isLocked,
+      isCompleted,
+      isSkipped,
+      isCurrent: followIdx === defaultActiveIndex && !isLocked && !isCompleted && !isSkipped,
+      stars: played?.stars ?? 0,
+    };
+  }, [followLevel, followIdx, defaultActiveIndex, playedMap, lockedSet, skippedSet]);
+
   return (
     <div
       ref={scrollContainerRef}
@@ -319,6 +338,9 @@ export function ConstellationCircuit({
             />
           );
         })}
+
+        {/* 3b. Seçili seviyeyi takip eden maskot */}
+        <LevelsMascot point={layout.nodePoints[followIdx]} mood={followMood} isMobile={isMobile} />
 
         {/* 4. Bitiş Portalı (Sonraki Sektöre Warp) */}
         <CircuitPortalNode

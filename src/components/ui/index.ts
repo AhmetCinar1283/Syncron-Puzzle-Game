@@ -32,6 +32,11 @@ export type { AvatarProps } from './Avatar';
 export { MascotBuddy } from './MascotBuddy';
 export type { MascotBuddyProps } from './MascotBuddy';
 
+export { MascotCompanion } from './MascotCompanion';
+export type { MascotCompanionProps, MascotReaction } from './MascotCompanion';
+export { useMascotShow } from './useMascotShow';
+export type { MascotShowOptions } from './useMascotShow';
+
 export { PageShell } from './PageShell';
 export type { PageShellProps } from './PageShell';
 
