@@ -29,6 +29,9 @@ export type { EmptyStateProps } from './EmptyState';
 export { Avatar } from './Avatar';
 export type { AvatarProps } from './Avatar';
 
+export { MascotBuddy } from './MascotBuddy';
+export type { MascotBuddyProps } from './MascotBuddy';
+
 export { PageShell } from './PageShell';
 export type { PageShellProps } from './PageShell';
 

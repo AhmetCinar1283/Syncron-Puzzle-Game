@@ -215,7 +215,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (snap && snap.exists()) {
           const data = snap.data() as UserDoc;
-          const firestoreRole = (data.role as UserRole) ?? 'user';
+          // 'reviewer' (Play Store inceleme hesabı) yalnızca ARAYÜZDE admin gibi
+          // görünür ki inceleyici tüm sayfaları görebilsin. Yetki kapıları
+          // (Firestore kuralları + Worker adminAuth) dokümandaki ham rolü okur
+          // ve 'reviewer'ı tanımaz: bu hesap backend'e hiçbir şey yazamaz/okuyamaz.
+          const rawRole = (data.role as string | undefined) ?? 'user';
+          const firestoreRole: UserRole = rawRole === 'reviewer' ? 'admin' : (rawRole as UserRole);
           setRole(firestoreRole);
           dispatch(
             setFirestoreData({

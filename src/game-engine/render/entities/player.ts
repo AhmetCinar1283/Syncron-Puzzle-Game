@@ -1,11 +1,14 @@
 /**
- * DOSYA AMACI: `components/entities/PlayerGraphic.tsx`'in beş `styleType`'ının
- * canvas rasterleyicisi. Beş tema da aynı iskeleti kullanıyor (isteğe bağlı bir
+ * DOSYA AMACI: Oyuncu maskotunun beş `styleType`'ının canvas rasterleyicisi —
+ * oyuncunun TEK çizicisi (DOM'da `MascotView` da bunu kullanır). Beş tema da aynı iskeleti kullanıyor (isteğe bağlı bir
  * süs + yuvarlak/kare jeton + göz sırası + monospace ağız); fark yalnızca
  * değerlerde, bu yüzden TEK bir çizici var. Değer tablosu ve süsler
  * `playerStyles.ts`'te (dosya başına ~250 satır sınırı, 00-ilkeler §1).
  *
- * Göz kırpma (`playerBlink`) iki durumlu çizilir — gerekçe `index.ts` başında.
+ * YÜZ artık veri: `input.face` (`mascot/pose.ts`). Kırpma, bakınma ve ifadeler
+ * aynı sprite'ın farklı yüz anahtarlarıdır; yüz parçalarının çizimi
+ * `playerFace.ts`'te. Gövde dönüşümü (zıplama/ezilme) ve süsler sprite'a
+ * PİŞİRİLMEZ — blit anında uygulanır (`mascot.ts`).
  * Ters mod nabzı (`playerPulse`, yalnız neon) 12 faza örneklenir (00-ilkeler §3.2)
  * ve anahtara girer.
  */
@@ -16,39 +19,23 @@ import { getPlayerColor } from '../../components/playerColors';
 import type { SpritePainter } from '../types';
 import { NATIVE_CELL_SIZE, PHASES } from '../types';
 import { getIcon } from '../icons';
-import { outerGlow, paintBox, parseBoxShadow } from '../paintTokens';
+import { paintBox } from '../paintTokens';
 import type { Box } from '../paintTokens';
-import { drawText, outerPad } from '../cells/common';
+import { outerPad } from '../cells/common';
+import type { FacePose } from '../../mascot/pose';
+import { NEUTRAL_FACE, faceKey } from '../../mascot/pose';
 import { playerStyle } from './playerStyles';
 import type { PlayerSpriteInput, PlayerStyle } from './playerStyles';
+import { drawFace } from './playerFace';
 
 export type { PlayerSpriteInput } from './playerStyles';
-
-/** `fontFamily: 'monospace'` — ağız ve dayanıklılık rozetinde. */
-export const MONO_STACK = 'monospace';
+export { MONO_STACK } from './playerFace';
+export { blinkClosedAt } from '../../mascot/idle';
 
 /** `playerPulse 1.3s infinite linear` — yalnızca neon temasının dış halkası. */
 export const PLAYER_PULSE_MS = 1300;
 
-/** Tema başına `playerBlink` süresi (kaynak dosyadaki satır içi `animation`). */
-const BLINK_MS: Record<GameTheme, number> = {
-    legacy: 4000,
-    arcade: 4000,
-    neon: 4200,
-    blueprint: 4400,
-    cosmic: 4600,
-};
-
-/**
- * `@keyframes playerBlink`: `0%,92%,100% → scaleY(1)`, `96% → scaleY(0.1)`.
- * Gözün kapalı sayıldığı pencere (scaleY < 0.5) periyodun ~%3.6'sı.
- */
-const BLINK_CLOSED_FROM = 0.942;
-const BLINK_CLOSED_TO = 0.978;
-
 const CENTER = NATIVE_CELL_SIZE / 2;
-const EYE_GAP = 6;
-const MOUTH_SIZE = 15;
 const LOCK_SIZE = 20;
 
 /** Taşan parlamanın sprite kutusuna eklediği pay. */
@@ -56,34 +43,12 @@ function playerPad(style: PlayerStyle): number {
     return Math.max(0, Math.ceil(style.token.size / 2 + outerPad(style.token.boxShadow) - CENTER));
 }
 
-function drawEyes(ctx: CanvasRenderingContext2D, style: PlayerStyle, cy: number, closed: boolean): void {
-    const { size, color, glow, square } = style.eye;
-    const dx = (EYE_GAP + size) / 2;
-    const half = size / 2;
-
-    ctx.save();
-    // `transformOrigin: 'center'` — sıranın merkezi etrafında ezilir.
-    ctx.translate(CENTER, cy);
-    if (closed) ctx.scale(1, 0.1);
-    ctx.fillStyle = color;
-    for (const sign of [-1, 1]) {
-        const draw = () => {
-            ctx.beginPath();
-            if (square) ctx.rect(sign * dx - half, -half, size, size);
-            else ctx.arc(sign * dx, 0, half, 0, Math.PI * 2);
-            ctx.fill();
-        };
-        for (const sh of parseBoxShadow(glow)) outerGlow(ctx, draw, sh.color, sh.blur);
-        draw();
-    }
-    ctx.restore();
-}
-
 export const playerSprite: SpritePainter<PlayerSpriteInput> = {
     key(input) {
         const styleType = getThemeConfig(input.theme).player.styleType;
+        // Kilitliyken yüz çizilmez: yüz anahtara girmez (gereksiz kopya sprite olmasın).
         return `player|${styleType}|${input.playerIndex}|${input.mode}|${input.locked ? 1 : 0}`
-            + `|${input.blinkClosed ? 1 : 0}|${input.pulsePhase}`;
+            + `|${input.locked ? '-' : faceKey(input.face)}|${input.pulsePhase}`;
     },
 
     size(input) {
@@ -119,28 +84,12 @@ export const playerSprite: SpritePainter<PlayerSpriteInput> = {
             return true;
         }
 
-        const contentH = style.eye.size + style.eyeGapBottom + MOUTH_SIZE;
-        const top = CENTER - contentH / 2;
-        drawEyes(ctx, style, top + style.eye.size / 2, input.blinkClosed);
-        drawText(ctx, input.mode === 'reversed' ? '▼' : '▲', CENTER, top + contentH - MOUTH_SIZE / 2, {
-            size: MOUTH_SIZE,
-            color: style.mouth.color,
-            weight: 900,
-            family: MONO_STACK,
-            textShadow: style.mouth.shadow,
-        });
+        drawFace(ctx, style, input.face, input.mode);
 
         ctx.restore();
         return true;
     },
 };
-
-/** `playerBlink` periyodunun kapalı penceresinde miyiz. */
-export function blinkClosedAt(theme: GameTheme, now: number): boolean {
-    const period = BLINK_MS[theme] ?? 4000;
-    const t = (((now % period) + period) % period) / period;
-    return t >= BLINK_CLOSED_FROM && t < BLINK_CLOSED_TO;
-}
 
 /** `playerPulse` fazı; nabız yalnızca neon + ters modda var. */
 export function pulsePhaseAt(theme: GameTheme, mode: 'normal' | 'reversed', now: number): number {
@@ -157,11 +106,15 @@ export function isIdleAnimated(theme: GameTheme, customData: Record<string, unkn
     return theme === 'neon' && customData.mode === 'reversed';
 }
 
-/** Sahnedeki bir varlıktan sprite girdisi. */
+/**
+ * Sahnedeki bir varlıktan sprite girdisi. `face` çağıranın işi: boştaki yüz
+ * (`idleFaceAt`) ya da süren ifadenin yüzü (`MascotController.poseOf`).
+ */
 export function playerInputOf(
     theme: GameTheme,
     customData: Record<string, unknown>,
     now: number,
+    face: FacePose = NEUTRAL_FACE,
 ): PlayerSpriteInput {
     const playerIndex = (customData.playerIndex as number) ?? 0;
     const mode = (customData.mode as 'normal' | 'reversed') ?? 'normal';
@@ -171,7 +124,7 @@ export function playerInputOf(
         playerIndex,
         mode,
         locked,
-        blinkClosed: locked ? false : blinkClosedAt(theme, now),
+        face: locked ? NEUTRAL_FACE : face,
         pulsePhase: pulsePhaseAt(theme, mode, now),
     };
 }

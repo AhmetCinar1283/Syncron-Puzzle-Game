@@ -1,7 +1,10 @@
 'use client';
 
-import React, { memo, useMemo, useState, useEffect } from 'react';
+import React, { memo, useMemo, useState, useEffect, useRef } from 'react';
 import { PlayerGraphic } from '@/game-engine/components/entities/PlayerGraphic';
+import type { MascotHandle } from '@/game-engine/components/entities/MascotView';
+import { useMotionTier } from '@/lib/motionTier';
+import { pickHeroShow } from '../lib/heroScenes';
 import { Entity } from '@/game-engine/logic/entityTypes';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { PuzzleWinBurst } from './PuzzleWinBurst';
@@ -55,6 +58,46 @@ function HeroPlayCellBase({
     }, 360);
     return () => clearTimeout(timer);
   }, [animMode]);
+
+  // Seçiliyken maskot kendi etrafında dönmez; mini senaryolar (bkz. lib/heroScenes.ts)
+  // ve ara sıra tek ifadeler oynar. Sahneler arasında bekleme var, spam yok.
+  const mascotRef = useRef<MascotHandle>(null);
+  const lively = useMotionTier() === 'full';
+  const showing = isActive && phase === 'idle' && lively;
+
+  useEffect(() => {
+    if (!showing) return;
+    const handle = mascotRef.current;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    let alive = true;
+    let lastId: string | null = null;
+    const later = (ms: number, fn: () => void) => {
+      const t = setTimeout(() => { timers.delete(t); if (alive) fn(); }, ms);
+      timers.add(t);
+    };
+    const nextShow = (delay: number) => later(delay, () => {
+      const pick = pickHeroShow(Math.random, lastId);
+      if (pick.kind === 'single') {
+        mascotRef.current?.emote(pick.emote);
+        nextShow(pick.duration + 3500 + Math.random() * 4000);
+        return;
+      }
+      lastId = pick.scene.id;
+      for (const step of pick.scene.steps) {
+        later(step.at, () => {
+          if (step.stop) mascotRef.current?.stop(step.stop);
+          if (step.emote) mascotRef.current?.emote(step.emote, { force: true });
+        });
+      }
+      nextShow(pick.scene.duration + 3500 + Math.random() * 4000);
+    });
+    nextShow(700);
+    return () => {
+      alive = false;
+      timers.forEach(clearTimeout);
+      handle?.stop();
+    };
+  }, [showing]);
 
   // Karakter grafiği gerçek oyun varlığını kullanır — menü ile oyun aynı dili konuşur.
   const playerEntity: Entity = useMemo(
@@ -178,7 +221,7 @@ function HeroPlayCellBase({
                   className="home-hero__player-spin"
                   data-anim={phase !== 'idle' ? phase : animMode}
                 >
-                  <PlayerGraphic entity={playerEntity} />
+                  <PlayerGraphic ref={mascotRef} entity={playerEntity} />
                 </div>
               </div>
             </div>

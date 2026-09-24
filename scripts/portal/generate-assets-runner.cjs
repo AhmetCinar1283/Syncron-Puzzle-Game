@@ -5,6 +5,8 @@ const { pathToFileURL } = require('url');
 
 // Disable hardware acceleration for reliable headless capture
 app.disableHardwareAcceleration();
+// Ekran ölçeği (ör. %125) çıktıyı büyütmesin: PNG boyutları şablon boyutuyla birebir olmalı.
+app.commandLine.appendSwitch('force-device-scale-factor', '1');
 
 // Prevent Electron from auto-quitting when a window is closed between captures
 app.on('window-all-closed', (e) => {
@@ -29,7 +31,7 @@ DIRS.forEach((d) => {
   }
 });
 
-async function captureWindow(filePath, width, height, transparent = false) {
+async function captureWindow(filePath, width, height, transparent = false, query = '') {
   const win = new BrowserWindow({
     width,
     height,
@@ -45,7 +47,7 @@ async function captureWindow(filePath, width, height, transparent = false) {
   });
 
   win.setContentSize(width, height);
-  const fileUrl = pathToFileURL(filePath).href;
+  const fileUrl = pathToFileURL(filePath).href + query;
   await win.loadURL(fileUrl);
 
   // Wait for web fonts and SVG render stabilization
@@ -69,8 +71,7 @@ app.whenReady().then(async () => {
     console.log('⚡ Generating Syncron visual assets via Electron/Chromium (Retro Arcade 8-Bit)...');
 
     const iconHtmlPath = path.join(TEMPLATES_DIR, 'icon-template.html');
-    const iconTransHtmlPath = path.join(TEMPLATES_DIR, 'icon-transparent-template.html');
-    const coverHtmlPath = path.join(TEMPLATES_DIR, 'cover-template.html');
+        const coverHtmlPath = path.join(TEMPLATES_DIR, 'cover-template.html');
     const splashHtmlPath = path.join(TEMPLATES_DIR, 'splash-template.html');
 
     // 1. Master Icon (1024x1024, Zero Text, Borderless Arcade)
@@ -98,7 +99,7 @@ app.whenReady().then(async () => {
 
     // 3. Master Icon Transparent (1024x1024)
     console.log('3/7 Rendering Master Icon Transparent (1024x1024)...');
-    const transIcon = await captureWindow(iconTransHtmlPath, 1024, 1024, true);
+    const transIcon = await captureWindow(iconHtmlPath, 1024, 1024, true, '?transparent');
     const transIconBuffer = transIcon.toPNG();
     const transIconPath = path.join(ASSETS_DIR, 'source/master-icon-transparent-1024x1024.png');
     fs.writeFileSync(transIconPath, transIconBuffer);
@@ -147,6 +148,19 @@ app.whenReady().then(async () => {
     const gdCoverStdPath = path.join(ASSETS_DIR, 'gamedistribution/cover-720x480.png');
     fs.writeFileSync(gdCoverStdPath, gdCoverStd.toPNG());
     console.log('  ✓ Saved:', gdCoverStdPath);
+
+    // 8. Portal dikey (800x1200, 2:3) ve kare (800x800) kapaklar — CrazyGames
+    for (const [label, tpl, w, h] of [
+      ['Portrait', 'cover-portrait-template.html', 800, 1200],
+      ['Square', 'cover-square-template.html', 800, 800],
+    ]) {
+      console.log(`8/8 Rendering ${label} Cover (${w}x${h})...`);
+      const png = (await captureWindow(path.join(TEMPLATES_DIR, tpl), w, h, false)).toPNG();
+      const name = `cover-${w}x${h}.png`;
+      fs.writeFileSync(path.join(ASSETS_DIR, 'source', `master-${name}`), png);
+      fs.writeFileSync(path.join(ASSETS_DIR, 'crazygames', name), png);
+      console.log('  ✓ Saved:', path.join(ASSETS_DIR, 'crazygames', name));
+    }
 
     console.log('🎉 All portal and master assets successfully generated!');
     app.quit();

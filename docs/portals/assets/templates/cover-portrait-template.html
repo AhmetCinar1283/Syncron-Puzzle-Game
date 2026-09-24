@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Syncron Portrait Cover 800x1200 (2:3, Retro Arcade 8-Bit)</title>
+  <link rel="stylesheet" href="brand.css">
+  <style>
+    .stage { width: 800px; height: 1200px; }
+    .brand-title { top: 860px; font-size: 118px; letter-spacing: 12px; text-indent: 12px; }
+    .accent-bar { top: 1010px; left: 50%; transform: translateX(-50%); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="fx-bg bg-grid"></div>
+    <div class="fx-bg scanlines"></div>
+    <div class="glow glow-g" style="left:-80px;top:180px;width:560px;height:560px"></div>
+    <div class="glow glow-b" style="right:-80px;top:400px;width:560px;height:560px"></div>
+    <div class="slot" style="left:110px;top:210px;width:330px;height:330px"><canvas data-mascot data-player="0" data-emote="happy" data-ms="250" data-size="330"></canvas></div>
+    <div class="slot" style="left:440px;top:480px;width:260px;height:260px"><canvas data-mascot data-player="1" data-emote="wink" data-ms="300" data-size="260"></canvas></div>
+    <div class="plus" style="--s:10px;--c:#facc15;left:600px;top:210px"></div>
+    <div class="px" style="--s:16px;--c:#00c4ff;left:700px;top:390px"></div>
+    <div class="px" style="--s:14px;--c:#facc15;left:70px;top:680px"></div>
+    <div class="plus" style="--s:8px;--c:#00ff88;left:210px;top:750px"></div>
+    <div class="px" style="--s:12px;--c:#00ff88;left:120px;top:150px"></div>
+    <div class="brand-title">SYNCRON</div>
+    <div class="accent-bar"><i style="background:#facc15"></i><i style="background:#00ff88"></i><b></b><i style="background:#00c4ff"></i></div>
+  </div>
+<script src="mascot.bundle.js"></script>
+</body>
+</html>

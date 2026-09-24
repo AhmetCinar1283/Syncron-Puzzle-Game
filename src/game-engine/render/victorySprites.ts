@@ -18,6 +18,7 @@ import { getPlayerColor } from '../components/playerColors';
 import { getThemeConfig } from '../themes/themeConfig';
 import { outerGlow, registerRasterDpr, rasterDprOf, roundRectPath } from './paintTokens';
 import { blurCanvas, blurPad } from './blur';
+import { faceKey } from '../mascot/pose';
 // `./entities` (index) DEĞİL, doğrudan `./entities/player`: index bu dosyayı
 // dolaylı olarak içe aktarıyor ve barrel üzerinden geçmek döngü kurardı.
 import { playerSprite } from './entities/player';
@@ -245,14 +246,14 @@ function victoryPad(input: VictoryPlayerInput): number {
  *
  * Göz kırpma ve neon nabzı DONDURULMUŞ: kaynaktaki `[data-victory-freeze] *
  * { animation: none }` kuralı animasyonu durdurmuyor, BAŞLANGIÇ durumuna
- * döndürüyor — yani göz açık (`blinkClosed: false`) ve nabız `scale(1)`
+ * döndürüyor — yani nötr yüz (zaferde mutlu yüz, bkz. victoryState.ts) ve nabız `scale(1)`
  * (`pulsePhase: 0`). Girdiyi kuran `victory.ts`.
  */
 export const victoryPlayerSprite: SpritePainter<VictoryPlayerInput> = {
     key(input) {
         const styleType = getThemeConfig(input.base.theme).player.styleType;
         return `victoryPlayer|${styleType}|${input.base.playerIndex}|${input.base.mode}`
-            + `|${input.base.locked ? 1 : 0}|blur${input.blur}`;
+            + `|${input.base.locked ? 1 : 0}|${faceKey(input.base.face)}|blur${input.blur}`;
     },
 
     size(input) {

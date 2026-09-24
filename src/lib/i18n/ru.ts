@@ -33,6 +33,7 @@ const ru: Record<string, string> = {
   'home.levels_sub': 'Просмотр и перестановка уровней',
   'home.friends_sub': 'Список друзей и заявки',
   'home.theme_sub': 'Сменить визуальный стиль',
+  'home.settings_sub': 'Звук, управление и настройки',
   'home.sliding_on_ice': '❄ СКОЛЬЖЕНИЕ ПО ЛЬДУ...',
   'home.badge_daily': 'ДЕНЬ',
   'home.badge_theme': 'ТЕМА',

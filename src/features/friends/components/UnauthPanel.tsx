@@ -1,7 +1,7 @@
 'use client';
 
 import { useT } from '@/contexts/LanguageContext';
-import { GameIcon } from '@/components/icons';
+import { MascotBuddy } from '@/components/ui';
 
 export function UnauthPanel({ onSignIn }: { onSignIn: () => void }) {
   const t = useT();
@@ -17,7 +17,7 @@ export function UnauthPanel({ onSignIn }: { onSignIn: () => void }) {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-        <GameIcon name="friends" size={48} color="#ec4899" />
+        <MascotBuddy size={72} greet="wink" />
       </div>
       <p style={{ fontSize: '15px', color: '#9ca3af', marginBottom: '24px' }}>
         {t('friends.login_required')}

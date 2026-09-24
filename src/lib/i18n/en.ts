@@ -48,6 +48,7 @@ const en: Record<string, string> = {
   'home.admin_sub': 'Admin/Moderator Page',
   'home.friends_sub': 'Friend list and requests',
   'home.theme_sub': 'Change Visual Style',
+  'home.settings_sub': 'Sound, controls & preferences',
   'home.sliding_on_ice': '❄ SLIDING ON ICE...',
   'home.badge_daily': 'DAILY',
   'home.badge_theme': 'THEME',

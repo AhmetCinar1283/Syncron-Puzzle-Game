@@ -83,3 +83,14 @@ export const modalClose: SynthRecipe = {
     tone(ctx, { type: 'sine', freq: 700, freqEnd: 380, dur: 0.12, gain: 0.3, attack: 0.008 });
   },
 };
+
+/** Tema seçildiğinde çalan akıcı, enerjik, oyun hissi veren 3-tonlu yükselen melodi. */
+export const themeSelect: SynthRecipe = {
+  duration: 0.24,
+  build: (ctx) => {
+    tone(ctx, { type: 'sine', freq: 523.25, dur: 0.08, gain: 0.3, attack: 0.004 });
+    tone(ctx, { type: 'triangle', freq: 659.25, start: 0.06, dur: 0.09, gain: 0.32, attack: 0.004 });
+    tone(ctx, { type: 'sine', freq: 783.99, start: 0.12, dur: 0.12, gain: 0.35, attack: 0.004 });
+  },
+};
+

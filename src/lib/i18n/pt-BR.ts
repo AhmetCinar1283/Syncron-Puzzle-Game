@@ -33,6 +33,7 @@ const ptBR: Record<string, string> = {
   'home.levels_sub': 'Ver e reordenar fases',
   'home.friends_sub': 'Lista de amigos e pedidos',
   'home.theme_sub': 'Mudar o estilo visual',
+  'home.settings_sub': 'Som, controles e preferências',
   'home.sliding_on_ice': '❄ DESLIZANDO NO GELO...',
   'home.badge_daily': 'DIÁRIO',
   'home.badge_theme': 'TEMA',

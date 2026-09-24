@@ -9,6 +9,7 @@ import { HeroPlayCell } from './HeroPlayCell';
 import { MenuTileGrid } from './MenuTileGrid';
 import { MoreMenuSheet } from './MoreMenuSheet';
 import { HomeInfoSection } from './HomeInfoSection';
+import UserBadge from '@/components/common/UserBadge';
 import { useHomePage } from '../hooks/useHomePage';
 
 /** Vurgu renginin CSS'te kullanılan alfa varyantları (yüzde → hex alfa soneki). */
@@ -87,6 +88,7 @@ export function HomePage() {
 
   return (
     <div className="home-root" data-motion={motionTier} style={themeVars}>
+      <UserBadge />
       <main className="home-main">
         <div className="home-primary">
           <HomeTopBar onOpenThemeModal={() => setIsThemeModalOpen(true)} />

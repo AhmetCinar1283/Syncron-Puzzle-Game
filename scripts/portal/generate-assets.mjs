@@ -18,6 +18,10 @@ const ROOT = join(__dirname, '../..');
 const electronCli = join(ROOT, 'node_modules/electron/cli.js');
 const runnerScript = join(__dirname, 'generate-assets-runner.cjs');
 
+// Şablonların kullandığı maskot çizicisi (oyundaki kodun aynısı) önce güncellenir.
+const bundle = spawnSync(process.execPath, [join(__dirname, 'build-mascot-bundle.mjs')], { stdio: 'inherit', cwd: ROOT });
+if (bundle.status !== 0) process.exit(bundle.status ?? 1);
+
 console.log('⚡ Başlatılıyor: Portal görsel varlık üretimi...');
 const result = spawnSync(process.execPath, [electronCli, runnerScript], {
   stdio: 'inherit',

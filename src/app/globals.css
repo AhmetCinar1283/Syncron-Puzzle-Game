@@ -2,6 +2,7 @@
 @import "./cursors.css";
 @import "./home.css";
 @import "./profile.css";
+@import "./theme-selector.css";
 
 :root {
   --background: #030712;

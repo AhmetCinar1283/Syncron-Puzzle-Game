@@ -15,7 +15,7 @@ export function DailyLeaderboardList({ date }: { date: string }) {
 
   if (loading) return <div className="flex justify-center py-6"><Spinner color="amber" /></div>;
   if (failed || !data) return <p className="py-4 text-center text-sm" style={{ color: '#f87171' }}>{t('daily.load_error')}</p>;
-  if (data.entries.length === 0) return <EmptyState title={t('daily.leaderboard_empty')} />;
+  if (data.entries.length === 0) return <EmptyState mascot={{ playerIndex: 1, greet: 'wink' }} title={t('daily.leaderboard_empty')} />;
 
   return (
     <div className="flex flex-col gap-1.5">

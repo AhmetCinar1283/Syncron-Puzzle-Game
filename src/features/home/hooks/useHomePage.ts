@@ -60,7 +60,6 @@ export function useHomePage() {
   const [inputMode, setInputMode] = useState<'touch' | 'controller'>('touch');
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { isSettingsOpen } = useSettings();
   const [nextTarget, setNextTarget] = useState<NextCampaignTarget | null>(null);
 
@@ -253,6 +252,15 @@ export function useHomePage() {
       });
     }
 
+    items.push({
+      id: 'settings',
+      label: t('settings.title'),
+      sub: t('home.settings_sub') || t('settings.subtitle'),
+      color: '#38bdf8',
+      icon: 'settings',
+      onClick: () => { playSound('ui.navigate'); router.push('/settings'); },
+    });
+
     return items;
   }, [t, router, playSound, dailyAvailable, accountLogin, devTools, user?.role]);
 
@@ -366,9 +374,13 @@ export function useHomePage() {
     if (mq.addEventListener) {
       mq.addEventListener('change', update);
       return () => mq.removeEventListener('change', update);
-    } else if ((mq as any).addListener) {
-      (mq as any).addListener(update);
-      return () => (mq as any).removeListener(update);
+    } else {
+      const legacyMq = mq as unknown as {
+        addListener?: (cb: () => void) => void;
+        removeListener?: (cb: () => void) => void;
+      };
+      legacyMq.addListener?.(update);
+      return () => legacyMq.removeListener?.(update);
     }
   }, []);
 
@@ -397,21 +409,7 @@ export function useHomePage() {
     setActiveIndex((prev) => (prev > tiles.length ? 0 : prev));
   }, [tiles.length]);
 
-  useEffect(() => {
-    const handleProfileMenuState = (e: Event) => {
-      const customEvent = e as CustomEvent<{ open?: boolean }>;
-      const open = customEvent.detail?.open ?? false;
-      setIsProfileMenuOpen(open);
-      if (!open) {
-        setActiveIndex((prev) => (prev === PROFILE_INDEX ? 0 : prev));
-      }
-    };
-
-    window.addEventListener('profile-menu-state', handleProfileMenuState);
-    return () => window.removeEventListener('profile-menu-state', handleProfileMenuState);
-  }, []);
-
-  const isOverlayOpen = isThemeModalOpen || isSheetOpen || isSettingsOpen || isProfileMenuOpen;
+  const isOverlayOpen = isThemeModalOpen || isSheetOpen || isSettingsOpen;
 
   const { isConnected } = useGamepad({
     onMove: (dir) => {

@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     // Portal build çıktıları (npm run build:crazygames / build:gamedistribution)
     "out-crazygames/**",
     "out-gamedistribution/**",
+    // Tanıtım videosu: kendi bağımlılıkları ve tsconfig'i olan ayrı Remotion projesi.
+    "video/**",
   ]),
 ]);
 

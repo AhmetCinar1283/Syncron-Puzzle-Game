@@ -14,6 +14,7 @@ import { getPlayerColor } from '../../components/playerColors';
 import { NATIVE_CELL_SIZE, PHASES } from '../types';
 import { outerGlow } from '../paintTokens';
 import { strokeArc } from '../cells/common';
+import type { FacePose } from '../../mascot/pose';
 
 const CENTER = NATIVE_CELL_SIZE / 2;
 
@@ -25,8 +26,8 @@ export interface PlayerSpriteInput {
     playerIndex: number;
     mode: 'normal' | 'reversed';
     locked: boolean;
-    /** Göz kapağı kapalı mı. Kilitliyken göz çizilmediği için daima `false`. */
-    blinkClosed: boolean;
+    /** Yüz pozu (kırpma, bakış, ifade). Kilitliyken yüz çizilmez; nötr verilir. */
+    face: FacePose;
     /** `playerPulse` fazı (0..PHASES-1); nabzı olmayan hâllerde 0. */
     pulsePhase: number;
 }

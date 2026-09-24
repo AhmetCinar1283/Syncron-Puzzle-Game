@@ -114,7 +114,13 @@ export function transition(
   action: Direction | 'switch_room',
   controlMode: 'all_rooms' | 'selected_room',
   controlledRoomIds: string[],
-  levelBounds?: LevelBounds
+  levelBounds?: LevelBounds,
+  /**
+   * Her tick'ten hemen sonra, yok edilenler AYIKLANMADAN çağrılır (oyundaki
+   * film karesiyle aynı an). Tanıtım videosu hamleyi kare kare çizmek için
+   * kullanır; nesneler canlıdır, saklanacaksa kopyalanmalı.
+   */
+  onTick?: (entities: Entity[], rooms: Record<string, RoomState>) => void
 ): {
   entities: Entity[];
   rooms: Record<string, RoomState>;
@@ -194,6 +200,7 @@ export function transition(
 
     const result = processSingleTick(clonedEnts, clonedRooms, pending, levelBounds);
     tickNumber++;
+    onTick?.(clonedEnts, clonedRooms);
 
     // Mark cells that were obstacles but got crushed
     result.pendingNextTick.forEach((intent) => {

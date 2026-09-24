@@ -162,3 +162,32 @@ describe('createActivityTracker — süre yönetimi', () => {
         expect(tracker.isActive(keyAt(0))).toBe(true);
     });
 });
+
+describe('createActivityTracker — hedef sevinci', () => {
+    const target = (playerIndex = 0): Cell => ({ ...makeCell('target', 2), customData: { playerIndex } });
+    const lockedPlayer = (col: number, locked: boolean) =>
+        ({ id: 1, type: 'player', position: { roomId: ROOM, row: 0, col }, customData: { isLocked: locked } }) as unknown as Entity;
+
+    it('tick içinde oyuncu hedefe KİLİTLENİNCE 900 ms sevinir', () => {
+        const t = createActivityTracker();
+        const before = makeScene([target()], [lockedPlayer(1, false)], [lockedPlayer(1, false)]);
+        t.update(before, 0);
+        const after = makeScene([target()], [lockedPlayer(2, true)], [lockedPlayer(1, false)]);
+        expect(t.update(after, 100)).toBe(true);
+        expect(t.isActive(keyAt(2))).toBe(true);
+        expect(t.expire(999)).toBe(false);
+        expect(t.expire(1000)).toBe(true);
+    });
+
+    it('filmin ilk karesinde (prevEntities yok) zaten kilitli oyuncu sevindirmez', () => {
+        const t = createActivityTracker();
+        t.update(makeScene([target()], [lockedPlayer(2, true)], null), 0);
+        expect(t.isActive(keyAt(2))).toBe(false);
+    });
+
+    it('kilitlenmeden hedefe uğrayan sevindirmez', () => {
+        const t = createActivityTracker();
+        t.update(makeScene([target()], [lockedPlayer(2, false)], [lockedPlayer(1, false)]), 0);
+        expect(t.isActive(keyAt(2))).toBe(false);
+    });
+});

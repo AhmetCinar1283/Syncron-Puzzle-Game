@@ -5,7 +5,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import FirestoreSync from "@/components/common/FirestoreSync";
-import UserBadge from "@/components/common/UserBadge";
 import BackButtonManager from "@/components/common/BackButtonManager";
 import AdBannerMount from "@/components/common/AdBannerMount";
 import StoreProvider from "@/store/StoreProvider";
@@ -181,7 +180,6 @@ export default function RootLayout({
                   <GameThemeProvider>
                     <MonetizationProvider>
                       <FirestoreSync />
-                      <UserBadge />
                       <BackButtonManager />
                       <AdBannerMount />
                       <GlobalThemeBackground />

@@ -21,6 +21,8 @@ import type { GameTheme } from '../themes/themeConfig';
 import type { BoardScene } from './types';
 import { VICTORY_CELEBRATION_DURATION } from '../components/effects/VictoryCelebration';
 import type { PlayerSpriteInput } from './entities/player';
+import { compiledEmote } from '../mascot/controller';
+import { sampleEmote } from '../mascot/timeline';
 import { PARTICLE_COLORS, PARTICLE_SHAPES } from './victorySprites';
 import type { VictoryShape } from './victorySprites';
 
@@ -80,14 +82,21 @@ export interface VictoryState {
     burst: { active: boolean; scale: number; opacity: number; shockwaveRadius: number; shockwaveOpacity: number };
 }
 
-/** `[data-victory-freeze] * { animation: none }` — başlangıç durumuna dönüş. */
+/**
+ * Zaferdeki yüz: `happy` ifadesinin ilk karesi (gülen gözler, sırıtış, yanak).
+ * Koreografi zaten dönüp zıpladığı için yüz DURAĞAN — tek sprite, ek maliyet yok.
+ */
+const VICTORY_FACE = sampleEmote(compiledEmote('happy'), 0).face;
+
+/** Dondurulmuş nabız ve göz kırpma (`[data-victory-freeze]`), yüz mutlu. */
 function frozenPlayerInput(theme: GameTheme, customData: Record<string, unknown>, idx: number): PlayerSpriteInput {
     return {
         theme,
         playerIndex: (customData.playerIndex as number) ?? idx,
         mode: (customData.mode as 'normal' | 'reversed') ?? 'normal',
-        locked: Boolean(customData.isLocked),
-        blinkClosed: false,
+        // Kilit ikonu yerine mutlu yüz: kutlamada karakter gülüyor (kilit oyun içi durum).
+        locked: false,
+        face: VICTORY_FACE,
         pulsePhase: 0,
     };
 }

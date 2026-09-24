@@ -68,8 +68,8 @@ function ringAngleRad(phase: number): number {
     return ((step / PHASES) * RING_STEP_DEG * Math.PI) / 180;
 }
 
-function drawRing(ctx: CanvasRenderingContext2D, theme: GameTheme, rgb: string, phase: number): void {
-    const color = `rgba(${rgb}, 0.45)`;
+function drawRing(ctx: CanvasRenderingContext2D, theme: GameTheme, rgb: string, phase: number, cheer = false): void {
+    const color = `rgba(${rgb}, ${cheer ? 0.9 : 0.45})`;
     ctx.save();
     ctx.translate(CELL_CENTER, CELL_CENTER);
     ctx.rotate(ringAngleRad(phase));
@@ -134,16 +134,18 @@ export const targetCellSprite: SpritePainter<CellPaintInput> = {
 };
 
 export const targetAmbientSprite: SpritePainter<CellPaintInput> = {
-    key: ({ cell, theme, phase }) => `target|${theme}|p${playerIndexOf(cell.customData)}|ph${phase}`,
+    key: ({ cell, theme, phase, isActive }) => `target|${theme}|p${playerIndexOf(cell.customData)}|ph${phase}${isActive ? '|cheer' : ''}`,
 
     size: () => ({ w: NATIVE_CELL_SIZE, h: NATIVE_CELL_SIZE }),
 
-    draw: (ctx, { cell, theme, phase }) => {
+    draw: (ctx, { cell, theme, phase, isActive }) => {
         const { hex, rgb } = getPlayerColor(playerIndexOf(cell.customData));
         ctx.save();
         clipCell(ctx, radiusFor(theme));   // DOM'daki `overflow: hidden`
-        drawRing(ctx, theme, rgb, phase);
-        drawSymbol(ctx, hex, rgb, NATIVE_CELL_SIZE * 0.42, pulseAt(phase));
+        drawRing(ctx, theme, rgb, phase, isActive);
+        const pulse = pulseAt(phase);
+        // Sevinç (bir oyuncu üstüne kilitlendi): simge büyür ve tam parlaklıkta kalır.
+        drawSymbol(ctx, hex, rgb, NATIVE_CELL_SIZE * 0.42, isActive ? { scale: pulse.scale * 1.3, opacity: 1 } : pulse);
         ctx.restore();
     },
 };

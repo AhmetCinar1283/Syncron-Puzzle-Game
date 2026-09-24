@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { MascotBuddy } from '@/components/ui';
 
 interface LeaderboardHeaderProps {
   t: (key: string) => string;
@@ -81,7 +82,9 @@ export default function LeaderboardHeader({ t, activeColor, activeGlow, isFriend
         )}
       </div>
 
-      {/* Main Glowing Title */}
+      {/* Main Glowing Title, iki maskotun arasında */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', margin: '0 0 24px 0' }}>
+      <MascotBuddy size={40} playerIndex={0} moods={['happy', 'wink']} />
       <h1
         style={{
           fontSize: '32px',
@@ -90,13 +93,15 @@ export default function LeaderboardHeader({ t, activeColor, activeGlow, isFriend
           textAlign: 'center',
           color: activeColor,
           textShadow: `0 0 16px ${activeGlow}, 0 0 32px ${activeColor}20`,
-          margin: '0 0 24px 0',
+          margin: 0,
           textTransform: 'uppercase',
           transition: 'color 0.3s, text-shadow 0.3s',
         }}
       >
         {t('leaderboard.title')}
       </h1>
+      <MascotBuddy size={40} playerIndex={1} moods={['happy', 'surprised']} />
+      </div>
     </>
   );
 }

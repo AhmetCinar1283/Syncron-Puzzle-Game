@@ -7,6 +7,11 @@
  * ÇİZİM SIRASI: `zIndex: 10 + z` karşılığı — varlıklar `z`'ye göre ARTAN sırada
  * çizilir, böylece zıplayan varlık üstte kalır (faz planı §3.7).
  *
+ * MASKOT İFADELERİ (`mascot/`): süren bir ifade varsa (`MascotController`)
+ * katman uyanık kalır — ifade tam hızda oynar, ambient bütçesine bağlı değildir
+ * (bir tepki, hamle sırasında da görünmeli). Gövde dönüşümü efekt izinin
+ * (`trackTransformOf`) İÇİNDE uygulanır; ikisi birbirini ezmez.
+ *
  * GÖZ KIRPMA VE NABIZ bu katmanın döngüsünü KENDİSİ uyanık tutmaz: `actors`
  * yalnızca tick geçişi, aktif efekt, zıplama ve buzda kayma sürerken `true`
  * döner. Boşta duran oyuncunun animasyonunu `ambient` katmanının bütçesi
@@ -28,12 +33,15 @@ import { drawVictory } from '../victory';
 import type { VictoryTracker } from '../victory';
 import { boxInputOf, boxSprite } from './box';
 import { playerInputOf, playerSprite } from './player';
+import type { MascotController } from '../../mascot/controller';
+import { applyBodyPose, mascotPoseAt, paintMascotFx } from './mascot';
 import { dustParticlesAt, iceDustSprite } from './dust';
 import { blitWithEffects } from './effects';
 
 export { boxSprite, playerSprite, iceDustSprite };
 export { boxInputOf } from './box';
 export { blinkClosedAt, playerInputOf, pulsePhaseAt } from './player';
+export { applyBodyPose, mascotPoseAt, paintMascot, paintMascotFx } from './mascot';
 export { dustParticlesAt } from './dust';
 
 const HALF = NATIVE_CELL_SIZE / 2;
@@ -79,6 +87,7 @@ export function drawActorsLayer(
     motion: EntityMotionTracker | null = null,
     victory: VictoryTracker | null = null,
     fog: FogFrame | null = null,
+    mascots: MascotController | null = null,
 ): boolean {
     const prevById = new Map<number, Entity>();
     for (const entity of scene.prevEntities ?? []) prevById.set(entity.id, entity);
@@ -88,6 +97,11 @@ export function drawActorsLayer(
         : 1;
     const eased = EASE_MOVE(progress);
     let alive = progress < 1;
+    // Süren bir ifade varsa bir kare daha (ifade bitince döngü kendiliğinden durur).
+    if (mascots?.animating(now)) alive = true;
+    // Boştaki yüz (kırpma/bakınma) yalnızca ambient AÇIKKEN; aksi hâlde nötr
+    // (bkz. `mascotPoseAt`, `idle.ts`).
+    const idleOn = scene.ambientMode === 'on';
 
     const ordered = [...scene.entities].sort((a, b) => a.physics.z - b.physics.z);
 
@@ -154,7 +168,12 @@ export function drawActorsLayer(
         // sprite varyantları, ağırlıkları `sampleTrack` verir (bkz. effects.ts).
         const layers = effectLayersOf(state);
         if (entity.type === 'player') {
-            blitWithEffects(ctx, cache, playerSprite, playerInputOf(scene.theme, entity.customData, now), layers, transform?.fx);
+            const pose = mascotPoseAt(scene.theme, entity.id, now, idleOn, mascots);
+            ctx.save();
+            applyBodyPose(ctx, pose.body);
+            blitWithEffects(ctx, cache, playerSprite, playerInputOf(scene.theme, entity.customData, now, pose.face), layers, transform?.fx);
+            ctx.restore();
+            paintMascotFx(ctx, cache, pose);
         } else {
             blitWithEffects(ctx, cache, boxSprite, boxInputOf(scene.theme, entity), layers, transform?.fx);
         }

@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { BLINK_FACE, NEUTRAL_FACE } from '../mascot/pose';
 import type { Entity } from '../logic/entityTypes';
 import type { BoardScene } from './types';
 import type { SpriteCache } from './spriteCache';
@@ -102,10 +103,11 @@ describe('createVictoryState', () => {
         expect(createVictoryState(scene([player(1, 0, 0)]), 0).maxRadius).toBeCloseTo(640 * 0.38, 6);
     });
 
-    it('göz kırpma ve nabız DONDURULMUŞ girdiyle kurulur', () => {
-        const state = createVictoryState(scene([player(1, 0, 0, { playerIndex: 3, mode: 'reversed' })]), 0);
+    it('nabız donuk, yüz mutlu (kilit ikonu yerine) kurulur', () => {
+        const state = createVictoryState(scene([player(1, 0, 0, { playerIndex: 3, mode: 'reversed', isLocked: true })]), 0);
         expect(state.configs[0].base).toMatchObject({
-            playerIndex: 3, mode: 'reversed', blinkClosed: false, pulsePhase: 0,
+            playerIndex: 3, mode: 'reversed', locked: false, pulsePhase: 0,
+            face: { left: { shape: 'happy' }, mouth: 'grin', blush: true },
         });
     });
 });
@@ -276,7 +278,7 @@ describe('createVictoryTracker', () => {
 describe('sprite anahtarları (00-ilkeler §3.1)', () => {
     const base = {
         theme: 'neon' as const, playerIndex: 0, mode: 'normal' as const,
-        locked: false, blinkClosed: false, pulsePhase: 0,
+        locked: false, face: NEUTRAL_FACE, pulsePhase: 0,
     };
 
     it('aynı girdi aynı anahtar', () => {
@@ -291,9 +293,9 @@ describe('sprite anahtarları (00-ilkeler §3.1)', () => {
         expect(victoryPlayerSprite.key({ base: { ...base, playerIndex: 1 }, blur: 0 })).not.toBe(k);
     });
 
-    it('göz kırpma ve nabız anahtara GİRMEZ — koreografi boyunca donuk', () => {
+    it('yüz anahtara girer, nabız GİRMEZ — koreografi boyunca donuk', () => {
         const k = victoryPlayerSprite.key({ base, blur: 0 });
-        expect(victoryPlayerSprite.key({ base: { ...base, blinkClosed: true }, blur: 0 })).toBe(k);
+        expect(victoryPlayerSprite.key({ base: { ...base, face: BLINK_FACE }, blur: 0 })).not.toBe(k);
         expect(victoryPlayerSprite.key({ base: { ...base, pulsePhase: 7 }, blur: 0 })).toBe(k);
     });
 

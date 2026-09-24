@@ -12,6 +12,7 @@ import type { Entity } from '../../logic/entityTypes';
 import type { BoardScene } from '../types';
 import { boxSprite } from './box';
 import { blinkClosedAt, playerSprite, pulsePhaseAt } from './player';
+import { BLINK_FACE, NEUTRAL_FACE, faceKey } from '../../mascot/pose';
 import { dustParticlesAt, iceDustSprite } from './dust';
 import { createEntityMotionTracker, isTeleporting, isTrackActive } from '../entityMotion';
 
@@ -49,11 +50,16 @@ function scene(entities: Entity[], prevEntities: Entity[] | null, frameMs = 80):
 }
 
 describe('oyuncu sprite anahtarı', () => {
-    const base = { theme: 'legacy', playerIndex: 0, mode: 'normal', locked: false, blinkClosed: false, pulsePhase: 0 } as const;
+    const base = { theme: 'legacy', playerIndex: 0, mode: 'normal', locked: false, face: NEUTRAL_FACE, pulsePhase: 0 } as const;
 
     it('aynı girdide aynıdır', () => {
         expect(playerSprite.key({ ...base })).toBe(playerSprite.key({ ...base }));
-        expect(playerSprite.key({ ...base })).toBe('player|classic_arrow|0|normal|0|0|0');
+        expect(playerSprite.key({ ...base })).toBe(`player|classic_arrow|0|normal|0|${faceKey(NEUTRAL_FACE)}|0`);
+    });
+
+    it('kilitliyken yüz anahtara girmez (yüz çizilmez)', () => {
+        expect(playerSprite.key({ ...base, locked: true, face: BLINK_FACE }))
+            .toBe(playerSprite.key({ ...base, locked: true }));
     });
 
     it('görüntüyü etkileyen her alan için farklıdır', () => {
@@ -62,7 +68,7 @@ describe('oyuncu sprite anahtarı', () => {
             playerSprite.key({ ...base, playerIndex: 1 }),
             playerSprite.key({ ...base, mode: 'reversed' }),
             playerSprite.key({ ...base, locked: true }),
-            playerSprite.key({ ...base, blinkClosed: true }),
+            playerSprite.key({ ...base, face: BLINK_FACE }),
             playerSprite.key({ ...base, theme: 'neon' }),
             playerSprite.key({ ...base, theme: 'neon', pulsePhase: 5 }),
         ]);

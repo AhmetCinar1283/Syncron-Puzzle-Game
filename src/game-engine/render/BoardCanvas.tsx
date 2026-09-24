@@ -40,6 +40,8 @@ import { FOG_TRANSITION_MS, createFogTracker, type FogFrame, type FogTracker } f
 import { createKeepAlive, type KeepAlive } from './keepAlive';
 import { createFades, type FadeFrame, type Fades } from './fades';
 import { createIdleTracker, type IdleTracker } from './idle';
+import { createMascotController, type MascotController } from '../mascot/controller';
+import { useMascotReactions } from './useMascotReactions';
 import { isProfilerEnabled, recordFrame } from './profiler';
 import { ProfilerOverlay } from './ProfilerOverlay';
 import { playersSignature } from '../components/board/boardIndex';
@@ -56,6 +58,12 @@ interface BoardCanvasProps {
     muted?: boolean;
     /** Sarmalayıcının `aria-label`inde kullanılır (faz planı §2.4). */
     levelName?: string;
+    /**
+     * Oyuncu ifadelerini dışarıdan tetiklemek için (`mascots.trigger(id, 'happy', now)`).
+     * Verilmezse tahta kendi denetleyicisini kurar (yalnızca boşta davranış).
+     * DOM yedeği (`GameBoard`) ifade oynatmaz.
+     */
+    mascots?: MascotController;
 }
 
 /**
@@ -64,12 +72,12 @@ interface BoardCanvasProps {
  * bileşenin DIŞINDA yapılır: iç bileşen kendi film oynatma efektlerini
  * yürütüyor, ikisi birden bağlı kalsa `onAnimationEnd` iki kez tetiklenirdi.
  */
-const BoardCanvas = ({ levelName, ...boardProps }: BoardCanvasProps) => {
+const BoardCanvas = ({ levelName, mascots, ...boardProps }: BoardCanvasProps) => {
     const [unsupported, setUnsupported] = useState(() => !canUseCanvas2d());
     const markUnsupported = useCallback(() => setUnsupported(true), []);
 
     if (unsupported) return <GameBoard {...boardProps} />;
-    return <CanvasBoard {...boardProps} levelName={levelName} onUnsupported={markUnsupported} />;
+    return <CanvasBoard {...boardProps} levelName={levelName} mascots={mascots} onUnsupported={markUnsupported} />;
 };
 
 interface CanvasBoardProps extends BoardCanvasProps {
@@ -77,7 +85,7 @@ interface CanvasBoardProps extends BoardCanvasProps {
     onUnsupported: () => void;
 }
 
-const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted, levelName, onUnsupported }: CanvasBoardProps) => {
+const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound, muted, levelName, mascots: mascotsProp, onUnsupported }: CanvasBoardProps) => {
     const { theme } = useGameTheme();
     const motionTier = useMotionTier();
     // Film oynatma (kare ilerletme, ses, titreşim, bitiş) ortak hook'ta:
@@ -159,6 +167,12 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
     const fades = useMemo<Fades>(() => createFades(holds), [holds]);
     // Boşta oyuncu animasyonu ambient bütçesine bağlı (bkz. idle.ts).
     const idle = useMemo<IdleTracker>(() => createIdleTracker(), []);
+    // Maskot ifadeleri (bkz. mascot/controller.ts). Tetikleme `actors`'ı uyandırır.
+    const ownMascots = useMemo<MascotController>(() => createMascotController(), []);
+    const mascots = mascotsProp ?? ownMascots;
+    // Oyun olayları → ifadeler (mascot/reactions.ts) ve boştaki yaşam: uyuma,
+    // bakınma (mascot/life.ts). Yaşam yalnızca tahta gerçekten boşken sürer.
+    useMascotReactions(mascots, snapshot, ambientMode === 'on', motionTier !== 'lite', levelName);
 
     useEffect(() => () => {
         if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
@@ -236,7 +250,7 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
                 else {
                     // Hareket, efekt veya zıplama sürüyorsa bir kare daha
                     // lazım; yoksa döngü GERÇEKTEN durur (00-ilkeler §2.2).
-                    const moving = drawActorsLayer(ctx, current, cache, now, motionRef.current, victoryRef.current, fogFrame);
+                    const moving = drawActorsLayer(ctx, current, cache, now, motionRef.current, victoryRef.current, fogFrame, mascots);
                     idle.drewActors(current, now);
                     if (moving) loop?.invalidate('actors');
                 }
@@ -293,6 +307,9 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
         // İkonlar asenkron gelir: eksik ikonlu sprite önbelleğe yazılmadı, hazır
         // olunca ilgili katmanlar yeniden çizilir.
         const offIcons = onIconsReady(invalidateAll);
+        // Bir ifade tetiklenince uyuyan `actors` döngüsü uyanır; ifade sürdükçe
+        // `drawActorsLayer` `true` döndürerek kendini sürdürür.
+        const offMascots = mascots.subscribe(() => scheduler.invalidate('actors'));
 
         // Yüzeyler yeniden kuruldu (ilk bağlanma veya kademe değişimi): sahne
         // değişmeden çizilmeleri gerekir, yoksa tahta ilk hamleye kadar boş kalır.
@@ -307,6 +324,7 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
 
         return () => {
             offIcons();
+            offMascots();
             window.removeEventListener('resize', onResize);
             document.removeEventListener('visibilitychange', onVisibility);
             scheduler.stop();
@@ -315,7 +333,7 @@ const CanvasBoard = ({ snapshots, controlledRoomIds, onAnimationEnd, onPlaySound
             cacheRef.current = null;
             schedulerRef.current = null;
         };
-    }, [host, onUnsupported, motionTier, holds, fades, idle]);
+    }, [host, onUnsupported, motionTier, holds, fades, idle, mascots]);
 
     // Ekran okuyucu etiketi sarmalayıcıda, bir kez okunur (09-kapanis §2.2).
     const boardLabel = levelName ? `Board: ${levelName}` : 'Board';
@@ -531,6 +549,7 @@ export function drawActorsLayer(
     motion: EntityMotionTracker | null = null,
     victory: VictoryTracker | null = null,
     fog: FogFrame | null = null,
+    mascots: MascotController | null = null,
 ): boolean {
-    return drawActors(ctx, scene, cache, now, motion, victory, fog);
+    return drawActors(ctx, scene, cache, now, motion, victory, fog, mascots);
 }

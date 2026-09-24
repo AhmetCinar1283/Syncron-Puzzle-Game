@@ -11,7 +11,7 @@ import { StarRow } from './StarRow';
 
 export function ArchiveList({ entries, onOpen }: { entries: DailyArchiveEntry[]; onOpen: (date: string) => void }) {
   const t = useT();
-  if (entries.length === 0) return <EmptyState title={t('daily.archive_empty')} />;
+  if (entries.length === 0) return <EmptyState mascot={{ playerIndex: 1, greet: 'wink' }} title={t('daily.archive_empty')} />;
 
   return (
     <div className="flex flex-col gap-1.5">

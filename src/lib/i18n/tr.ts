@@ -48,6 +48,7 @@ const tr: Record<string, string> = {
   'home.admin_sub': 'Admin / Moderatör',
   'home.friends_sub': 'Arkadaş listesi ve istekler',
   'home.theme_sub': 'Görsel Stili Değiştir',
+  'home.settings_sub': 'Ses, kontroller ve tercihler',
   'home.sliding_on_ice': '❄ BUZDA KAYIYOR...',
   'home.badge_daily': 'GÜNLÜK',
   'home.badge_theme': 'TEMA',

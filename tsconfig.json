@@ -37,6 +37,7 @@
     ".archive",
     "android",
     "dist-electron",
-    "out"
+    "out",
+    "video"
   ]
 }

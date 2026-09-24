@@ -33,6 +33,7 @@ const de: Record<string, string> = {
   'home.levels_sub': 'Level ansehen und sortieren',
   'home.friends_sub': 'Freundesliste und Anfragen',
   'home.theme_sub': 'Optik ändern',
+  'home.settings_sub': 'Sound, Steuerung & Einstellungen',
   'home.sliding_on_ice': '❄ AUF DEM EIS UNTERWEGS...',
   'home.badge_daily': 'TÄGLICH',
   'home.badge_theme': 'DESIGN',

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Coffee, Coins, Award, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { MascotBuddy } from '@/components/ui';
 import type { DonorProfile, LOCAL_T } from '../lib/i18n';
 
 type T = typeof LOCAL_T.en;
@@ -25,6 +26,11 @@ export function RevealState({
       animate={{ opacity: 1 }}
       className="z-10 max-w-lg w-full text-center space-y-8 p-6"
     >
+      <div className="flex justify-center gap-3">
+        <MascotBuddy size={64} playerIndex={0} greet="celebrate" moods={['celebrate', 'love']} />
+        <MascotBuddy size={64} playerIndex={1} greet="love" moods={['celebrate', 'happy']} />
+      </div>
+
       {/* Title Section */}
       <div className="space-y-2">
         <motion.h1

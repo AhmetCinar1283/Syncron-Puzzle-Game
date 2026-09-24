@@ -1,6 +1,6 @@
 /**
- * DOSYA AMACI: Boşta duran oyuncunun animasyonunu (göz kırpma, neon ters mod
- * halkasının nabzı) `ambient` bütçesine bağlamak. Yeni zamanlayıcı yok.
+ * DOSYA AMACI: Boşta duran oyuncunun animasyonunu (göz kırpma, bakınma, neon
+ * ters mod halkasının nabzı) `ambient` bütçesine bağlamak. Yeni zamanlayıcı yok.
  *
  * NEDEN: `actors` katmanı boştayken çizilmez (00-ilkeler §2.2); bu yüzden karakter
  * "ölü" görünüyordu (08-rapor §7.5 #19). Karar: animasyon ambient'in kadansına
@@ -18,7 +18,9 @@
  */
 
 import type { BoardScene } from './types';
-import { isIdleAnimated, playerInputOf } from './entities/player';
+import { isIdleAnimated, pulsePhaseAt } from './entities/player';
+import { faceKey } from '../mascot/pose';
+import { idleFaceAt } from '../mascot/idle';
 
 /** Boşta animasyonlu bir oyuncu var ve ambient açık mı. */
 export function hasIdleAnimation(scene: BoardScene): boolean {
@@ -27,15 +29,19 @@ export function hasIdleAnimation(scene: BoardScene): boolean {
 }
 
 /**
- * Oyuncuların görüntüyü etkileyen boşta durumu (kırpma açık/kapalı, nabız fazı).
- * İki `now` için aynıysa `actors` yeniden çizilse de görüntü değişmez.
+ * Oyuncuların görüntüyü etkileyen boşta durumu (boştaki yüz — kırpma/bakınma —
+ * ve nabız fazı). İki `now` için aynıysa `actors` yeniden çizilse de görüntü
+ * değişmez. Yüz `drawActorsLayer` ile AYNI kaynaktan (`idleFaceAt`, tohum =
+ * varlık id'si) gelir; süren ifadeler burada yok — onlar `actors`'ı kendileri
+ * uyanık tutar (`MascotController.animating`).
  */
 export function idleSignature(scene: BoardScene, now: number): string {
     let sig = '';
     for (const e of scene.entities) {
         if (e.type !== 'player') continue;
-        const input = playerInputOf(scene.theme, e.customData, now);
-        sig += `${input.blinkClosed ? 1 : 0}${input.pulsePhase},`;
+        const mode = (e.customData.mode as 'normal' | 'reversed') ?? 'normal';
+        const face = e.customData.isLocked ? '-' : faceKey(idleFaceAt(scene.theme, e.id, now));
+        sig += `${face}${pulsePhaseAt(scene.theme, mode, now)},`;
     }
     return sig;
 }

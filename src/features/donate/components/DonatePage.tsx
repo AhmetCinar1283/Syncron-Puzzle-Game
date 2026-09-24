@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Heart } from 'lucide-react';
+import { MascotBuddy } from '@/components/ui';
 import { useDonatePage } from '../hooks/useDonatePage';
 import { CapacitorBlockedView } from './CapacitorBlockedView';
 import { DonateForm } from './DonateForm';
@@ -60,9 +60,9 @@ export function DonatePage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex p-3 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88] mb-2"
+            className="inline-flex mb-2"
           >
-            <Heart className="w-8 h-8 fill-current" />
+            <MascotBuddy size={72} greet="love" moods={['love', 'happy', 'wink']} />
           </motion.div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-[#00ff88] to-[#00c4ff] bg-clip-text text-transparent">
             {t.title}

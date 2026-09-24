@@ -35,6 +35,7 @@ export const SOUNDS = {
   'ui.toggleOn':  synth(ui.toggleOn, 'menu', 0.5),
   'ui.toggleOff': synth(ui.toggleOff, 'menu', 0.5),
   'ui.slider':    synth(ui.slider, 'menu', 0.35, { pitchJitter: 0.03 }),
+  'ui.themeSelect': synth(ui.themeSelect, 'menu', 0.55),
 
   // — Modal —
   'modal.open':   synth(ui.modalOpen, 'menu', 0.5),

@@ -4,6 +4,7 @@ import React from 'react';
 import type { StoredLevel, StoredPlayedLevel } from '@/services/db';
 import { LevelListView } from '../LevelListView';
 import { Plus } from 'lucide-react';
+import { MascotBuddy } from '@/components/ui';
 
 type LevelEntry = StoredLevel & { id: number };
 
@@ -76,6 +77,7 @@ export function CustomLevelsView({
           onMoveDown={(idx) => onMove(idx, 1)}
           emptyState={
             <div className="flex flex-col items-center gap-4 py-12 text-center">
+              <MascotBuddy size={64} playerIndex={1} moods={['sleepy']} every={[1500, 1500]} tappable />
               <p className="text-sm font-medium text-slate-400">{t('levels.no_custom')}</p>
               <button
                 onClick={onNewLevel}

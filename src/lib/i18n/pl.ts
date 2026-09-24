@@ -33,6 +33,7 @@ const pl: Record<string, string> = {
   'home.levels_sub': 'Przeglądaj i zmieniaj kolejność poziomów',
   'home.friends_sub': 'Lista znajomych i zaproszenia',
   'home.theme_sub': 'Zmień styl wizualny',
+  'home.settings_sub': 'Dźwięk, sterowanie i preferencje',
   'home.sliding_on_ice': '❄ ŚLIZG PO LODZIE...',
   'home.badge_daily': 'DZIENNE',
   'home.badge_theme': 'MOTYW',

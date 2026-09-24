@@ -2,6 +2,7 @@
 
 import { useT } from '@/contexts/LanguageContext';
 import AuthModal from '@/components/common/AuthModal';
+import { MascotBuddy } from '@/components/ui';
 import { useFriendsPage } from '../hooks/useFriendsPage';
 import { FriendsNavBar } from './FriendsNavBar';
 import { StatusMessages } from './StatusMessages';
@@ -77,6 +78,13 @@ export function FriendsPage() {
         }}
       >
         <FriendsNavBar isConnected={isConnected} />
+
+        {isAuth && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
+            <MascotBuddy size={44} playerIndex={0} moods={['love', 'happy', 'wink']} />
+            <MascotBuddy size={44} playerIndex={1} moods={['love', 'happy', 'wink']} />
+          </div>
+        )}
 
         {/* Title */}
         <h1

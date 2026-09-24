@@ -72,3 +72,4 @@ dist-electron/
 /.claude
 /.agent
 /.continue
+/video/
