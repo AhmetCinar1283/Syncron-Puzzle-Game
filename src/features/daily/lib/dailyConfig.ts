@@ -7,7 +7,9 @@ import type { PlatformCapabilities } from '@/services/monetization';
 import { isDailyServerConfigured } from '@/services/api/dailyClient';
 
 /** Paylaşım metnine eklenen link (açıldığında /daily'nin Open Graph önizlemesi görünür). */
-export const DAILY_SHARE_URL = 'https://syncron.polimelo.com/daily/';
+export function getDailyShareUrl(siteUrl: string): string {
+  return `${siteUrl}/daily/`;
+}
 
 /** Arşivde listelenen en fazla gün. */
 export const DAILY_ARCHIVE_DAYS = 60;

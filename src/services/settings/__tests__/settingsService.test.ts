@@ -217,4 +217,53 @@ describe('SettingsService', () => {
     service.updateSettings({ language: 'xx' as never });
     expect(service.getSettings().language).toBe('tr');
   });
+
+  describe('applyDetectedLanguage', () => {
+    it('kullanıcı dili seçmediyse platform dilini uygular', () => {
+      const service = new SettingsService();
+      const listener = vi.fn();
+      service.subscribe(listener);
+
+      expect(service.applyDetectedLanguage('tr')).toBe(true);
+      expect(service.getSettings().language).toBe('tr');
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('platform dili kullanıcı seçimi sayılmaz (sonradan tekrar değişebilir)', () => {
+      const service = new SettingsService();
+      service.applyDetectedLanguage('tr');
+      expect(service.applyDetectedLanguage('en')).toBe(true);
+      expect(service.getSettings().language).toBe('en');
+    });
+
+    it('kullanıcı dili elle seçtiyse platform dili onu ezmez', () => {
+      const service = new SettingsService();
+      service.setLanguage('tr');
+
+      expect(service.applyDetectedLanguage('en')).toBe(false);
+      expect(service.getSettings().language).toBe('tr');
+    });
+
+    it('kullanıcı mevcut dili tekrar seçse bile bilinçli seçim sayılır', () => {
+      const service = new SettingsService();
+      service.setLanguage('en'); // varsayılanla aynı, ama bilinçli
+
+      expect(service.applyDetectedLanguage('tr')).toBe(false);
+      expect(service.getSettings().language).toBe('en');
+    });
+
+    it('bilinçli seçim yeniden başlatmadan sonra da korunur', () => {
+      new SettingsService().setLanguage('tr');
+      const reopened = new SettingsService();
+
+      expect(reopened.applyDetectedLanguage('en')).toBe(false);
+      expect(reopened.getSettings().language).toBe('tr');
+    });
+
+    it('geçersiz dil ve aynı dil değişiklik sayılmaz', () => {
+      const service = new SettingsService();
+      expect(service.applyDetectedLanguage('xx' as never)).toBe(false);
+      expect(service.applyDetectedLanguage('en')).toBe(false);
+    });
+  });
 });

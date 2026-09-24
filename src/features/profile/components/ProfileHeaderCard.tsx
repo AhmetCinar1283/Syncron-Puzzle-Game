@@ -15,7 +15,6 @@ interface Stats {
 
 interface Props {
   t: T;
-  lang: string;
   displayName: string;
   currentTag: string | null | undefined;
   isOwner: boolean;
@@ -37,7 +36,6 @@ interface Props {
 
 export default function ProfileHeaderCard({
   t,
-  lang,
   displayName,
   currentTag,
   isOwner,
@@ -76,7 +74,7 @@ export default function ProfileHeaderCard({
         {/* Oyuncu Kartı Başlık Plakası */}
         <div className="profile-dossier-tag">
           <span className="profile-status-dot" />
-          <span>{lang === 'tr' ? 'OYUNCU KARTI // SYNC' : 'PLAYER DOSSIER // SYNC'}</span>
+          <span>{t('profile.dossier_title')}</span>
         </div>
 
         {/* Neon Avatar */}
@@ -108,7 +106,7 @@ export default function ProfileHeaderCard({
           <button
             type="button"
             onClick={handleCopyTag}
-            title={lang === 'tr' ? 'Etiketi Kopyala' : 'Copy Tag'}
+            title={t('profile.copy_tag')}
             className="profile-tag-chip"
           >
             <span>#{currentTag}</span>

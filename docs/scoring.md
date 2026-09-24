@@ -8,13 +8,16 @@ Level completion is verified server-side by the Cloudflare Worker (`syncron-work
 
 ## Star Calculation (Worker)
 
-Stars are computed in `syncron-worker/src/solutions.ts → computeStars()`:
+Stars are computed in `syncron-worker/src/services/solutions.ts → computeStars()`.
+The allowed extra moves over the best are `slack = clamp(ceil(best × ratio), min, max)` (`STAR_POLICY`):
 
 | Condition | Stars |
 |---|---|
-| No prior solutions exist **or** `moves ≤ bestMoveCount` | ★★★ (3) |
-| `moves ≤ floor(bestMoveCount × 1.2)` | ★★ (2) |
-| Everything else | ★ (1) |
+| No prior solutions exist **or** `moves ≤ best + slack₃` (ratio 0.2, min 2, max 5) | ★★★ (3) |
+| `moves ≤ best + slack₂` (ratio 0.6, min 5, max 14; always > slack₃) | ★★ (2) |
+| Everything else (any verified completion) | ★ (1) |
+
+Examples (max moves allowed for 3★ / 2★): best 4 → 6 / 9, best 10 → 12 / 16, best 17 → 21 / 28, best 100 → 105 / 114.
 
 `bestMoveCount` is read via `getSolutionStats()` **before** the batch write, so the pioneer who first solves a level always earns 3 stars regardless of move count.
 

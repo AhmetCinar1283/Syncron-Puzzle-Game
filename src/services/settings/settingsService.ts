@@ -8,7 +8,12 @@ import type { Lang } from '@/lib/i18n';
 import type { GameTheme } from '@/game-engine/themes/themeConfig';
 import { DEFAULT_SETTINGS, clampVolume, isValidLang, isValidTheme } from './defaults';
 import { deepMerge, sanitizeSettings } from './sanitize';
-import { loadSettingsFromStorage, saveSettingsToStorage } from './storageAdapter';
+import {
+  isLanguageExplicit,
+  loadSettingsFromStorage,
+  markLanguageExplicit,
+  saveSettingsToStorage,
+} from './storageAdapter';
 import type { UserSettings, SettingsListener, SettingsUpdatePayload } from './types';
 
 export class SettingsService {
@@ -81,9 +86,22 @@ export class SettingsService {
    * Uygulama arayüz dilini ayarlar.
    */
   setLanguage(language: Lang): void {
-    if (isValidLang(language) && language !== this.currentSettings.language) {
+    if (!isValidLang(language)) return;
+    markLanguageExplicit();
+    if (language !== this.currentSettings.language) {
       this.updateSettings({ language });
     }
+  }
+
+  /**
+   * Platformdan algılanan dili uygular. Kullanıcı dili daha önce kendisi seçtiyse
+   * dokunmaz. Değişiklik yapıldıysa true döner.
+   */
+  applyDetectedLanguage(language: Lang): boolean {
+    if (!isValidLang(language) || isLanguageExplicit()) return false;
+    if (language === this.currentSettings.language) return false;
+    this.updateSettings({ language });
+    return true;
   }
 
   /**

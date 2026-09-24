@@ -34,7 +34,12 @@ export interface PlatformCapabilities {
    * worker yapılandırılmamış build'de ayrıca gizlenir (bkz. features/daily).
    */
   dailyPuzzle: boolean;
+  /** Metadata, paylaşım ve site linklerinde kullanılan ana adres (portal build'lerinde geliştirici kök alanı). */
+  siteUrl: string;
 }
+
+const GAME_SITE_URL = 'https://syncron.polimelo.com';
+const DEVELOPER_SITE_URL = 'https://polimelo.com';
 
 const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
   web: {
@@ -50,6 +55,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: true,
     inMemoryRouting: false,
     dailyPuzzle: true,
+    siteUrl: GAME_SITE_URL,
   },
   electron: {
     interstitialAds: false,
@@ -64,6 +70,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: true,
     inMemoryRouting: false,
     dailyPuzzle: true,
+    siteUrl: GAME_SITE_URL,
   },
   // AdMob (Capacitor) — bölüm arası, ödüllü ve kalıcı alt banner destekli.
   android: {
@@ -79,6 +86,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: true,
     inMemoryRouting: false,
     dailyPuzzle: true,
+    siteUrl: GAME_SITE_URL,
   },
   // Portal build'leri: gerçek SDK reklam sağlayıcıları, tek statik giriş + bellek
   // içi router, yalnızca misafir oynanış (bkz. 02-portal-buildleri.md).
@@ -95,6 +103,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: false,
     inMemoryRouting: true,
     dailyPuzzle: true,
+    siteUrl: DEVELOPER_SITE_URL,
   },
   gamedistribution: {
     interstitialAds: true,
@@ -109,6 +118,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: false,
     inMemoryRouting: true,
     dailyPuzzle: true,
+    siteUrl: DEVELOPER_SITE_URL,
   },
   // Geliştirme sırasında reklam akışını uçtan uca görmek için: web yetenekleri + reklamlar.
   mock: {
@@ -124,6 +134,7 @@ const CAPABILITIES: Record<PlatformId, PlatformCapabilities> = {
     devTools: true,
     inMemoryRouting: false,
     dailyPuzzle: true,
+    siteUrl: GAME_SITE_URL,
   },
 };
 

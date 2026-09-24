@@ -142,7 +142,6 @@ export default function ProfileClient() {
         {/* Oyuncu Kartı (Profile Header Card) */}
         <ProfileHeaderCard
           t={t}
-          lang={lang}
           displayName={displayName}
           currentTag={currentTag}
           isOwner={isOwner}
@@ -271,7 +270,7 @@ export default function ProfileClient() {
             D-pad
             <GameIcon name="arrow-up" size={9} color={themeConfig.accentColor} />
             /
-            <GameIcon name="arrow-down" size={9} color={themeConfig.accentColor} />: {lang === 'tr' ? 'Kaydır' : 'Scroll'}
+            <GameIcon name="arrow-down" size={9} color={themeConfig.accentColor} />: {t('profile.scroll')}
           </span>
         </div>
       )}

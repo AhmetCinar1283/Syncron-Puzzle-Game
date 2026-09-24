@@ -38,7 +38,8 @@ const en: Record<string, string> = {
 
   // Home page
   'home.play': 'Play',
-  'home.play_sub': 'Continue last level',
+  'home.play_sub': 'Choose a level',
+  'home.play_next': 'Sector {sector} · Level {level}',
   'home.levels': 'Levels',
   'home.levels_sub': 'Browse & reorder levels',
   'home.editor': 'Editor',
@@ -51,7 +52,7 @@ const en: Record<string, string> = {
   'home.badge_daily': 'DAILY',
   'home.badge_theme': 'THEME',
   'home.change_theme': 'Change Theme',
-  'home.change_language': 'Change Language (TR / EN)',
+  'home.change_language': 'Change Language',
   'home.more': 'More',
   'home.more_sub': 'All options',
   'home.show_guide': 'How to Play & Info',
@@ -819,6 +820,25 @@ const en: Record<string, string> = {
   'daily_admin.server_invalid_date': 'Invalid date.',
   'daily_admin.server_date_in_past': 'Past dates cannot be changed.',
   'daily_admin.server_date_has_results': 'This day has results; assignment cannot change.',
+  // Home footer, ticker & profile labels
+  'home.footer_support': 'SUPPORT',
+  'home.footer_privacy': 'PRIVACY',
+  'home.footer_terms': 'TERMS',
+  'home.footer_kvkk': 'KVKK',
+  'ticker.resume': 'RESUME: LEVEL #{id} • READY',
+  'ticker.start': 'START: FIRST LEVEL • SYNC MOTION',
+  'ticker.daily': 'DAILY CHALLENGE • 24H EXCLUSIVE PUZZLE',
+  'ticker.levels': 'LEVELS • CAMPAIGN & CUSTOM STAGES',
+  'ticker.editor': 'LEVEL EDITOR • BUILD & SHARE PUZZLES',
+  'ticker.friends': 'FRIENDS • MULTIPLAYER & CHALLENGES',
+  'ticker.controls': 'CONTROLS • GAMEPAD, KEYBOARD & TOUCH',
+  'ticker.admin': 'ADMIN • SYSTEM & TOOLS',
+  'ticker.default': 'SYNCRON • TWO OBJECTS, ONE CONTROL',
+  'profile.dossier_title': 'PLAYER DOSSIER // SYNC',
+  'profile.copy_tag': 'Copy Tag',
+  'profile.scroll': 'Scroll',
+  'friends.focus_hint': 'Press (A) to focus',
+  'friends.your_tag': 'Your Tag:',
 };
 
 export default en;

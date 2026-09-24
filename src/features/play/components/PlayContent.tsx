@@ -1,6 +1,7 @@
 'use client';
 
 import { PlayScreen } from '@/game-engine/components/PlayScreen';
+import { useCapabilities } from '@/contexts/MonetizationContext';
 import { usePlayPage } from '../hooks/usePlayPage';
 import { LoadingScreen } from './LoadingScreen';
 import { ErrorScreen } from './ErrorScreen';
@@ -31,6 +32,8 @@ export function PlayContent() {
         onUndoExecuted,
         onWinDetected,
     } = usePlayPage();
+    // Portallar hesap/satın alma teşviklerini yasaklar: teşvik kartı hiç açılmaz.
+    const { accountLogin, purchases } = useCapabilities();
 
     // ── Render ───────────────────────────────────────────────
     if (level.loading) return <LoadingScreen />;
@@ -97,7 +100,7 @@ export function PlayContent() {
             )}
 
             {/* Reklam kapandıktan sonraki teşvik kartı — win overlay'in de üstünde. */}
-            {showAfterAdPrompt && (
+            {showAfterAdPrompt && (accountLogin || purchases) && (
                 <AfterAdPrompt
                     isRegisteredUser={isRegisteredUser}
                     onDismiss={dismissAfterAdPrompt}

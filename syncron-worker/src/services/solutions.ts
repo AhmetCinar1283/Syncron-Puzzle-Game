@@ -57,15 +57,32 @@ export async function getSolutionStats(
 }
 
 /**
+ * Yıldız eşikleri: izin verilen fazla hamle (pay) = clamp(ceil(best × ratio), min, max).
+ * Küçük levellerde `min` payı sıfıra yuvarlanmaktan korur, uzun levellerde `max` payın şişmesini önler.
+ */
+export const STAR_POLICY = {
+  three: { ratio: 0.2, min: 2, max: 5 },
+  two: { ratio: 0.6, min: 5, max: 14 },
+} as const;
+
+function starSlack(best: number, rule: { ratio: number; min: number; max: number }): number {
+  return Math.min(rule.max, Math.max(rule.min, Math.ceil(best * rule.ratio)));
+}
+
+/**
  * Compute the star rating for a solution.
- * - 3★: no prior solutions OR moveCount <= bestMoveCount (ties the best)
- * - 2★: moveCount <= floor(bestMoveCount * 1.2)
- * - 1★: everything else
+ * - 3★: no prior solutions OR moveCount <= best + slack(three)
+ * - 2★: moveCount <= best + slack(two)
+ * - 1★: everything else (any verified completion)
  */
 // Oyuncunun hamle sayısını, o seviyenin en iyi hamle sayısı ile kıyaslayarak kaç yıldız kazandığını hesaplar.
 export function computeStars(moveCount: number, bestMoveCount: number | null): StarCount {
-  if (bestMoveCount === null || moveCount <= bestMoveCount) return 3;
-  if (moveCount <= Math.floor(bestMoveCount * 1.2)) return 2;
+  if (bestMoveCount === null) return 3;
+  const threeSlack = starSlack(bestMoveCount, STAR_POLICY.three);
+  // 2★ payı her zaman 3★ payından büyük kalır.
+  const twoSlack = Math.max(starSlack(bestMoveCount, STAR_POLICY.two), threeSlack + 1);
+  if (moveCount <= bestMoveCount + threeSlack) return 3;
+  if (moveCount <= bestMoveCount + twoSlack) return 2;
   return 1;
 }
 

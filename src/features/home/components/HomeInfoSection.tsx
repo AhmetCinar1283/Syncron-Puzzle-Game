@@ -25,10 +25,9 @@ const TIPS: { icon: IconName; key: string }[] = [
  * içeriği kaybolmaz. 768px üstünde her zaman açıktır (bkz. src/app/home.css).
  */
 function HomeInfoSectionBase() {
-  const { t, lang } = useLanguage();
-  const isTr = lang === 'tr';
+  const { t } = useLanguage();
   const { themeConfig } = useGameTheme();
-  const { externalLinks } = useCapabilities();
+  const { externalLinks, siteUrl } = useCapabilities();
   const [open, setOpen] = useState(false);
 
   return (
@@ -86,10 +85,10 @@ function HomeInfoSectionBase() {
           <p style={{ marginTop: 14, marginBottom: 0, color: '#475569', fontSize: 11 }}>
             {t('home.seo')}{' '}
             <a
-              href="https://syncron.polimelo.com"
+              href={siteUrl}
               style={{ color: `${themeConfig.accentColor}80`, textDecoration: 'none' }}
             >
-              syncron.polimelo.com
+              {siteUrl.replace('https://', '')}
             </a>
             .
           </p>
@@ -98,15 +97,15 @@ function HomeInfoSectionBase() {
         <footer className="home-links">
           {externalLinks && (
             <>
-              <AppLink href="/support">{isTr ? 'DESTEK' : 'SUPPORT'}</AppLink>
+              <AppLink href="/support">{t('home.footer_support')}</AppLink>
               <span style={{ color: '#334155', fontSize: 10 }}>•</span>
             </>
           )}
-          <AppLink href="/privacy">{isTr ? 'GİZLİLİK' : 'PRIVACY'}</AppLink>
+          <AppLink href="/privacy">{t('home.footer_privacy')}</AppLink>
           <span style={{ color: '#334155', fontSize: 10 }}>•</span>
-          <AppLink href="/terms">{isTr ? 'KOŞULLAR' : 'TERMS'}</AppLink>
+          <AppLink href="/terms">{t('home.footer_terms')}</AppLink>
           <span style={{ color: '#334155', fontSize: 10 }}>•</span>
-          <AppLink href="/kvkk">{isTr ? 'KVKK BEYANI' : 'KVKK'}</AppLink>
+          <AppLink href="/kvkk">{t('home.footer_kvkk')}</AppLink>
         </footer>
       </div>
     </section>

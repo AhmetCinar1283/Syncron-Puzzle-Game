@@ -28,7 +28,7 @@ export function useGeneralGroup(): SettingsGroup {
         label: t('settings.language_title'),
         description: t('settings.language_desc'),
         layout: 'inline',
-        options: LANGS.map(({ code, label }) => ({ value: code, label })),
+        options: LANGS.map(({ code, name }) => ({ value: code, label: name })),
         value: settings.language,
         onChange: (v) => setLanguage(v as Lang),
       },

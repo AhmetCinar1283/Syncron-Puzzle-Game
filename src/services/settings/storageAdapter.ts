@@ -12,6 +12,25 @@ import type { UserSettings } from './types';
 
 export const SETTINGS_STORAGE_KEY = 'syncron_settings_v1';
 
+/** Kullanıcı dili arayüzden bilinçli seçtiyse set edilir; platform dili bunu ezmez. */
+export const LANG_EXPLICIT_KEY = 'syncron_lang_explicit';
+
+export function isLanguageExplicit(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(LANG_EXPLICIT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markLanguageExplicit(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LANG_EXPLICIT_KEY, '1');
+  } catch {}
+}
+
 /**
  * Depolamadaki ayarları okur ve doğrular.
  * - Kayıt yoksa (ilk açılış) veya şema eskiyse (v1) dağınık eski anahtarlar

@@ -38,7 +38,8 @@ const tr: Record<string, string> = {
 
   // Home page
   'home.play': 'Oyna',
-  'home.play_sub': 'Son levelden devam et',
+  'home.play_sub': 'Bir level seç',
+  'home.play_next': 'Sektör {sector} · Level {level}',
   'home.levels': 'Leveller',
   'home.levels_sub': 'Listele ve sırala',
   'home.editor': 'Editör',
@@ -51,7 +52,7 @@ const tr: Record<string, string> = {
   'home.badge_daily': 'GÜNLÜK',
   'home.badge_theme': 'TEMA',
   'home.change_theme': 'Temayı Değiştir',
-  'home.change_language': 'Dili Değiştir (TR / EN)',
+  'home.change_language': 'Dili Değiştir',
   'home.more': 'Daha Fazla',
   'home.more_sub': 'Tüm seçenekler',
   'home.show_guide': 'Nasıl Oynanır & Bilgi',
@@ -819,6 +820,25 @@ const tr: Record<string, string> = {
   'daily_admin.server_invalid_date': 'Geçersiz tarih.',
   'daily_admin.server_date_in_past': 'Geçmiş tarih değiştirilemez.',
   'daily_admin.server_date_has_results': 'Bu günün sonuçları var; atama değiştirilemez.',
+  // Home footer, ticker & profile labels
+  'home.footer_support': 'DESTEK',
+  'home.footer_privacy': 'GİZLİLİK',
+  'home.footer_terms': 'KOŞULLAR',
+  'home.footer_kvkk': 'KVKK BEYANI',
+  'ticker.resume': 'DEVAM ET: BÖLÜM #{id} • SENKRON HAZIR',
+  'ticker.start': 'BAŞLA: İLK BÖLÜM • SENKRON HAREKET',
+  'ticker.daily': 'GÜNLÜK MEYDAN OKUMA • 24 SAATLİK ÖZEL BULMACA',
+  'ticker.levels': 'BÖLÜMLER • TÜM MACERA VE TOPLULUK SEVİYELERİ',
+  'ticker.editor': 'LEVEL EDİTÖRÜ • KENDİ BULMACANI OLUŞTUR VE PAYLAŞ',
+  'ticker.friends': 'ARKADAŞLAR • ÇEVRİMİÇİ LİSTE VE MEYDAN OKUMA',
+  'ticker.controls': 'KONTROLLER • GAMEPAD, KLAVYE VE DOKUNMATİK',
+  'ticker.admin': 'YÖNETİM • SİSTEM VE GELİŞTİRİCİ PANELİ',
+  'ticker.default': 'SYNCRON • İKİ NESNE, TEK KONTROL',
+  'profile.dossier_title': 'OYUNCU KARTI // SYNC',
+  'profile.copy_tag': 'Etiketi Kopyala',
+  'profile.scroll': 'Kaydır',
+  'friends.focus_hint': 'Odaklanmak için (A) tuşuna basın',
+  'friends.your_tag': 'Senin Etiketin:',
 };
 
 export default tr;

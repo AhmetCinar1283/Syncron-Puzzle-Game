@@ -54,6 +54,42 @@ export function computeLockedSet(
   return locked;
 }
 
+export interface NextCampaignTarget {
+  /** Yerel (Dexie) preset id'si; `/play?id=` için. */
+  levelId: number;
+  /** 1 tabanlı sektör sırası (levels sayfasındaki "SECTOR n"). */
+  sectorNumber: number;
+  /** Sektör içindeki 1 tabanlı level sırası. */
+  levelNumber: number;
+}
+
+/**
+ * Ana menü PLAY hedefi: bitmemiş level içeren en düşük sektördeki ilk ilerletilmemiş
+ * level. Sektör ya da level kilitliyse, veri eksikse veya her şey bitmişse `null`
+ * döner (çağıran levels sayfasına yönlendirir) — kilitli bir level asla önerilmez.
+ */
+export function findNextCampaignTarget(
+  parts: ReadonlyArray<Pick<LevelPart, 'order' | 'unlockRequirement'>>,
+  presetsByFirestoreId: ReadonlyMap<string, number>,
+  sets: ProgressSets,
+  totalStars: number,
+): NextCampaignTarget | null {
+  for (let p = 0; p < parts.length; p++) {
+    const part = parts[p];
+    const ids = orderedLevelIds(part);
+    const levelIdx = ids.findIndex((id) => !isProgressed(id, sets));
+    if (levelIdx === -1) continue;
+
+    if (!isChapterUnlocked(part, totalStars)) return null;
+    const firestoreId = ids[levelIdx];
+    if (computeLockedSet(part, sets, totalStars).has(firestoreId)) return null;
+    const levelId = presetsByFirestoreId.get(firestoreId);
+    if (levelId === undefined) return null;
+    return { levelId, sectorNumber: p + 1, levelNumber: levelIdx + 1 };
+  }
+  return null;
+}
+
 /**
  * Bölüm paketinin (chapter) kilidinin açık olup olmadığını kontrol eder.
  */

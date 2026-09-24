@@ -9,10 +9,13 @@ import {
   createContext,
   useContext,
   useCallback,
+  useEffect,
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { translate, type Lang } from '@/lib/i18n';
+import { CURRENT_PLATFORM } from '@/services/monetization/platform';
+import { detectPlatformLanguage, hasLocaleSource } from '@/services/platformLocale';
 import { settingsService } from '@/services/settings';
 import { DEFAULT_SETTINGS } from '@/services/settings/defaults';
 
@@ -40,6 +43,23 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     getLanguageSnapshot,
     getServerLanguageSnapshot,
   );
+
+  // <html lang> statik "en" geliyor; erişilebilirlik ve tarayıcı çeviri önerisi için gerçek dile eşitle.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  // Platform SDK'sı kullanıcı dilini biliyorsa (ör. CrazyGames) açılışta bir kez uygula.
+  useEffect(() => {
+    if (!hasLocaleSource(CURRENT_PLATFORM)) return;
+    let cancelled = false;
+    detectPlatformLanguage(CURRENT_PLATFORM).then((detected) => {
+      if (!cancelled) settingsService.applyDetectedLanguage(detected);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setLang = useCallback((newLang: Lang) => {
     settingsService.setLanguage(newLang);

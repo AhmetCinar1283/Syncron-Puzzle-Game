@@ -16,9 +16,9 @@ import { GlobalThemeBackground } from "@/components/common/GlobalThemeBackground
 import { CURRENT_PLATFORM, getCapabilities } from "@/services/monetization";
 import { SettingsProvider, SettingsModal } from "@/features/settings";
 
-const BASE_URL = 'https://syncron.polimelo.com';
-
 const capabilities = getCapabilities(CURRENT_PLATFORM);
+
+const BASE_URL = capabilities.siteUrl;
 
 // Portallar veri toplama için kullanıcı onayı ister; GA'yı orada hiç yüklemiyoruz.
 const GA_ID = capabilities.thirdPartyScripts ? (process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? '') : '';
@@ -151,7 +151,7 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'WebApplication',
               name: 'Syncron',
-              url: 'https://syncron.polimelo.com',
+              url: BASE_URL,
               description:
                 'Syncron is a free browser-based grid puzzle game where you control two objects simultaneously and navigate them to their targets. Features include ice slides, teleporters, conveyors, power nodes, and a built-in level editor.',
               applicationCategory: 'Game',

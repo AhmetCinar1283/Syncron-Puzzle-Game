@@ -994,11 +994,12 @@
 
 .home-sheet__seg {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .home-sheet__seg > .home-sheet__btn {
-  flex: 1;
+  flex: 1 1 22%;
   padding: 9px 10px;
   font-size: 11px;
 }

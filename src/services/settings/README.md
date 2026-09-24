@@ -14,7 +14,7 @@ Kullanıcı tercihleri ve ayarlarının (ses, kontroller, performans/görsellik,
 - `settingsService`: Tekil servis nesnesi.
   - `getSettings()`: Güncel ayarları döner.
   - `updateSettings(payload)`: Kısmi güncelleme yapar.
-  - `setLanguage(lang)`: Dili günceller (`'tr' | 'en'`).
+  - `setLanguage(lang)`: Dili günceller (`Lang`: en, tr, pt-BR, ru, es, de, fr, pl).
   - `setTheme(theme)`: Temayı günceller (`'arcade' | 'legacy' | 'neon' | 'blueprint' | 'cosmic'`).
   - `setSoundMuted(muted)`: Sesi açar/kapatır.
   - `toggleSoundMute()`: Sesi tersine çevirir.

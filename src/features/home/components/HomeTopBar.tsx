@@ -4,6 +4,7 @@ import React, { memo, useCallback } from 'react';
 import { GameIcon } from '@/components/icons';
 import { useGameTheme } from '@/game-engine/contexts/GameThemeContext';
 import { useLanguage, useT } from '@/contexts/LanguageContext';
+import { LANGS, nextLang } from '@/lib/i18n';
 import { useSoundManager } from '@/services/audio';
 
 interface HomeTopBarProps {
@@ -21,7 +22,7 @@ function HomeTopBarBase({ onOpenThemeModal }: HomeTopBarProps) {
 
   const handleToggleLang = useCallback(() => {
     playSound('ui.confirm');
-    setLang(lang === 'tr' ? 'en' : 'tr');
+    setLang(nextLang(lang));
   }, [lang, playSound, setLang]);
 
   return (
@@ -53,7 +54,7 @@ function HomeTopBarBase({ onOpenThemeModal }: HomeTopBarProps) {
           aria-label={t('home.change_language')}
         >
           <GameIcon name="globe" size={13} color={themeConfig.accentColor} />
-          <span>{lang.toUpperCase()}</span>
+          <span>{LANGS.find((l) => l.code === lang)?.label ?? lang.toUpperCase()}</span>
         </button>
       </div>
     </div>

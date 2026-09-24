@@ -13,7 +13,7 @@ export const DAILY_POLICY = {
   xpOfficial: 50,
   /** İpucu kullanılmış resmî tamamlamada verilen XP. */
   xpOfficialHinted: 25,
-  /** 2★ eşiği: par × bu oran (aşağı yuvarlanır). Kampanyadaki computeStars ile aynı oran. */
+  /** 2★ eşiği: par × bu oran (aşağı yuvarlanır). Kampanya (`STAR_POLICY`) ayrıca gevşetildi; daily bilerek ayrı. */
   twoStarRatio: 1.2,
   /** Oyuncuya gösterilen arşivin en fazla kaç gün geriye gideceği. */
   archiveMaxDays: 365,

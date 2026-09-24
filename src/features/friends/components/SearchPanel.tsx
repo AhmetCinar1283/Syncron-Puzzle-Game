@@ -2,7 +2,7 @@
 
 import { FormEvent, RefObject } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { useT, useLanguage } from '@/contexts/LanguageContext';
+import { useT } from '@/contexts/LanguageContext';
 import BadgeIcon from '@/components/common/BadgeIcon';
 import { UserSearchResult } from '@/services/api/friendsClient';
 
@@ -44,7 +44,6 @@ export function SearchPanel({
   onSendRequest,
 }: SearchPanelProps) {
   const t = useT();
-  const { lang } = useLanguage();
 
   return (
     <div
@@ -72,7 +71,7 @@ export function SearchPanel({
         <span>{t('friends.search_title')}</span>
         {isConnected && (
           <span style={{ color: '#00c4ff', fontSize: 10, textTransform: 'none', letterSpacing: 'normal' }}>
-            {lang === 'tr' ? 'Odaklanmak için (A) tuşuna basın' : 'Press (A) to focus'}
+            {t('friends.focus_hint')}
           </span>
         )}
       </h3>
@@ -91,7 +90,7 @@ export function SearchPanel({
           }}
         >
           <span style={{ fontSize: '12.5px', color: '#9ca3af', fontWeight: 600 }}>
-            {lang === 'tr' ? 'Senin Etiketin:' : 'Your Tag:'}
+            {t('friends.your_tag')}
           </span>
           <button
             onClick={onCopyMyTag}

@@ -28,6 +28,13 @@ export interface CrazyGamesSdk {
     gameplayStop(): void;
     happytime(): void;
   };
+  user?: {
+    systemInfo?: {
+      /** Kullanıcının CrazyGames'teki dil/bölge kodu, ör. "en-US", "pt-BR". */
+      locale?: string;
+      countryCode?: string;
+    };
+  };
   ad: {
     requestAd(adType: 'midgame' | 'rewarded', callbacks: CrazyGamesAdCallbacks): void;
     hasAdblock(): Promise<boolean>;

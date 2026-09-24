@@ -2,7 +2,6 @@
 
 import { useAppRouter } from '@/lib/navigation';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { useUserStorage } from '@/lib/userStorage';
 import { useSelector } from 'react-redux';
 import { selectUser } from '@/store/userSlice';
 import { useT } from '@/contexts/LanguageContext';
@@ -14,6 +13,7 @@ import type { IconName } from '@/components/icons';
 import { useSettings } from '@/features/settings';
 import { moveMenuSelection, PROFILE_INDEX } from '../lib/menuGrid';
 import { useMotionTier } from '../lib/motionTier';
+import { findNextCampaignTarget, type NextCampaignTarget } from '@/features/levels/lib/progression';
 
 export type SlidePhase = 'idle' | 'freeze' | 'sliding' | 'won';
 
@@ -44,7 +44,6 @@ const WIN_HOLD_MS = 320;
 export function useHomePage() {
   const t = useT();
   const router = useAppRouter();
-  const { getItem: storageGet } = useUserStorage();
   const user = useSelector(selectUser);
   const capabilities = useCapabilities();
   const { devTools, accountLogin } = capabilities;
@@ -63,7 +62,7 @@ export function useHomePage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { isSettingsOpen } = useSettings();
-  const [lastPlayedLevelId, setLastPlayedLevelId] = useState<string | null>(null);
+  const [nextTarget, setNextTarget] = useState<NextCampaignTarget | null>(null);
 
   const selectIndex = useCallback(
     (index: number) => {
@@ -108,51 +107,74 @@ export function useHomePage() {
     return () => window.removeEventListener('touchstart', handleTouch);
   }, []);
 
+  /** Kampanyada sıradaki oynanabilir level; belirsizse null (PLAY → levels sayfası). */
+  const resolveNextTarget = useCallback(async (): Promise<NextCampaignTarget | null> => {
+    const { getPresetLevels, getAllPlayedLevels, getAllSkippedLevels } = await import('@/services/db');
+    const { getCampaignParts } = await import('@/services/levels/campaignParts');
+    const [parts, presets, played, skipped] = await Promise.all([
+      getCampaignParts(),
+      getPresetLevels(),
+      getAllPlayedLevels(),
+      getAllSkippedLevels(),
+    ]);
+    if (parts.length === 0 || presets.length === 0) return null;
+
+    const byFirestoreId = new Map<string, number>();
+    for (const lv of presets) {
+      if (lv.firestoreId) byFirestoreId.set(lv.firestoreId, lv.id);
+    }
+    const totalStars = played.reduce((sum, p) => sum + (p.stars ?? 0), 0);
+    return findNextCampaignTarget(
+      parts,
+      byFirestoreId,
+      {
+        played: new Set(played.map((p) => p.levelId)),
+        skipped: new Set(skipped.map((s) => s.levelId)),
+      },
+      totalStars,
+    );
+  }, []);
+
   useEffect(() => {
-    setLastPlayedLevelId(storageGet('lastPlayedLevelId'));
-  }, [storageGet]);
+    let cancelled = false;
+    resolveNextTarget()
+      .then((target) => {
+        if (!cancelled) setNextTarget(target);
+      })
+      .catch((err) => console.warn('[Home] Next level lookup failed:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [resolveNextTarget]);
 
   const handlePlayNavigate = useCallback(async () => {
     playSound('ui.navigate');
-    const id = storageGet('lastPlayedLevelId');
-    const src = storageGet('lastPlayedSource');
-    if (id) {
-      router.push(src === 'preset' ? `/play?id=${id}&source=preset` : `/play?id=${id}`);
-      return;
-    }
-
     try {
-      const { getPresetLevels } = await import('@/services/db');
-      let presets = await getPresetLevels();
-      if (!presets || presets.length === 0) {
-        const { syncLevelsMeta } = await import('@/services/firebase/sync');
-        await syncLevelsMeta();
-        presets = await getPresetLevels();
-      }
-      if (presets && presets.length > 0) {
-        router.push(`/play?id=${presets[0].id}&source=preset`);
+      const target = await resolveNextTarget();
+      if (target) {
+        router.push(`/play?id=${target.levelId}&source=preset`);
         return;
       }
     } catch (err) {
-      console.warn('[PlayClick] Failed to fetch first level:', err);
+      console.warn('[PlayClick] Failed to resolve next level:', err);
     }
 
     router.push('/levels');
-  }, [router, storageGet, playSound]);
+  }, [router, playSound, resolveNextTarget]);
 
   /** Tahtanın kahraman şeridi: her zaman tek ve tartışmasız birincil eylem. */
   const playItem: HomeMenuItem = useMemo(
     () => ({
       id: 'play',
       label: t('home.play'),
-      sub: lastPlayedLevelId
-        ? t('home.resume_level', { id: lastPlayedLevelId })
+      sub: nextTarget
+        ? t('home.play_next', { sector: nextTarget.sectorNumber, level: nextTarget.levelNumber })
         : t('home.play_sub'),
       color: '#00ff88',
       icon: 'gamepad',
       onClick: handlePlayNavigate,
     }),
-    [t, lastPlayedLevelId, handlePlayNavigate]
+    [t, nextTarget, handlePlayNavigate]
   );
 
   /** İkincil eylemler — öncelik sırasına göre. İlk 4'ü ızgarada görünür. */
@@ -478,7 +500,6 @@ export function useHomePage() {
     resetSlidePhase,
     inputMode,
     isConnected,
-    lastPlayedLevelId,
     isThemeModalOpen,
     setIsThemeModalOpen,
     isSheetOpen,

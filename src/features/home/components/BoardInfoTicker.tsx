@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ThemeDefinition } from '@/game-engine/themes/themeConfig';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useT } from '@/contexts/LanguageContext';
 
 interface BoardInfoTickerProps {
   activeOptionId: string;
@@ -17,39 +17,28 @@ export function BoardInfoTicker({
   lastPlayedLevelId,
   isMobile,
 }: BoardInfoTickerProps) {
-  const { lang } = useLanguage();
-  const isTr = lang === 'tr';
+  const t = useT();
 
   const getTickerText = (): string => {
     switch (activeOptionId) {
       case 'play':
         return lastPlayedLevelId
-          ? (isTr ? `DEVAM ET: BÖLÜM #${lastPlayedLevelId} • SENKRON HAZIR` : `RESUME: LEVEL #${lastPlayedLevelId} • READY`)
-          : (isTr ? 'BAŞLA: İLK BÖLÜM • SENKRON HAREKET' : 'START: FIRST LEVEL • SYNC MOTION');
+          ? t('ticker.resume', { id: lastPlayedLevelId })
+          : t('ticker.start');
       case 'daily':
-        return isTr
-          ? 'GÜNLÜK MEYDAN OKUMA • 24 SAATLİK ÖZEL BULMACA'
-          : 'DAILY CHALLENGE • 24H EXCLUSIVE PUZZLE';
+        return t('ticker.daily');
       case 'levels':
-        return isTr
-          ? 'BÖLÜMLER • TÜM MACERA VE TOPLULUK SEVİYELERİ'
-          : 'LEVELS • CAMPAIGN & CUSTOM STAGES';
+        return t('ticker.levels');
       case 'editor':
-        return isTr
-          ? 'LEVEL EDİTÖRÜ • KENDİ BULMACANI OLUŞTUR VE PAYLAŞ'
-          : 'LEVEL EDITOR • BUILD & SHARE PUZZLES';
+        return t('ticker.editor');
       case 'friends':
-        return isTr
-          ? 'ARKADAŞLAR • ÇEVRİMİÇİ LİSTE VE MEYDAN OKUMA'
-          : 'FRIENDS • MULTIPLAYER & CHALLENGES';
+        return t('ticker.friends');
       case 'controls':
-        return isTr
-          ? 'KONTROLLER • GAMEPAD, KLAVYE VE DOKUNMATİK'
-          : 'CONTROLS • GAMEPAD, KEYBOARD & TOUCH';
+        return t('ticker.controls');
       case 'admin':
-        return isTr ? 'YÖNETİM • SİSTEM VE GELİŞTİRİCİ PANELİ' : 'ADMIN • SYSTEM & TOOLS';
+        return t('ticker.admin');
       default:
-        return isTr ? 'SYNCRON • İKİ NESNE, TEK KONTROL' : 'SYNCRON • TWO OBJECTS, ONE CONTROL';
+        return t('ticker.default');
     }
   };
 
