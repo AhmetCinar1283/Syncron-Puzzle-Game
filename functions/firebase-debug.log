@@ -1,0 +1,45 @@
+[debug] [2026-09-24T19:24:34.598Z] ----------------------------------------------------------------------
+[debug] [2026-09-24T19:24:34.601Z] Command:       C:\nvm4w\nodejs\node.exe C:\Users\ahmet\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions
+[debug] [2026-09-24T19:24:34.602Z] CLI Version:   15.30.2
+[debug] [2026-09-24T19:24:34.602Z] Platform:      win32
+[debug] [2026-09-24T19:24:34.602Z] Node Version:  v22.22.0
+[debug] [2026-09-24T19:24:34.602Z] Detected Agent: unknown
+[debug] [2026-09-24T19:24:34.602Z] Time:          Thu Sep 24 2026 22:24:34 GMT+0300 (GMT+03:00)
+[debug] [2026-09-24T19:24:34.603Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-24T19:24:36.523Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-24T19:24:36.524Z] > authorizing via signed-in user (ahmetcinar1283@gmail.com)
+[debug] [2026-09-24T19:24:36.524Z] [iam] checking project syncron-1923 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-09-24T19:24:36.534Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:36.534Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:36.536Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923:testIamPermissions [none]
+[debug] [2026-09-24T19:24:36.536Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923:testIamPermissions  x-goog-user-project=syncron-1923
+[debug] [2026-09-24T19:24:36.536Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-09-24T19:24:37.674Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923:testIamPermissions 200
+[debug] [2026-09-24T19:24:37.674Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-09-24T19:24:37.675Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:37.675Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:37.675Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/syncron-1923/serviceAccounts/syncron-1923@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-09-24T19:24:37.675Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/syncron-1923/serviceAccounts/syncron-1923@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-09-24T19:24:38.785Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/syncron-1923/serviceAccounts/syncron-1923@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-09-24T19:24:38.786Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/syncron-1923/serviceAccounts/syncron-1923@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'syncron-1923'...
+[info] 
+[info] i  deploying functions 
+[info] Running command: npm --prefix "$RESOURCE_DIR" run build
+[info] +  functions: Finished running predeploy script. 
+[debug] [2026-09-24T19:24:44.656Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:44.656Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:44.656Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923 [none]
+[debug] [2026-09-24T19:24:45.719Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923 200
+[debug] [2026-09-24T19:24:45.719Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/syncron-1923 {"projectNumber":"1041986277726","projectId":"syncron-1923","lifecycleState":"ACTIVE","name":"syncron","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-03-30T18:04:40.217Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-09-24T19:24:45.725Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:45.725Z] Checked if tokens are valid: true, expires at: 1790281422609
+[debug] [2026-09-24T19:24:45.725Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/syncron-1923/adminSdkConfig [none]
+[debug] [2026-09-24T19:24:46.550Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/syncron-1923/adminSdkConfig 200
+[debug] [2026-09-24T19:24:46.550Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/syncron-1923/adminSdkConfig {"projectId":"syncron-1923","storageBucket":"syncron-1923.firebasestorage.app"}
