@@ -41,6 +41,7 @@ export function usePlaySkip({ firestoreId, partId, isChapterEnd, ready, onSkippe
     const [dialogOpen, setDialogOpen] = useState(false);
     const [failedAttempts, setFailedAttempts] = useState(0);
     const [timeReached, setTimeReached] = useState(false);
+    const [totalMoves, setTotalMoves] = useState(0);
     /** `null` → yerel kayıt henüz okunmadı. */
     const [alreadyProgressed, setAlreadyProgressed] = useState<boolean | null>(null);
     /** Level'ın (kapsamın) ilk oynanabilir olduğu an — yeniden başlatmada korunur. */
@@ -53,6 +54,7 @@ export function usePlaySkip({ firestoreId, partId, isChapterEnd, ready, onSkippe
         setTrackedScope(scopeKey);
         setDialogOpen(false);
         setFailedAttempts(0);
+        setTotalMoves(0);
         setTimeReached(false);
         setAlreadyProgressed(null);
     }
@@ -94,10 +96,16 @@ export function usePlaySkip({ firestoreId, partId, isChapterEnd, ready, onSkippe
             isChapterEnd,
         });
     const offered = !(availability.kind === 'blocked' && availability.reason === 'disabled');
-    const stuck = timeReached || failedAttempts >= SKIP_LEVEL_UI_CONFIG.minFailedAttempts;
+    const stuck =
+        timeReached ||
+        failedAttempts >= SKIP_LEVEL_UI_CONFIG.minFailedAttempts ||
+        totalMoves >= SKIP_LEVEL_UI_CONFIG.minMovesInLevel;
 
     /** Yeniden başlatma ya da ölüm (başarısız deneme). */
     const onFailedAttempt = useCallback(() => setFailedAttempts((n) => n + 1), []);
+
+    /** Her hamle (geri alma düşmez, yeniden başlatma sıfırlamaz). */
+    const onMoveExecuted = useCallback(() => setTotalMoves((n) => n + 1), []);
 
     const onRequest = useCallback(() => {
         clearError();
@@ -140,6 +148,7 @@ export function usePlaySkip({ firestoreId, partId, isChapterEnd, ready, onSkippe
         inputLocked: dialogOpen,
         onRequest,
         onFailedAttempt,
+        onMoveExecuted,
         dialog: {
             open: dialogOpen,
             availability,

@@ -4,8 +4,13 @@
  * teslim alamaz, iptal edemez ya da tüketemez.
  */
 
-export type RewardGrantVia = 'ad' | 'ad-free' | 'free';
-export const REWARD_GRANT_VIAS = ['ad', 'ad-free', 'free'] as const;
+/**
+ * `ads-disabled`: istemci reklam istedi ama portal reklamları kasıtlı kapattı
+ * (CrazyGames Basic Launch). `ad` gibi kotasız teslim edilir; ayrı tutulur ki
+ * kayıtlarda gerçek reklam izlemeyle karışmasın.
+ */
+export type RewardGrantVia = 'ad' | 'ad-free' | 'free' | 'ads-disabled';
+export const REWARD_GRANT_VIAS = ['ad', 'ad-free', 'free', 'ads-disabled'] as const;
 
 export type RewardGrantStatus = 'prepared' | 'delivered' | 'cancelled' | 'unavailable';
 

@@ -13,8 +13,12 @@ export type PlatformId =
   | 'gamedistribution'
   | 'mock';
 
-/** Ödüllü reklamın neden verilmediğini ayırt eder; UI nazik mesaj seçer. */
-export type AdUnavailableReason = 'unsupported' | 'no-fill' | 'closed' | 'error' | 'timeout';
+/**
+ * Ödüllü reklamın neden verilmediğini ayırt eder; UI nazik mesaj seçer.
+ * `ads-disabled`: portal reklamları bu aşamada kasıtlı kapattı (ör. CrazyGames
+ * Basic Launch) — oyuncunun suçu değil, ödüllü aksiyon reklamsız verilir.
+ */
+export type AdUnavailableReason = 'unsupported' | 'no-fill' | 'closed' | 'error' | 'timeout' | 'ads-disabled';
 
 export interface RewardedResult {
   rewarded: boolean;

@@ -18,6 +18,8 @@ const MESSAGE_KEYS: Record<RewardedDeclineReason, string | null> = {
   error: 'rewarded.decline_error',
   timeout: 'rewarded.decline_error',
   unsupported: 'rewarded.decline_error',
+  // Normalde ret değil, reklamsız ödüldür (bkz. rewardedActionService); tip bütünlüğü için.
+  'ads-disabled': 'rewarded.decline_error',
 };
 
 export function declineMessageKey(reason: RewardedDeclineReason): string | null {

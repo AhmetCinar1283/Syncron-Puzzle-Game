@@ -23,7 +23,8 @@ POST /rewards/claim { requestId, via:'ad' }
 ```
 
 `via:'free'` her zaman reddedilir (`freePerLevel: 0`); `via:'ad-free'` sunucudaki
-reklamsız hakla doğrulanır (07'ye kadar herkes için yok).
+reklamsız hakla doğrulanır (07'ye kadar herkes için yok). `via:'ads-disabled'`
+portal reklamları kasıtlı kapattığında (CrazyGames Basic Launch) `ad` gibi kabul edilir.
 
 ## Neden `played_levels` değil de ayrı tablo
 

@@ -12,6 +12,8 @@ export interface SkipLevelUiConfig {
   minFailedAttempts: number;
   /** Level'da bu kadar saniye geçirildikten sonra buton görünür (yeniden başlatmada sıfırlanmaz). */
   minSecondsInLevel: number;
+  /** Level'da toplam bu kadar hamle yapıldıktan sonra buton görünür (yeniden başlatmada sıfırlanmaz). */
+  minMovesInLevel: number;
   /**
    * Bölümün son level'ında buton gösterilsin mi. Sunucudaki
    * `SKIP_LEVEL_POLICY.allowChapterEnd` ile aynı tutulmalıdır (sunucu kapalıysa reddeder).
@@ -20,13 +22,16 @@ export interface SkipLevelUiConfig {
 }
 
 export const SKIP_LEVEL_UI_CONFIG: SkipLevelUiConfig = {
-  minFailedAttempts: 3,
-  minSecondsInLevel: 180,
+  minFailedAttempts: 2,
+  minSecondsInLevel: 90,
+  minMovesInLevel: 60,
   allowChapterEnd: false,
 };
 
 export interface StuckSignals {
   failedAttempts: number;
+  /** Level'da (yeniden başlatmalar dahil) yapılan toplam hamle. */
+  totalMoves: number;
   /** Level'ın ilk yüklenmesinden beri geçen süre (ms). */
   elapsedMs: number;
 }
@@ -35,6 +40,7 @@ export interface StuckSignals {
 export function isPlayerStuck(signals: StuckSignals, config: SkipLevelUiConfig = SKIP_LEVEL_UI_CONFIG): boolean {
   return (
     signals.failedAttempts >= config.minFailedAttempts ||
+    signals.totalMoves >= config.minMovesInLevel ||
     signals.elapsedMs >= config.minSecondsInLevel * 1000
   );
 }

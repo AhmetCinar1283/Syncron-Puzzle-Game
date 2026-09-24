@@ -26,8 +26,11 @@ export interface RewardedActionConfig {
   rewardedAdsUnavailable: RewardedAccessMode;
 }
 
-/** Ödülün hangi yoldan kazanıldığı — sunucuya da bildirilir. */
-export type RewardGrantVia = 'ad' | 'ad-free' | 'free';
+/**
+ * Ödülün hangi yoldan kazanıldığı — sunucuya da bildirilir. `ads-disabled`:
+ * reklam istendi ama portal reklamları kasıtlı kapattı (CrazyGames Basic Launch).
+ */
+export type RewardGrantVia = 'ad' | 'ad-free' | 'free' | 'ads-disabled';
 
 /** UI'ın butonu nasıl göstereceğine karar verdiği, ödül istenmeden önceki durum. */
 export type RewardedAvailability =

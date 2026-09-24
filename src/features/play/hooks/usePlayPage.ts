@@ -63,12 +63,6 @@ export function usePlayPage() {
     });
     const { onMoveExecuted: hintOnMove, onUndoExecuted: hintOnUndo, onRestart: hintOnRestart, reset: resetHint } = hint;
 
-    /** Hamle: telemetri/hamle geçmişi + ipucunun ilerletilmesi (aynı hamle kodu). */
-    const onMoveExecuted = useCallback((direction: Direction | 'switch_room') => {
-        handleMoveExecuted(direction);
-        hintOnMove(direction === 'switch_room' ? SWITCH_ROOM_MOVE : DIRECTION_TO_MOVE[direction]);
-    }, [handleMoveExecuted, hintOnMove]);
-
     const onUndoExecuted = useCallback(() => {
         handleUndoExecuted();
         hintOnUndo();
@@ -105,7 +99,14 @@ export function usePlayPage() {
         ready: levelReady && !showWin,
         onSkipped,
     });
-    const { onFailedAttempt: skipOnFailedAttempt } = skip;
+    const { onFailedAttempt: skipOnFailedAttempt, onMoveExecuted: skipOnMove } = skip;
+
+    /** Hamle: telemetri/hamle geçmişi + ipucunun ilerletilmesi + atlama eşiği sayacı. */
+    const onMoveExecuted = useCallback((direction: Direction | 'switch_room') => {
+        handleMoveExecuted(direction);
+        hintOnMove(direction === 'switch_room' ? SWITCH_ROOM_MOVE : DIRECTION_TO_MOVE[direction]);
+        skipOnMove();
+    }, [handleMoveExecuted, hintOnMove, skipOnMove]);
 
     // ── Zafer erken tetikleme (animasyon oynarken arka planda worker) ──
     const onWinDetected = useCallback(() => {

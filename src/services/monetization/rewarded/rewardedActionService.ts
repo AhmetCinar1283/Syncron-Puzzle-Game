@@ -112,12 +112,17 @@ export async function runRewardedAction<T>({
     let via: RewardGrantVia;
     if (availability.kind === 'ad') {
       const ad = await adService.showRewarded();
-      if (!ad.rewarded) {
+      if (ad.rewarded) {
+        via = 'ad';
+      } else if (ad.reason === 'ads-disabled') {
+        // Portal reklamları bu aşamada kapattı (CrazyGames Basic Launch): oyuncu
+        // cezalandırılmaz, ödül reklamsız verilir. Reklamlar açılınca akış kendiliğinden 'ad'a döner.
+        via = 'ads-disabled';
+      } else {
         const reason = ad.reason ?? 'closed';
         cancel?.(prepared.requestId, reason).catch(() => undefined);
         return decline(reason);
       }
-      via = 'ad';
     } else {
       via = availability.via;
     }

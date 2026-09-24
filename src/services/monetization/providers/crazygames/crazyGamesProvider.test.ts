@@ -110,4 +110,16 @@ describe('crazyGamesProvider', () => {
     const result = await provider.showRewarded();
     expect(result).toEqual({ rewarded: false, reason: 'unsupported' });
   });
+
+  it('showRewarded: adError(adsDisabledBasicLaunch) → reason:ads-disabled', async () => {
+    const sdk = fakeSdk({
+      ad: {
+        requestAd: (_type, callbacks: CrazyGamesAdCallbacks) => callbacks.adError?.({ code: 'adsDisabledBasicLaunch' }),
+        hasAdblock: vi.fn(async () => false),
+      },
+    });
+    const provider = await setupModule(sdk);
+    const result = await provider.showRewarded();
+    expect(result).toEqual({ rewarded: false, reason: 'ads-disabled' });
+  });
 });

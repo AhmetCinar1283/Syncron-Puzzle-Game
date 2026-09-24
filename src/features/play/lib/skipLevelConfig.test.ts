@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { canOfferSkip, isPlayerStuck, msUntilTimeThreshold, SKIP_LEVEL_UI_CONFIG } from './skipLevelConfig';
 
-const config = { minFailedAttempts: 3, minSecondsInLevel: 120, allowChapterEnd: false };
+const config = { minFailedAttempts: 3, minSecondsInLevel: 120, minMovesInLevel: 50, allowChapterEnd: false };
 
 describe('isPlayerStuck', () => {
-  it('is not stuck before either threshold', () => {
-    expect(isPlayerStuck({ failedAttempts: 2, elapsedMs: 119_000 }, config)).toBe(false);
+  it('is not stuck before any threshold', () => {
+    expect(isPlayerStuck({ failedAttempts: 2, totalMoves: 49, elapsedMs: 119_000 }, config)).toBe(false);
   });
 
   it('is stuck after enough failed attempts', () => {
-    expect(isPlayerStuck({ failedAttempts: 3, elapsedMs: 0 }, config)).toBe(true);
+    expect(isPlayerStuck({ failedAttempts: 3, totalMoves: 0, elapsedMs: 0 }, config)).toBe(true);
+  });
+
+  it('is stuck after enough moves in the level', () => {
+    expect(isPlayerStuck({ failedAttempts: 0, totalMoves: 50, elapsedMs: 0 }, config)).toBe(true);
   });
 
   it('is stuck after enough time in the level', () => {
-    expect(isPlayerStuck({ failedAttempts: 0, elapsedMs: 120_000 }, config)).toBe(true);
+    expect(isPlayerStuck({ failedAttempts: 0, totalMoves: 0, elapsedMs: 120_000 }, config)).toBe(true);
   });
 
   it('reports the time left to the time threshold', () => {

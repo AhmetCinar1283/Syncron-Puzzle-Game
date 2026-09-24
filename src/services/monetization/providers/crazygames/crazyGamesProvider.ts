@@ -17,8 +17,10 @@ function mapErrorReason(error: CrazyGamesAdError): AdUnavailableReason {
     case 'other':
       return 'error';
     case 'adCooldown':
-    case 'adsDisabledBasicLaunch':
       return 'unsupported';
+    // Basic Launch'ta CrazyGames reklamları kapatır; Full Launch'ta kendiliğinden açılır.
+    case 'adsDisabledBasicLaunch':
+      return 'ads-disabled';
     default:
       return 'error';
   }
